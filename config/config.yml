@@ -1,0 +1,11 @@
+# Data
+data_type: 'network'
+dataset_name: 'cora'
+data_dir: '../data/cora/'
+task_type: 'classification'
+
+# Output
+out_dir: '../out/cora/ngnn'
+
+
+seed: 1232

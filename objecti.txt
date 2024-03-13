@@ -1,1 +1,3 @@
+python main.py -config config/config.yml
+
 s2 basic idea about pipeline
