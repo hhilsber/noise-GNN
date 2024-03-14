@@ -1,7 +1,7 @@
 # Data
 data_type: 'network'
 dataset_name: 'cora'
-data_dir: '../../data/cora/'
+data_dir: './data/cora/raw/'
 task_type: 'classification'
 
 # Output
@@ -9,6 +9,12 @@ out_dir: '../out/cora/ngnn'
 
 
 seed: 1232
+
+# Training
+optimizer: 'adam'
+learning_rate: 0.01
+max_iter: 10
+max_epochs: 15
 
 # Device
 no_cuda: False

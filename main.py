@@ -41,5 +41,5 @@ if __name__ == '__main__':
 
     ppl_args = get_arguments()
     config = get_config(ppl_args['config'])
-    show_config(config)
+    #show_config(config)
     main(config)
