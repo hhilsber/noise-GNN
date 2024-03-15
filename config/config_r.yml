@@ -1,0 +1,24 @@
+# Data
+data_type: 'network'
+dataset_name: 'random'
+data_dir: './data'
+task_type: 'classification'
+
+# Param
+nbr_nodes: 5
+edge_prob: 0.3
+nbr_features: 2
+nbr_classes: 3
+
+
+
+seed: 1232
+
+# Training
+optimizer: 'adam'
+learning_rate: 0.01
+max_iter: 10
+max_epochs: 15
+
+# Device
+no_cuda: False
