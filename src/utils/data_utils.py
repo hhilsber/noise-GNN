@@ -6,6 +6,7 @@ import torch
 import scipy.sparse as sp
 import networkx as nx
 import random
+import matplotlib.pyplot as plt
 
 def parse_index_file(filename):
     """Parse index file."""
@@ -70,9 +71,13 @@ def load_network(config):
         print(datasets[0])
     else:
         graph = nx.gnp_random_graph(config['nbr_nodes'], config['edge_prob'], seed=None, directed=False)
+        edge_list = []
         for (u,v,w) in graph.edges(data=True):
             w['weight'] = random.randint(0,10)
-        
+            #w['weight'] = random.uniform(0,1)
+            edge_list.append([u,v])
+            edge_list.append([v,u])
+        edge_list = np.array(edge_list).transpose()
         
         features = np.zeros((config['nbr_nodes'],config['nbr_features']))
         for i in range(config['nbr_features']):
@@ -88,18 +93,44 @@ def load_network(config):
         idx_train = torch.LongTensor(range(split))
         idx_val = torch.LongTensor(range(split, split*2))
         idx_test = torch.LongTensor(range(split*2, config['nbr_nodes']))
+
         adjacency = torch.from_numpy(adjacency)
         raw_features = torch.from_numpy(features)
         labels = torch.from_numpy(labels)
-        
+        edge_list = torch.from_numpy(edge_list).long()
+
+        # Draw
+        draw_graph(graph)
+
     data = {'adjacency': adjacency.to(device) if device else adjacency,
             'features': raw_features.to(device) if device else raw_features,
             'labels': labels.to(device) if device else labels,
+            'edge_list': edge_list.to(device) if device else edge_list,
             'idx_train': idx_train.to(device) if device else idx_train,
             'idx_val': idx_val.to(device) if device else idx_val,
             'idx_test': idx_test.to(device) if device else idx_test}
         
     return data
+
+def draw_graph(G):
+    elarge = [(u, v) for (u, v, d) in G.edges(data=True) if d["weight"] > 5]
+    esmall = [(u, v) for (u, v, d) in G.edges(data=True) if d["weight"] <= 5]
+    pos = nx.spring_layout(G, seed=7)  # positions for all nodes - seed for reproducibility
+    # nodes
+    nx.draw_networkx_nodes(G, pos, node_size=700)
+    # edges
+    nx.draw_networkx_edges(G, pos, edgelist=elarge, width=6)
+    nx.draw_networkx_edges(G, pos, edgelist=esmall, width=6, alpha=0.5, edge_color="b", style="dashed")
+    # node labels
+    nx.draw_networkx_labels(G, pos, font_size=20, font_family="sans-serif")
+    # edge weight labels
+    edge_labels = nx.get_edge_attributes(G, "weight")
+    nx.draw_networkx_edge_labels(G, pos, edge_labels)
+    ax = plt.gca()
+    ax.margins(0.08)
+    plt.axis("off")
+    plt.tight_layout()
+    plt.show()
 
 def nx_stats(graph):
     print("  nodes: {}".format(len(graph.nodes)))

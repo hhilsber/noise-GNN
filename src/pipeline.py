@@ -22,11 +22,6 @@ class Pipeline(object):
 
 
         datasets = load_network(config)
-        print(datasets['adjacency'])
-        ttt = torch.tensor([[1, 2, 4, 5],
-                           [0, 1, 5, 6]])
-        subset, edge_index, mapping, edge_mask = tg.k_hop_subgraph(node_idx=3, num_hops=1, edge_index=ttt, relabel_nodes=True)
+        print(datasets['edge_list'])
+        subset, edge_index, mapping, edge_mask = tg.k_hop_subgraph(node_idx=0, num_hops=1, edge_index=datasets['edge_list'], relabel_nodes=True)
         print(subset)
-        print(edge_index)
-        print(mapping)
-        print(edge_mask)
