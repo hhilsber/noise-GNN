@@ -1,12 +1,13 @@
 import os
 import sys
-import numpy as np
+
 import pickle as pkl
 import torch
 import scipy.sparse as sp
 import networkx as nx
 import random
 import matplotlib.pyplot as plt
+import numpy as np
 
 def parse_index_file(filename):
     """Parse index file."""
