@@ -98,7 +98,7 @@ def load_network(config):
         edge_list = torch.from_numpy(edge_list).long()
         
         # Draw
-        draw_graph(graph, labels)
+        draw_graph(graph, labels, config['nbr_classes'])
 
     data = {'adjacency': adjacency.to(device) if device else adjacency,
             'features': raw_features.to(device) if device else raw_features,
@@ -110,19 +110,15 @@ def load_network(config):
         
     return data
 
-def draw_graph(G, labels):
+def draw_graph(G, labels, nbr_classes):
     elarge = [(u, v) for (u, v, d) in G.edges(data=True) if d["weight"] > 5]
     esmall = [(u, v) for (u, v, d) in G.edges(data=True) if d["weight"] <= 5]
     
-    pos = nx.spring_layout(G, seed=7)  # positions for all nodes - seed for reproducibility
+    pos = nx.circular_layout(G)  # positions for all nodes - seed for reproducibility
     # nodes
-    print(labels)
-    A = np.where(labels==0)[0]
-    B = np.where(labels==1)[0]
-    C = np.where(labels==2)[0]
-    nx.draw_networkx_nodes(G, pos, nodelist=A, node_color="tab:red", node_size=500)
-    nx.draw_networkx_nodes(G, pos, nodelist=B, node_color="tab:blue", node_size=500)
-    nx.draw_networkx_nodes(G, pos, nodelist=C, node_color="tab:green", node_size=500)
+    for i in range(nbr_classes):
+        colors = ["tab:red", "tab:blue", "tab:green", "tab:yellow", "tab:pink"]
+        nx.draw_networkx_nodes(G, pos, nodelist=np.where(labels==i)[0], node_color=colors[i], node_size=400)
     
     # edges
     nx.draw_networkx_edges(G, pos, edgelist=elarge, width=6)
