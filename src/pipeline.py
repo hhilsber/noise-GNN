@@ -1,8 +1,9 @@
-import numpy as np
 import torch
+import numpy as np
 import torch_geometric.utils as tg
 
-from .utils.data_utils import load_network
+from .utils.load_utils import load_network
+from .utils.data_utils import sample_neighbor
 
 class Pipeline(object):
     """
@@ -18,10 +19,9 @@ class Pipeline(object):
         else:
             self.device = torch.device('cpu')
         print('Cuda?  is_available: {} --- version: {} --- device: {}'.format(is_cuda,torch.version.cuda, self.device))
+        
         config['device'] = self.device
-
-
-        datasets = load_network(config)
-        print(datasets['edge_list'])
-        subset, edge_index, mapping, edge_mask = tg.k_hop_subgraph(node_idx=0, num_hops=1, edge_index=datasets['edge_list'], relabel_nodes=True)
-        print(subset)
+        
+        
+        dataset = load_network(config)
+        neighbors = sample_neighbor(dataset)

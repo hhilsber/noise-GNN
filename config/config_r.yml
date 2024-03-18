@@ -5,10 +5,10 @@ data_dir: './data'
 task_type: 'classification'
 
 # Param
-nbr_nodes: 6
-edge_prob: 0.3
+nbr_nodes: 15
+edge_prob: 0.1
 nbr_features: 2
-nbr_classes: 2
+nbr_classes: 3
 
 
 
