@@ -14,6 +14,16 @@ nbr_classes: 3
 
 seed: 1232
 
+
+# Graph neural networks
+graph_module: 'gat'
+gat_nhead: 8
+gat_alpha: 0.2
+hidden_size: 16
+
+# Regularization
+dropout: 0.5
+
 # Training
 optimizer: 'adam'
 learning_rate: 0.01

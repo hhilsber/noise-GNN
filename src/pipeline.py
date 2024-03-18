@@ -24,4 +24,4 @@ class Pipeline(object):
         
         
         dataset = load_network(config)
-        neighbors = sample_neighbor(dataset)
+        #neighbors = sample_neighbor(dataset)
