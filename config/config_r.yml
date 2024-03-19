@@ -15,9 +15,9 @@ nbr_classes: 3
 seed: 1232
 
 
-# Graph neural networks
+# Graph attention
 graph_module: 'gat'
-gat_nhead: 8
+gat_nhead: 2
 gat_alpha: 0.2
 hidden_size: 16
 
@@ -27,8 +27,13 @@ dropout: 0.5
 # Training
 optimizer: 'adam'
 learning_rate: 0.01
+weight_decay: 0.0005
 max_iter: 10
 max_epochs: 15
+batch_size: 4
 
 # Device
 no_cuda: False
+
+# Draw
+draw_graph: False 

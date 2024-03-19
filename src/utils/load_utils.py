@@ -98,7 +98,8 @@ def load_network(config):
         edge_list = torch.from_numpy(edge_list).long()
         
         # Draw
-        draw_graph(graph, labels, config['nbr_classes'])
+        if config['draw_graph']:
+            draw_graph(graph, labels, config['nbr_classes'])
 
     data = {'adjacency': adjacency.to(device) if device else adjacency,
             'features': raw_features.to(device) if device else raw_features,
@@ -117,7 +118,7 @@ def draw_graph(G, labels, nbr_classes):
     pos = nx.circular_layout(G)  # positions for all nodes - seed for reproducibility
     # nodes
     for i in range(nbr_classes):
-        colors = ["tab:red", "tab:blue", "tab:green", "tab:yellow", "tab:pink"]
+        colors = ["red","darkorange", "green", "blue", "gold", "limegreen","violet",]
         nx.draw_networkx_nodes(G, pos, nodelist=np.where(labels==i)[0], node_color=colors[i], node_size=400)
     
     # edges
