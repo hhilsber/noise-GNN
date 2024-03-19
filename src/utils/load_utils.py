@@ -99,6 +99,7 @@ def load_network(config):
         
         # Draw
         if config['draw_graph']:
+            print(edge_list)
             draw_graph(graph, labels, config['nbr_classes'])
 
     data = {'adjacency': adjacency.to(device) if device else adjacency,

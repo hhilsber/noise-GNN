@@ -1,5 +1,28 @@
 import numpy as np
 import torch_geometric.utils as tg
+import torch
+
+from torch_geometric.loader import DataLoader
+from torch_geometric.data import Batch
+from torch_geometric.data import Data
+
+class GraphDataset(Data):
+    """
+    Class to save the training dataset 
+    """
+    def __init__(self, features, adjacency):
+        # Store images and groundtruths
+        self.feat, self.adj = features, adjacency
+
+    def __len__(self): 
+        # Returns len (used for data loaders) 
+        return len(self.feat)
+
+    def __getitem__(self, idx=-1):
+        # Return dataset
+        return self.feat[idx].float(), self.adj[idx]
+
+
 
 def sample_neighbor(dataset, k_hop=2):
     nnbr = 0 # node number
@@ -13,3 +36,17 @@ def sample_neighbor(dataset, k_hop=2):
     print("  intersect: {}".format(inter))
     res = [item for item in subset.tolist() if item not in inter]
     print("  diff inter: {}".format(res))
+
+"""
+class OldDataset(Dataset):
+    def __init__(self, features, adjacency):
+        # Store images and groundtruths
+        self.feat, self.adj = features, adjacency
+
+    def __len__(self): 
+        # Returns len (used for data loaders) 
+        return len(self.feat)
+
+    def __getitem__(self, idx=-1):
+        # Return dataset
+        return self.feat[idx].float(), self.adj[idx]"""

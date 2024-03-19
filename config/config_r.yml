@@ -5,8 +5,8 @@ data_dir: './data'
 task_type: 'classification'
 
 # Param
-nbr_nodes: 15
-edge_prob: 0.1
+nbr_nodes: 16
+edge_prob: 0.2
 nbr_features: 2
 nbr_classes: 3
 
@@ -28,7 +28,7 @@ dropout: 0.5
 optimizer: 'adam'
 learning_rate: 0.01
 weight_decay: 0.0005
-max_iter: 10
+max_iter: 1
 max_epochs: 15
 batch_size: 4
 
