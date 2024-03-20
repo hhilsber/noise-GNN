@@ -1,16 +1,30 @@
 import numpy as np
 import torch_geometric.utils as tg
 import torch
+import torch.nn as nn
+#from torch_geometric.loader import DataLoader
+#from torch_geometric.data import Batch
+#from torch_geometric.data import Data
+from torch.utils.data import Dataset
 
-from torch_geometric.loader import DataLoader
-from torch_geometric.data import Batch
-from torch_geometric.data import Data
+class BCELoss(nn.Module):
+    """
+    Binary cross-entropy loss
+    """
+    def __init__(self, label_mat, device):
+        super(BCELoss, self).__init__()
+        self.label_mat = label_mat.to(device)
+        self.criterion = nn.BCEWithLogitsLoss()
+    
+    def forward(self, output):
+        loss = self.criterion(output, self.label_mat)
+        return loss
 
-class GraphDataset(Data):
+class NormalDataset(Dataset):
     """
     Class to save the training dataset 
     """
-    def __init__(self, features, adjacency):
+    def __init__(self, features, adjacency, edge_list=None):
         # Store images and groundtruths
         self.feat, self.adj = features, adjacency
 
@@ -20,8 +34,16 @@ class GraphDataset(Data):
 
     def __getitem__(self, idx=-1):
         # Return dataset
-        return self.feat[idx].float(), self.adj[idx]
+        return self.feat.float(), self.adj
 
+def create_lbl_mat(labels):
+    lbl_mat = np.zeros((labels.shape[0],labels.shape[0]))
+    for lbl in range(labels.max().item() + 1):
+        same_lbl = np.where(labels==lbl)[0]
+        for i in same_lbl:
+            for j in same_lbl:
+                lbl_mat[i,j] = 1
+    return torch.from_numpy(lbl_mat).float()
 
 
 def sample_neighbor(dataset, k_hop=2):

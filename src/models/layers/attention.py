@@ -45,7 +45,7 @@ class AttentionLayer(nn.Module):
             return h_prime
 
 class GAT(nn.Module):
-    def __init__(self, nfeat, nhid, nclass, dropout, alpha, nheads):
+    def __init__(self, nnode, nfeat, nhid, nclass, dropout, alpha, nheads):
         """Graph Attention network"""
         super(GAT, self).__init__()
         self.dropout = dropout
@@ -54,7 +54,9 @@ class GAT(nn.Module):
         for i, attention in enumerate(self.attentions):
             self.add_module('attention_{}'.format(i), attention)
 
-        self.out_att = AttentionLayer(nhid * nheads, nclass, dropout=dropout, alpha=alpha, concat=False)
+        #self.out_att = AttentionLayer(nhid * nheads, nclass, dropout=dropout, alpha=alpha, concat=False)
+        self.out_att = AttentionLayer(nhid * nheads, nnode, dropout=dropout, alpha=alpha, concat=False)
+
 
     def forward(self, x, adj):
         x = F.dropout(x, self.dropout, training=self.training)

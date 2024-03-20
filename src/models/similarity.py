@@ -11,13 +11,15 @@ class Similarity(nn.Module):
         self.name = 'Similarity'
         self.module = config['graph_module']
         self.device = config['device']
+        nnode = config['nbr_nodes']
         nfeat = config['nbr_features']
         nclass = config['nbr_classes']
         hidden_size = config['hidden_size']
         self.dropout = config['dropout']
 
         if self.module == 'gat':
-            self.encoder = GAT(nfeat=nfeat,
+            self.encoder = GAT(nnode=nnode,
+                                nfeat=nfeat,
                                 nhid=hidden_size,
                                 nclass=nclass,
                                 dropout=self.dropout,
