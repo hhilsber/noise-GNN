@@ -10,7 +10,7 @@ from torch_geometric.utils import scatter"""
 
 from .utils.load_utils import load_network
 from .utils.data_utils import NormalDataset, create_lbl_mat, BCELoss
-from .model import NGNN
+from .models.model import NGNN
 
 
 class Pipeline(object):
@@ -20,22 +20,22 @@ class Pipeline(object):
     def __init__(self, config):
         # Set metrics:
         
+        # Config
+        self.config = config
         
-        dataset = load_network(config)
         # Data prep
-        config['nbr_features'] = dataset['features'].shape[-1]
-        config['nbr_classes'] = dataset['labels'].max().item() + 1
+        dataset = load_network(config) #config['nbr_features'] = dataset['features'].shape[-1]    config['nbr_classes'] = dataset['labels'].max().item() + 1
         self.train_feat = dataset['features'].float()
         self.train_adj = dataset['adjacency']
         self.lbl_matrix = create_lbl_mat(dataset['labels'])
 
         # Initialize the model
-        # Config
         self.device = config['device']
         self.model = NGNN(config)
-        self.model.network = self.model.network.to(self.device)
+
+        self.model.edge_module = self.model.edge_module.to(self.device)
         self.criterion = BCELoss(self.lbl_matrix, self.device)
-        self.config = self.model.config
+        
         if config['type_train'] == 'dky':
             print('type_train: dont know yet')
 
@@ -55,8 +55,7 @@ class Pipeline(object):
     def run_training(self, training=True):
         for epoch in range(self.config['max_iter']):
             print(' train epoch: {}/{}'.format(epoch+1, self.config['max_iter']))
-            self.model.network.train(training)
-            network = self.model.network
+            self.model.edge_module.train()
 
             if training:
                 self.model.optimizer.zero_grad()
@@ -66,7 +65,7 @@ class Pipeline(object):
             
             self.model.optimizer.zero_grad()
 
-            output = self.model.network.encoder(x, adj)
+            output = self.model.edge_module(x, adj)
             
             loss = self.criterion(output)
             loss.backward()

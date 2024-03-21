@@ -16,7 +16,7 @@ seed: 1232
 
 
 # Graph attention
-graph_module: 'gat'
+graph_edge_module: 'gat'
 gat_nhead: 1
 gat_alpha: 0.2
 hidden_size: 16
