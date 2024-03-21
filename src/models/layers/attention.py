@@ -7,20 +7,20 @@ class AttentionLayer(nn.Module):
     graph attention
     """
 
-    def __init__(self, in_features, out_features, dropout, alpha=0.2, concat=True):
+    def __init__(self, in_size, out_size, dropout, alpha=0.2, concat=True):
         super(AttentionLayer, self).__init__()
         self.dropout = dropout
-        self.in_features = in_features
-        self.out_features = out_features
+        self.in_size = in_size
+        self.out_size = out_size
         self.alpha = alpha
         self.concat = concat # multi head
 
-        self.W = nn.Parameter(torch.zeros(size=(in_features, out_features)))
+        self.W = nn.Parameter(torch.zeros(size=(in_size, out_size)))
         nn.init.xavier_uniform_(self.W.data, gain=1.414)
 
-        self.a1 = nn.Parameter(torch.zeros(size=(out_features, 1)))
+        self.a1 = nn.Parameter(torch.zeros(size=(out_size, 1)))
         nn.init.xavier_uniform_(self.a1.data, gain=1.414)
-        self.a2 = nn.Parameter(torch.zeros(size=(out_features, 1)))
+        self.a2 = nn.Parameter(torch.zeros(size=(out_size, 1)))
         nn.init.xavier_uniform_(self.a2.data, gain=1.414)
 
         self.leakyrelu = nn.LeakyReLU(self.alpha)

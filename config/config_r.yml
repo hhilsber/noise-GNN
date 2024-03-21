@@ -5,13 +5,11 @@ data_dir: './data'
 task_type: 'classification'
 
 # Param
-nbr_nodes: 60
+nbr_nodes: 20
 edge_prob: 0.2
 nbr_features: 2
 nbr_classes: 3
-
-
-
+# Seed
 seed: 1232
 
 
@@ -36,6 +34,5 @@ batch_size: 1
 
 # Device
 no_cuda: False
-
 # Draw
 draw_graph: False 
