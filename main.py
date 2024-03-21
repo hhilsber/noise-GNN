@@ -12,7 +12,7 @@ from src.pipeline import Pipeline
 ##################################### Main #####################################
 def main(config):
     model = Pipeline(config)
-    model.train()
+    model.type_train()
 
 
 ##################################### Fcts #####################################
@@ -42,4 +42,15 @@ if __name__ == '__main__':
     ppl_args = get_arguments()
     config = get_config(ppl_args['config'])
     #show_config(config)
+
+    # Set device
+    is_cuda = torch.cuda.is_available()
+    if not config['no_cuda'] and is_cuda:
+        device = torch.device('cuda')
+    else:
+        device = torch.device('cpu')
+    print('Cuda?  is_available: {} --- version: {} --- device: {}'.format(is_cuda,torch.version.cuda, device))
+    
+    config['device'] = device
+
     main(config)

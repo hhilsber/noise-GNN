@@ -7,6 +7,27 @@ import torch.nn as nn
 #from torch_geometric.data import Data
 from torch.utils.data import Dataset
 
+class Rewire(torch.nn.Module):
+    """
+    Rewire nodes using similarity matrix
+    """
+    def __init__(self, ratio, device='cpu'):
+        super(Rewire, self).__init__()
+        self.device = device
+        self.bot_q = ratio
+        self.top_q = 1. - ratio
+
+    
+    def forward(self, similarity, adjacency):
+        #normalize similarity?
+        #normalized_z = F.normalize(H, dim=1)
+        quant_bot = torch.quantile(similarity, self.bot_q)
+        quant_top = torch.quantile(similarity, self.top_q)
+
+        new_adj = torch.where(similarity < quant_bot, 0, adjacency)
+        new_adj = torch.where(similarity > quant_top, 1, new_adj)
+        return new_adj
+
 class BCELoss(nn.Module):
     """
     Binary cross-entropy loss

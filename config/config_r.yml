@@ -25,11 +25,12 @@ hidden_size: 16
 dropout: 0.5
 
 # Training
+type_train: 'dky'
 optimizer: 'adam'
 criterion: 'cross-entropy-loss'
 learning_rate: 0.01
 weight_decay: 0.0005
-max_iter: 20
+max_iter: 5
 max_epochs: 15
 batch_size: 1
 
