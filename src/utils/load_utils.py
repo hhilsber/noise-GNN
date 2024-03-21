@@ -92,9 +92,9 @@ def load_network(config):
         idx_val = torch.LongTensor(range(split, split*2))
         idx_test = torch.LongTensor(range(split*2, config['nbr_nodes']))
 
-        adjacency = torch.from_numpy(adjacency)
-        raw_features = torch.from_numpy(features)
-        labels = torch.from_numpy(labels)
+        adjacency = torch.from_numpy(adjacency).float()
+        raw_features = torch.from_numpy(features).float()
+        labels = torch.from_numpy(labels).squeeze().long()
         edge_list = torch.from_numpy(edge_list).long()
         
         # Draw

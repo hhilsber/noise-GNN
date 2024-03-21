@@ -1,7 +1,10 @@
 import torch
 import numpy as np
-import torch_geometric.utils as tg
+import torch.nn as nn
+import torch.nn.functional as F
+
 """
+import torch_geometric.utils as tg
 from torch.utils.data import DataLoader
 from torch_geometric.loader import DataLoader
 from torch_geometric.data import Batch
@@ -25,8 +28,9 @@ class Pipeline(object):
         
         # Data prep
         dataset = load_network(config) #config['nbr_features'] = dataset['features'].shape[-1]    config['nbr_classes'] = dataset['labels'].max().item() + 1
-        self.train_feat = dataset['features'].float()
-        self.train_adj = dataset['adjacency'].float()
+        self.train_feat = dataset['features']
+        self.train_adj = dataset['adjacency']
+        self.lbl_hot = F.one_hot(dataset['labels'], config['nbr_classes']).float()
         self.lbl_matrix = create_lbl_mat(dataset['labels'])
 
         # Initialize the model
@@ -34,15 +38,15 @@ class Pipeline(object):
         self.model = NGNN(config)
 
         self.model.edge_module = self.model.edge_module.to(self.device)
-        self.criterion = BCELoss(self.lbl_matrix, self.device)
+        self.edge_criterion = BCELoss(self.lbl_matrix, self.device)
         self.model.network = self.model.network.to(self.device)
+        self.network_criterion = nn.CrossEntropyLoss()
         
         if config['type_train'] == 'dky':
             print('type_train: dont know yet')
 
 
     def type_train(self):
-        print("train")
         self.run_training(training=True)
 
     def run_training(self, training=True):
@@ -62,11 +66,11 @@ class Pipeline(object):
             # Rewire
             n_out = self.model.network(x, adj)
 
-            e_loss = self.criterion(e_out)
-            n_loss = self.criterion(n_out)
+            e_loss = self.edge_criterion(e_out)
+            n_loss = self.network_criterion(input=n_out, target=self.lbl_hot)
+            print(' train loss edge: {}, network {}'.format(e_loss.item(), n_loss.item()))
             loss = e_loss + n_loss
 
-            self.models.optims.zero_grad()
+            self.model.optims.zero_grad()
             loss.backward()
-            self.models.optims.step()
-        
+            self.model.optims.step()

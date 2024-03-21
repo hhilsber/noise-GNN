@@ -5,7 +5,7 @@ data_dir: './data'
 task_type: 'classification'
 
 # Param
-nbr_nodes: 20
+nbr_nodes: 30
 edge_prob: 0.2
 nbr_features: 2
 nbr_classes: 3
@@ -28,7 +28,7 @@ optimizer: 'adam'
 criterion: 'cross-entropy-loss'
 learning_rate: 0.01
 weight_decay: 0.0005
-max_iter: 5
+max_iter: 20
 max_epochs: 15
 batch_size: 1
 

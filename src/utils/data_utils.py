@@ -58,6 +58,7 @@ class NormalDataset(Dataset):
         return self.feat.float(), self.adj
 
 def create_lbl_mat(labels):
+    # Create (nnode x nnode) label matrix, where (i,j) is one if label_i = label_j
     lbl_mat = np.zeros((labels.shape[0],labels.shape[0]))
     for lbl in range(labels.max().item() + 1):
         same_lbl = np.where(labels==lbl)[0]
