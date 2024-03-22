@@ -7,7 +7,7 @@ class AttentionLayer(nn.Module):
     graph attention
     """
 
-    def __init__(self, in_size, out_size, dropout, alpha=0.2, concat=True):
+    def __init__(self, in_size, out_size, dropout, out_act, alpha=0.2, concat=True):
         super(AttentionLayer, self).__init__()
         self.dropout = dropout
         self.in_size = in_size
@@ -24,6 +24,10 @@ class AttentionLayer(nn.Module):
         nn.init.xavier_uniform_(self.a2.data, gain=1.414)
 
         self.leakyrelu = nn.LeakyReLU(self.alpha)
+        if out_act == 'relu':
+            self.out_act = nn.ReLU()
+        else:
+            self.out_act = nn.ELU()
 
     def forward(self, input, adj):
         h = torch.mm(input, self.W)
@@ -45,22 +49,22 @@ class AttentionLayer(nn.Module):
             return h_prime
 
 class GAT(nn.Module):
-    def __init__(self, nnode, nfeat, nclass, nhid, dropout, alpha, nheads):
+    def __init__(self, nnode, nfeat, nclass, nhid, dropout, out_act, alpha, nheads):
         """Graph Attention network"""
         super(GAT, self).__init__()
         self.dropout = dropout
 
-        self.attentions = [AttentionLayer(nfeat, nhid, dropout=dropout, alpha=alpha, concat=True) for _ in range(nheads)]
+        self.attentions = [AttentionLayer(nfeat, nhid, dropout=dropout, out_act=None, alpha=alpha, concat=True) for _ in range(nheads)]
         for i, attention in enumerate(self.attentions):
             self.add_module('attention_{}'.format(i), attention)
 
         #self.out_att = AttentionLayer(nhid * nheads, nclass, dropout=dropout, alpha=alpha, concat=False)
-        self.out_att = AttentionLayer(nhid * nheads, nnode, dropout=dropout, alpha=alpha, concat=False)
+        self.out_att = AttentionLayer(nhid * nheads, nnode, dropout=dropout, out_act=out_act, alpha=alpha, concat=False)
 
 
     def forward(self, x, adj):
         x = F.dropout(x, self.dropout, training=self.training)
         x = torch.cat([att(x, adj) for att in self.attentions], dim=1)
         x = F.dropout(x, self.dropout, training=self.training)
-        x = F.elu(self.out_att(x, adj))
+        x = self.out_att.out_act(self.out_att(x, adj))
         return x

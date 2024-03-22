@@ -1,8 +1,8 @@
 import torch
-from src.utils.data_utils import *
+from src.utils.losses import *
 
 n=3
-A = torch.randint(0, 5, (n,n))
+A = torch.randint(0, 5, (n,n)).float()
 X = torch.rand((n,n))
 print(A)
 D = compute_degree_matrix(A)

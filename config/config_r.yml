@@ -5,7 +5,7 @@ data_dir: './data'
 task_type: 'classification'
 
 # Param
-nbr_nodes: 30
+nbr_nodes: 20
 edge_prob: 0.2
 nbr_features: 2
 nbr_classes: 3
@@ -18,9 +18,17 @@ graph_edge_module: 'gat'
 gat_nhead: 1
 gat_alpha: 0.2
 hidden_size: 16
+gat_out_act: 'relu'
 
 # Regularization
 dropout: 0.5
+
+# Graph regularization
+alpha: 1
+beta: 1
+gamma: 1
+# Graph combining
+lambda: 0.7
 
 # Training
 type_train: 'dky'
@@ -28,7 +36,7 @@ optimizer: 'adam'
 criterion: 'cross-entropy-loss'
 learning_rate: 0.01
 weight_decay: 0.0005
-max_iter: 1
+max_iter: 15
 max_epochs: 15
 batch_size: 1
 

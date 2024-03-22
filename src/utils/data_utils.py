@@ -7,22 +7,30 @@ import torch.nn as nn
 #from torch_geometric.data import Data
 from torch.utils.data import Dataset
 
-def compute_degree_matrix(A):
-    return torch.diag(torch.sum(A, dim=1).float())
-def compute_laplacian_matrix(D, A):
-    return D-A
-def compute_smoothness(X, L, nbr_nodes):
-    XtL = torch.matmul(torch.transpose(X, 0, 1), L)
-    smoothness = (1/(nbr_nodes*nbr_nodes)) * torch.trace(torch.matmul(XtL, X))
-    return smoothness
-def compute_connectivity(A, nbr_nodes):
-    log_A1 = torch.log(torch.matmul(A, torch.ones(nbr_nodes).long()))
-    connectivity = (-1/nbr_nodes) * torch.matmul(torch.ones((1,nbr_nodes)), log_A1)
-    return connectivity
-def compute_sparsity(A, nbr_nodes):
-    sparsity = (1/(nbr_nodes*nbr_nodes)) * torch.pow(torch.linalg.norm(A.float(), ord='fro'), exponent=2)
-    return sparsity
+def compute_degree_matrix(adj):
+    return torch.diag(torch.sum(adj, dim=1).float())
+def compute_laplacian_matrix(deg, adj):
+    return deg-adj
 
+def normalize_graph_laplacian(adj):
+    deg = compute_degree_matrix(adj)
+    D_plus = torch.linalg.pinv(deg)
+    lap = compute_laplacian_matrix(deg, adj)
+
+    norm_GL = torch.matmul(torch.pow(D_plus, 0.5), lap)
+    norm_GL = torch.matmul(norm_GL, torch.pow(D_plus, 0.5))
+    return norm_GL
+
+def normalize_adj(adj, device='cpu'):
+    """
+    normalize adj GCN, https://github.com/TaiHasegawa/DEGNN/blob/main/models/DEGNN.py
+    """
+    n_nodes = adj.shape[0]
+    adj_norm = adj
+    adj_norm = adj_norm * (torch.ones(n_nodes).to(device) - torch.eye(n_nodes).to(device)) + torch.eye(n_nodes).to(device)
+    D_norm = torch.diag(torch.pow(adj_norm.sum(1), -0.5)).to(device)
+    adj_norm = D_norm @ adj_norm @ D_norm
+    return adj_norm
 
 class Rewire(torch.nn.Module):
     """
@@ -44,19 +52,6 @@ class Rewire(torch.nn.Module):
         new_adj = torch.where(similarity < quant_bot, 0, adjacency)
         new_adj = torch.where(similarity > quant_top, 1, new_adj)
         return new_adj
-
-class BCELoss(nn.Module):
-    """
-    Binary cross-entropy loss
-    """
-    def __init__(self, label_mat, device):
-        super(BCELoss, self).__init__()
-        self.label_mat = label_mat.to(device)
-        self.criterion = nn.BCEWithLogitsLoss()
-    
-    def forward(self, output):
-        loss = self.criterion(output, self.label_mat)
-        return loss
 
 def create_lbl_mat(labels):
     # Create (nnode x nnode) label matrix, where (i,j) is one if label_i = label_j

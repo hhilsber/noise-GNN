@@ -12,7 +12,9 @@ from torch_geometric.data import Data
 from torch_geometric.utils import scatter"""
 
 from .utils.load_utils import load_network
-from .utils.data_utils import NormalDataset, create_lbl_mat, BCELoss
+from .utils.data_utils import *
+from .utils.losses import BCELoss, GRTLoss
+
 from .models.model import NGNN
 
 
@@ -31,14 +33,17 @@ class Pipeline(object):
         self.train_feat = dataset['features']
         self.train_adj = dataset['adjacency']
         self.lbl_hot = F.one_hot(dataset['labels'], config['nbr_classes']).float()
-        self.lbl_matrix = create_lbl_mat(dataset['labels'])
+        #self.lbl_matrix = create_lbl_mat(dataset['labels'])
+        # Normalized graph laplacian
+        self.norm_GL = normalize_graph_laplacian(dataset['adjacency'])
+        self.norm_adj = normalize_adj(dataset['adjacency'], config['device'])
 
         # Initialize the model
         self.device = config['device']
         self.model = NGNN(config)
 
         self.model.edge_module = self.model.edge_module.to(self.device)
-        self.edge_criterion = BCELoss(self.lbl_matrix, self.device)
+        self.edge_criterion = GRTLoss(config['nbr_nodes'], config['alpha'], config['beta'], config['gamma'])
         self.model.network = self.model.network.to(self.device)
         self.network_criterion = nn.CrossEntropyLoss()
         
@@ -51,7 +56,7 @@ class Pipeline(object):
 
     def run_training(self, training=True):
         x = self.train_feat.to(self.device)
-        adj = self.train_adj.to(self.device)
+        adj = self.norm_adj.to(self.device)
         
         # Epoch
         for epoch in range(self.config['max_iter']):
@@ -63,11 +68,13 @@ class Pipeline(object):
                 self.model.optims.zero_grad()
             
             e_out = self.model.edge_module(x, adj)
-            print(e_out.shape)
             # Rewire
+            norm_out = normalize_adj(e_out, self.device)
+            new_adj = self.config['lambda'] * self.norm_GL + (1 - self.config['lambda']) * norm_out
+
             n_out = self.model.network(x, adj)
 
-            e_loss = self.edge_criterion(e_out)
+            e_loss = self.edge_criterion(e_out, x)
             n_loss = self.network_criterion(input=n_out, target=self.lbl_hot)
             print(' train loss edge: {}, network {}'.format(e_loss.item(), n_loss.item()))
             loss = e_loss + n_loss

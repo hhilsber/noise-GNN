@@ -72,7 +72,8 @@ def load_network(config):
         
         edge_list = []
         for (u,v,w) in graph.edges(data=True):
-            w['weight'] = random.randint(0,10)
+            #w['weight'] = random.randint(0,10)
+            w['weight'] = random.uniform(0.0, 1.0)
             edge_list.append([u,v])
             edge_list.append([v,u])
         edge_list = np.array(edge_list).transpose()

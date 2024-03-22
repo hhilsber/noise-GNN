@@ -26,6 +26,7 @@ class NGNN(object):
                                 nclass=self.config['nbr_classes'],
                                 nhid=self.config['hidden_size'],
                                 dropout=self.config['dropout'],
+                                out_act=self.config['gat_out_act'],
                                 nheads=self.config['gat_nhead'],
                                 alpha=self.config['gat_alpha'])
             self.network = GCN(nfeat=self.config['nbr_features'],
