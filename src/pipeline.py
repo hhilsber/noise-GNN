@@ -63,6 +63,7 @@ class Pipeline(object):
                 self.model.optims.zero_grad()
             
             e_out = self.model.edge_module(x, adj)
+            print(e_out.shape)
             # Rewire
             n_out = self.model.network(x, adj)
 

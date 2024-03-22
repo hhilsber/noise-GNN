@@ -7,6 +7,23 @@ import torch.nn as nn
 #from torch_geometric.data import Data
 from torch.utils.data import Dataset
 
+def compute_degree_matrix(A):
+    return torch.diag(torch.sum(A, dim=1).float())
+def compute_laplacian_matrix(D, A):
+    return D-A
+def compute_smoothness(X, L, nbr_nodes):
+    XtL = torch.matmul(torch.transpose(X, 0, 1), L)
+    smoothness = (1/(nbr_nodes*nbr_nodes)) * torch.trace(torch.matmul(XtL, X))
+    return smoothness
+def compute_connectivity(A, nbr_nodes):
+    log_A1 = torch.log(torch.matmul(A, torch.ones(nbr_nodes).long()))
+    connectivity = (-1/nbr_nodes) * torch.matmul(torch.ones((1,nbr_nodes)), log_A1)
+    return connectivity
+def compute_sparsity(A, nbr_nodes):
+    sparsity = (1/(nbr_nodes*nbr_nodes)) * torch.pow(torch.linalg.norm(A.float(), ord='fro'), exponent=2)
+    return sparsity
+
+
 class Rewire(torch.nn.Module):
     """
     Rewire nodes using similarity matrix
@@ -41,22 +58,6 @@ class BCELoss(nn.Module):
         loss = self.criterion(output, self.label_mat)
         return loss
 
-class NormalDataset(Dataset):
-    """
-    Class to save the training dataset 
-    """
-    def __init__(self, features, adjacency, edge_list=None):
-        # Store images and groundtruths
-        self.feat, self.adj = features, adjacency
-
-    def __len__(self): 
-        # Returns len (used for data loaders) 
-        return len(self.feat)
-
-    def __getitem__(self, idx=-1):
-        # Return dataset
-        return self.feat.float(), self.adj
-
 def create_lbl_mat(labels):
     # Create (nnode x nnode) label matrix, where (i,j) is one if label_i = label_j
     lbl_mat = np.zeros((labels.shape[0],labels.shape[0]))
@@ -81,9 +82,12 @@ def sample_neighbor(dataset, k_hop=2):
     res = [item for item in subset.tolist() if item not in inter]
     print("  diff inter: {}".format(res))
 
-"""
-class OldDataset(Dataset):
-    def __init__(self, features, adjacency):
+
+class NormalDataset(Dataset):
+    """
+    Class to save the training dataset 
+    """
+    def __init__(self, features, adjacency, edge_list=None):
         # Store images and groundtruths
         self.feat, self.adj = features, adjacency
 
@@ -93,4 +97,4 @@ class OldDataset(Dataset):
 
     def __getitem__(self, idx=-1):
         # Return dataset
-        return self.feat[idx].float(), self.adj[idx]"""
+        return self.feat.float(), self.adj

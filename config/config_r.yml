@@ -28,7 +28,7 @@ optimizer: 'adam'
 criterion: 'cross-entropy-loss'
 learning_rate: 0.01
 weight_decay: 0.0005
-max_iter: 20
+max_iter: 1
 max_epochs: 15
 batch_size: 1
 

@@ -1,14 +1,13 @@
 import torch
+from src.utils.data_utils import *
 
-ttt = torch.rand((3,3))
-print(ttt)
-adj = torch.tensor([[0,1,0],[1,1,1],[0,0,1]])
-print(adj)
-q1= 0.25
-q3= 0.75
-quant1 = torch.quantile(ttt, q1)
-quant3 = torch.quantile(ttt, q3)
-print(quant1,quant3)
-new_adj = torch.where(ttt < quant1, 0, adj)
-new_adj = torch.where(ttt > quant3, 1, new_adj)
-print(new_adj)
+n=3
+A = torch.randint(0, 5, (n,n))
+X = torch.rand((n,n))
+print(A)
+D = compute_degree_matrix(A)
+L = compute_laplacian_matrix(D, A)
+print(compute_smoothness(X, L, n))
+print(compute_connectivity(A, n))
+print(compute_sparsity(A, n))
+
