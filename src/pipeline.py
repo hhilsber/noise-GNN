@@ -2,6 +2,7 @@ import torch
 import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
+import matplotlib.pyplot as plt
 
 """
 import torch_geometric.utils as tg
@@ -76,7 +77,9 @@ class Pipeline(object):
         model = self.model
         edge_module = self.model.edge_module
         network = self.model.network
-
+        loss_edge = []
+        loss_pred = []
+        loss_total = []
         # Epoch
         print('how to rewire?')
         for epoch in range(self.config['max_iter']):
@@ -96,12 +99,24 @@ class Pipeline(object):
             #new_adj = self.config['lambda'] * norm_GL + (1 - self.config['lambda']) * norm_out
 
             n_out = self.model.network(x, new_adj)
+            print(n_out[:10])
 
             e_loss = self.edge_criterion(new_adj, x)
             n_loss = self.network_criterion(input=n_out, target=y_hot)
-            print(' train loss edge: {}, network {}'.format(e_loss.item(), n_loss.item()))
+            #print(' train loss edge: {}, network {}'.format(e_loss.item(), n_loss.item()))
+            loss_edge.append(e_loss.item())
+            loss_pred.append(n_loss.item())
+            loss_total.append(e_loss.item() + n_loss.item())
             loss = e_loss + n_loss
 
             self.model.optims.zero_grad()
             loss.backward()
             self.model.optims.step()
+
+            edge_module.eval()
+            network.eval()
+        print('train end')
+        plt.plot(loss_edge, 'g') 
+        plt.plot(loss_pred, 'b')
+        plt.plot(loss_total, 'r')
+        plt.show()

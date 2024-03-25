@@ -8,6 +8,29 @@ import torch.nn.functional as F
 #from torch_geometric.data import Data
 from torch.utils.data import Dataset
 
+def eval_classification(prediction, labels):
+    """
+    evaluate results
+    """
+    if len(labels.size()) == 2:
+        preds = torch.round(torch.sigmoid(prediction))
+        tp = len(torch.nonzero(preds * labels))
+        tn = len(torch.nonzero((1-preds) * (1-labels)))
+        fp = len(torch.nonzero(preds * (1-labels)))
+        fn = len(torch.nonzero((1-preds) * labels))
+        pre, rec, f1 = 0., 0., 0.
+        if tp+fp > 0:
+            pre = tp / (tp + fp)
+        if tp+fn > 0:
+            rec = tp / (tp + fn)
+        if pre+rec > 0:
+            fmeasure = (2 * pre * rec) / (pre + rec)
+    else:
+        preds = torch.argmax(prediction, dim=1)
+        correct = torch.sum(preds == labels)
+        fmeasure = correct.item() / len(labels)
+    return fmeasure
+
 def compute_degree_matrix(adj):
     return torch.diag(torch.sum(adj, dim=1).float())
 def compute_laplacian_matrix(deg, adj):
