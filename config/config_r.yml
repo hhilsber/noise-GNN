@@ -5,8 +5,8 @@ data_dir: './data'
 task_type: 'classification'
 
 # Param
-nbr_nodes: 20
-edge_prob: 0.2
+nbr_nodes: 30
+edge_prob: 0.3
 nbr_features: 2
 nbr_classes: 3
 # Seed
@@ -18,7 +18,10 @@ graph_edge_module: 'gat'
 gat_nhead: 1
 gat_alpha: 0.2
 hidden_size: 16
-gat_out_act: 'relu'
+gat_out_act: 'elu'
+
+# Rewire
+rewire_ratio: 0.3
 
 # Regularization
 dropout: 0.5
@@ -36,7 +39,7 @@ optimizer: 'adam'
 criterion: 'cross-entropy-loss'
 learning_rate: 0.01
 weight_decay: 0.0005
-max_iter: 15
+max_iter: 1
 batch_size: 1
 
 # Device

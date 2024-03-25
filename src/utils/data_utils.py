@@ -2,6 +2,7 @@ import numpy as np
 import torch_geometric.utils as tg
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 #from torch_geometric.loader import DataLoader
 #from torch_geometric.data import Batch
 #from torch_geometric.data import Data
@@ -21,15 +22,15 @@ def normalize_graph_laplacian(adj):
     norm_GL = torch.matmul(norm_GL, torch.pow(D_plus, 0.5))
     return norm_GL
 
-def normalize_adj(adj, device='cpu'):
+def normalize_adj_matrix(adj_matrix, nbr_nodes, device):
     """
-    normalize adj GCN, https://github.com/TaiHasegawa/DEGNN/blob/main/models/DEGNN.py
+    normalize adjacency matrix
     """
-    n_nodes = adj.shape[0]
-    adj_norm = adj
-    adj_norm = adj_norm * (torch.ones(n_nodes).to(device) - torch.eye(n_nodes).to(device)) + torch.eye(n_nodes).to(device)
-    D_norm = torch.diag(torch.pow(adj_norm.sum(1), -0.5)).to(device)
-    adj_norm = D_norm @ adj_norm @ D_norm
+    matrix = adj_matrix * (torch.ones(nbr_nodes) - torch.eye(nbr_nodes)) + torch.eye(nbr_nodes).to(device)
+    degree_norm = torch.pow(compute_degree_matrix(matrix), -0.5).to(device)
+    degree_norm[torch.isinf(degree_norm)] = 0.
+    adj_norm = torch.matmul(degree_norm, matrix)
+    adj_norm = torch.matmul(adj_norm, degree_norm)
     return adj_norm
 
 class Rewire(torch.nn.Module):
@@ -46,12 +47,16 @@ class Rewire(torch.nn.Module):
     def forward(self, similarity, adjacency):
         #normalize similarity?
         #normalized_z = F.normalize(H, dim=1)
-        quant_bot = torch.quantile(similarity, self.bot_q)
-        quant_top = torch.quantile(similarity, self.top_q)
-
-        new_adj = torch.where(similarity < quant_bot, 0, adjacency)
-        new_adj = torch.where(similarity > quant_top, 1, new_adj)
-        return new_adj
+        sim_norm = F.normalize(similarity, dim=1)
+        sim_mat = torch.mm(sim_norm, sim_norm.t()) * (torch.ones_like(sim_norm) - torch.eye(sim_norm.shape[0]))
+        quant_bot = torch.quantile(sim_mat, self.bot_q)
+        print('edges removed: {}'.format(quant_bot))
+        quant_top = torch.quantile(sim_mat, self.top_q)
+        print('edges added: {}'.format(quant_top))
+        
+        new_adj = torch.where(similarity <= quant_bot, 0, adjacency)
+        new_adj = torch.where(similarity > quant_top, sim_mat, new_adj)
+        return new_adj.to(self.device)
 
 def create_lbl_mat(labels):
     # Create (nnode x nnode) label matrix, where (i,j) is one if label_i = label_j

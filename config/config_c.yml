@@ -16,8 +16,11 @@ seed: 1232
 graph_edge_module: 'gat'
 gat_nhead: 1
 gat_alpha: 0.2
-hidden_size: 16
-gat_out_act: 'relu'
+hidden_size: 32
+gat_out_act: 'elu'
+
+# Rewire
+rewire_ratio: 0.2
 
 # Regularization
 dropout: 0.5
@@ -35,7 +38,7 @@ optimizer: 'adam'
 criterion: 'cross-entropy-loss'
 learning_rate: 0.01
 weight_decay: 0.0005
-max_iter: 2
+max_iter: 15
 batch_size: 1
 
 # Device

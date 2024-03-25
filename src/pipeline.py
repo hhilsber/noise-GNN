@@ -54,6 +54,7 @@ class Pipeline(object):
         self.edge_criterion = GRTLoss(config['train_size'], config['alpha'], config['beta'], config['gamma'])
         self.model.network = self.model.network.to(self.device)
         self.network_criterion = nn.CrossEntropyLoss()
+        self.reconstruct = Rewire(config['rewire_ratio'], config['device'])
         
         if config['type_train'] == 'dky':
             print('type_train: dont know yet')
@@ -70,15 +71,14 @@ class Pipeline(object):
         y_hot = F.one_hot(y, self.config['nbr_classes']).float()
         adj = self.dataset['adjacency'][:idx.shape[0],:idx.shape[0]]
         norm_GL = normalize_graph_laplacian(adj)
-        norm_adj = normalize_adj(adj, self.config['device'])
-
+        norm_adj = normalize_adj_matrix(adj, adj.shape[0], self.device)
+        
         model = self.model
         edge_module = self.model.edge_module
         network = self.model.network
-        
-        
-        
+
         # Epoch
+        print('how to rewire?')
         for epoch in range(self.config['max_iter']):
             print(' train epoch: {}/{}'.format(epoch+1, self.config['max_iter']))
             edge_module.train()
@@ -88,13 +88,16 @@ class Pipeline(object):
                 model.optims.zero_grad()
             
             e_out = self.model.edge_module(x, adj)
+            #print(e_out.min(),e_out.max())
             # Rewire
-            norm_out = normalize_adj(e_out, self.device)
-            new_adj = self.config['lambda'] * norm_GL + (1 - self.config['lambda']) * norm_out
+            new_adj = self.reconstruct(e_out, adj)
+            new_adj = normalize_adj_matrix(new_adj, new_adj.shape[0], self.device)
+            #norm_out = normalize_adj_matrix(e_out, e_out.shape[0], self.device)
+            #new_adj = self.config['lambda'] * norm_GL + (1 - self.config['lambda']) * norm_out
 
-            n_out = self.model.network(x, adj)
+            n_out = self.model.network(x, new_adj)
 
-            e_loss = self.edge_criterion(e_out, x)
+            e_loss = self.edge_criterion(new_adj, x)
             n_loss = self.network_criterion(input=n_out, target=y_hot)
             print(' train loss edge: {}, network {}'.format(e_loss.item(), n_loss.item()))
             loss = e_loss + n_loss
