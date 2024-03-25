@@ -49,6 +49,7 @@ def load_network(config):
         raw_features = sp.vstack((allx, tx)).tolil() #vertical concat
         raw_features[test_idx_reorder, :] = raw_features[test_idx_range, :]
         raw_features = torch.Tensor(raw_features.todense())
+        print('features not normalized yet')
         #features = normalize_features(raw_features)
         #features = torch.Tensor(features.todense())
 
@@ -62,10 +63,14 @@ def load_network(config):
         idx_val = torch.LongTensor(range(len(y), len(y) + 500))
         idx_test = torch.LongTensor(test_idx_range.tolist())
         
+        print('adjacency not normalized yet')
+        #adj = adj + sp.eye(adj.shape[0])
+        #adj_norm = normalize_sparse_adj(adj)
         adjacency = torch.Tensor(adjacency.todense())
         edge_list = torch.tensor([0.])
+        #stats(x, y, tx, ty, allx, ally, adjacency,labels)
+
         #return adj_norm, features, labels, idx_train, idx_val, idx_test
-        stats(x, y, tx, ty, allx, ally, adjacency,labels)
         
     else:
         graph = nx.gnp_random_graph(config['nbr_nodes'], config['edge_prob'], seed=None, directed=False)

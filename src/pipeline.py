@@ -25,25 +25,33 @@ class Pipeline(object):
     def __init__(self, config):
         # Set metrics:
         
+        # Data prep
+        self.dataset = load_network(config)
+        #print(self.dataset['adjacency'].shape, self.dataset['features'].shape, self.dataset['labels'].shape)
+        #print(self.dataset['idx_train'].shape, self.dataset['idx_val'].shape, self.dataset['idx_test'].shape)
+        config['nbr_features'] = self.dataset['features'].shape[-1]
+        config['nbr_classes'] = self.dataset['labels'].max().item() + 1
+        config['nbr_nodes'] = self.dataset['features'].shape[0]
+        config['train_size'] = self.dataset['idx_train'].shape[0]
+
         # Config
         self.config = config
         
-        # Data prep
-        dataset = load_network(config) #config['nbr_features'] = dataset['features'].shape[-1]    config['nbr_classes'] = dataset['labels'].max().item() + 1
-        self.train_feat = dataset['features']
-        self.train_adj = dataset['adjacency']
-        self.lbl_hot = F.one_hot(dataset['labels'], config['nbr_classes']).float()
+        #self.train_feat = dataset['features']
+        #self.train_adj = dataset['adjacency']
+        #self.lbl_hot = F.one_hot(dataset['labels'], config['nbr_classes']).float()
         #self.lbl_matrix = create_lbl_mat(dataset['labels'])
+        
         # Normalized graph laplacian
-        self.norm_GL = normalize_graph_laplacian(dataset['adjacency'])
-        self.norm_adj = normalize_adj(dataset['adjacency'], config['device'])
+        #self.norm_GL = normalize_graph_laplacian(self.dataset['adjacency'])
+        #self.norm_adj = normalize_adj(self.dataset['adjacency'], config['device'])
 
         # Initialize the model
         self.device = config['device']
         self.model = NGNN(config)
 
         self.model.edge_module = self.model.edge_module.to(self.device)
-        self.edge_criterion = GRTLoss(config['nbr_nodes'], config['alpha'], config['beta'], config['gamma'])
+        self.edge_criterion = GRTLoss(config['train_size'], config['alpha'], config['beta'], config['gamma'])
         self.model.network = self.model.network.to(self.device)
         self.network_criterion = nn.CrossEntropyLoss()
         
@@ -52,30 +60,42 @@ class Pipeline(object):
 
 
     def type_train(self):
-        self.run_training(training=True)
+        self.run_training()
 
-    def run_training(self, training=True):
-        x = self.train_feat.to(self.device)
-        adj = self.norm_adj.to(self.device)
+    def run_training(self, mode='train'):
+        if mode == 'train':
+            idx = self.dataset['idx_train']
+        x = self.dataset['features'][:idx.shape[0],:]
+        y = self.dataset['labels'][idx]
+        y_hot = F.one_hot(y, self.config['nbr_classes']).float()
+        adj = self.dataset['adjacency'][:idx.shape[0],:idx.shape[0]]
+        norm_GL = normalize_graph_laplacian(adj)
+        norm_adj = normalize_adj(adj, self.config['device'])
+
+        model = self.model
+        edge_module = self.model.edge_module
+        network = self.model.network
+        
+        
         
         # Epoch
         for epoch in range(self.config['max_iter']):
             print(' train epoch: {}/{}'.format(epoch+1, self.config['max_iter']))
-            self.model.edge_module.train()
-            self.model.network.train()
+            edge_module.train()
+            network.train()
 
-            if training:
-                self.model.optims.zero_grad()
+            if mode == 'train':
+                model.optims.zero_grad()
             
             e_out = self.model.edge_module(x, adj)
             # Rewire
             norm_out = normalize_adj(e_out, self.device)
-            new_adj = self.config['lambda'] * self.norm_GL + (1 - self.config['lambda']) * norm_out
+            new_adj = self.config['lambda'] * norm_GL + (1 - self.config['lambda']) * norm_out
 
             n_out = self.model.network(x, adj)
 
             e_loss = self.edge_criterion(e_out, x)
-            n_loss = self.network_criterion(input=n_out, target=self.lbl_hot)
+            n_loss = self.network_criterion(input=n_out, target=y_hot)
             print(' train loss edge: {}, network {}'.format(e_loss.item(), n_loss.item()))
             loss = e_loss + n_loss
 

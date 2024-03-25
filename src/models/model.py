@@ -21,6 +21,7 @@ class NGNN(object):
 
     def init_network(self):
         if self.config['graph_edge_module'] == 'gat':
+            """
             self.edge_module = GAT(nnode=self.config['nbr_nodes'],
                                 nfeat=self.config['nbr_features'],
                                 nclass=self.config['nbr_classes'],
@@ -32,7 +33,20 @@ class NGNN(object):
             self.network = GCN(nfeat=self.config['nbr_features'],
                                 nclass=self.config['nbr_classes'],
                                 nhid=self.config['hidden_size'],
+                                dropout=self.config['dropout'])"""
+            self.edge_module = GAT(nnode=self.config['train_size'],
+                                nfeat=self.config['nbr_features'],
+                                nclass=self.config['nbr_classes'],
+                                nhid=self.config['hidden_size'],
+                                dropout=self.config['dropout'],
+                                out_act=self.config['gat_out_act'],
+                                nheads=self.config['gat_nhead'],
+                                alpha=self.config['gat_alpha'])
+            self.network = GCN(nfeat=self.config['nbr_features'],
+                                nclass=self.config['nbr_classes'],
+                                nhid=self.config['hidden_size'],
                                 dropout=self.config['dropout'])
+
 
     def init_optimizer(self):
         

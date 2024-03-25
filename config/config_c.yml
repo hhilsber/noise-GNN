@@ -8,13 +8,37 @@ task_type: 'classification'
 out_dir: '../out/cora/ngnn'
 
 
+# Seed
 seed: 1232
 
+
+# Graph attention
+graph_edge_module: 'gat'
+gat_nhead: 1
+gat_alpha: 0.2
+hidden_size: 16
+gat_out_act: 'relu'
+
+# Regularization
+dropout: 0.5
+
+# Graph regularization
+alpha: 1
+beta: 1
+gamma: 1
+# Graph combining
+lambda: 0.7
+
 # Training
+type_train: 'dky'
 optimizer: 'adam'
+criterion: 'cross-entropy-loss'
 learning_rate: 0.01
-max_iter: 10
-max_epochs: 15
+weight_decay: 0.0005
+max_iter: 2
+batch_size: 1
 
 # Device
 no_cuda: False
+# Draw
+draw_graph: False 
