@@ -34,7 +34,7 @@ class GRTLoss(nn.Module):
         smoothness = compute_smoothness(X, L, self.n)
         connectivity = compute_connectivity(A, self.n)
         sparsity = compute_sparsity(A, self.n)
-        #print("smoothness {} connectivity {}  sparsity {}".format(smoothness,connectivity,sparsity))
+        print("smoothness {} connectivity {}  sparsity {}".format(smoothness,connectivity,sparsity))
         #loss = self.alpha * smoothness + self.beta * connectivity + self.gamma * sparsity
         #return loss
         return smoothness, connectivity, sparsity

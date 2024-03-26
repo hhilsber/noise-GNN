@@ -102,6 +102,7 @@ class Pipeline(object):
             #print(e_out.min(),e_out.max())
             # Rewire
             new_adj = self.reconstruct(e_out, norm_adj)
+            print('nan 2: {}'.format(torch.count_nonzero(torch.isnan(e_out))))
             #print(new_adj[:10,:10])
             new_adj = normalize_adj_matrix(new_adj, new_adj.shape[0], self.device)
             #print(new_adj[:10,:10])

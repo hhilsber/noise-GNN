@@ -83,7 +83,6 @@ class Rewire(torch.nn.Module):
         #normalize similarity?
         #normalized_z = F.normalize(H, dim=1)
         sim_norm = F.normalize(similarity, dim=1)
-        print('nan 1.5: {}'.format(torch.count_nonzero(torch.isnan(sim_norm))))
         sim_mat = torch.mm(sim_norm, sim_norm.t()) * (torch.ones_like(sim_norm) - torch.eye(sim_norm.shape[0]))
 
         quant_bot = torch.quantile(sim_mat, self.bot_q)
