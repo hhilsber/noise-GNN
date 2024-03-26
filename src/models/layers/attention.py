@@ -29,8 +29,10 @@ class AttentionLayer(nn.Module):
         else:
             self.out_act = nn.ELU()
 
-    def forward(self, input, adj):
-        h = torch.mm(input, self.W)
+    def forward(self, inp, adj):
+        h = torch.mm(inp, self.W)
+        print('    att nan i1: {}'.format(torch.count_nonzero(torch.isnan(self.W))))
+        print('    att nan i2: {}'.format(torch.count_nonzero(torch.isnan(h))))
         N = h.size()[0]
 
         a_input1 = torch.matmul(h, self.a1)

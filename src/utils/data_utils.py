@@ -45,13 +45,25 @@ def normalize_graph_laplacian(adj):
     norm_GL = torch.matmul(norm_GL, torch.pow(D_plus, 0.5))
     return norm_GL
 
+
 def normalize_adj_matrix(adj_matrix, nbr_nodes, device):
+    """
+    normalize adj GCN
+    """
+    n_nodes = nbr_nodes
+    adj_norm = adj_matrix
+    adj_norm = adj_norm * (torch.ones(n_nodes).to(device) - torch.eye(n_nodes).to(device)) + torch.eye(n_nodes).to(device)
+    D_norm = torch.diag(torch.pow(adj_norm.sum(1), -0.5)).to(device)
+    adj_norm = D_norm @ adj_norm @ D_norm
+    return adj_norm
+    
+def normalize_adj_matrix_old(adj_matrix, nbr_nodes, device):
     """
     normalize adjacency matrix
     """
-    matrix = adj_matrix * (torch.ones(nbr_nodes) - torch.eye(nbr_nodes)) + torch.eye(nbr_nodes).to(device)
-    degree_norm = torch.pow(compute_degree_matrix(matrix), -0.5).to(device)
-    degree_norm[torch.isinf(degree_norm)] = 0.
+    matrix = adj_matrix * (torch.ones(nbr_nodes).to(device) - torch.eye(nbr_nodes).to(device)) + torch.eye(nbr_nodes).to(device)
+    degree_norm = torch.diag(torch.pow(matrix.sum(1), -0.5)).to(device)
+    #degree_norm[torch.isinf(degree_norm)] = 0.
     adj_norm = torch.matmul(degree_norm, matrix)
     adj_norm = torch.matmul(adj_norm, degree_norm)
     return adj_norm
@@ -71,7 +83,9 @@ class Rewire(torch.nn.Module):
         #normalize similarity?
         #normalized_z = F.normalize(H, dim=1)
         sim_norm = F.normalize(similarity, dim=1)
+        print('nan 1.5: {}'.format(torch.count_nonzero(torch.isnan(sim_norm))))
         sim_mat = torch.mm(sim_norm, sim_norm.t()) * (torch.ones_like(sim_norm) - torch.eye(sim_norm.shape[0]))
+
         quant_bot = torch.quantile(sim_mat, self.bot_q)
         print('edges removed: {}'.format(quant_bot))
         quant_top = torch.quantile(sim_mat, self.top_q)

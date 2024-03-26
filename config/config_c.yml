@@ -14,13 +14,13 @@ seed: 1232
 
 # Graph attention
 graph_edge_module: 'gat'
-gat_nhead: 3
+gat_nhead: 1
 gat_alpha: 0.2
 hidden_size: 32
 gat_out_act: 'elu'
 
 # Rewire
-rewire_ratio: 0.25
+rewire_ratio: 0.1
 
 # Regularization
 dropout: 0.5
@@ -38,7 +38,7 @@ optimizer: 'adam'
 criterion: 'cross-entropy-loss'
 learning_rate: 0.01
 weight_decay: 0.0005
-max_iter: 1
+max_iter: 6
 batch_size: 1
 
 # Device

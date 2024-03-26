@@ -65,58 +65,78 @@ class Pipeline(object):
         self.run_training()
 
     def run_training(self, mode='train'):
-        if mode == 'train':
-            idx = self.dataset['idx_train']
-        x = self.dataset['features'][:idx.shape[0],:]
-        y = self.dataset['labels'][idx]
+        idx_train = self.dataset['idx_train']
+        idx_val = self.dataset['idx_val']
+
+        x = self.dataset['features'][idx_train]
+        y = self.dataset['labels'][idx_train]
         y_hot = F.one_hot(y, self.config['nbr_classes']).float()
-        adj = self.dataset['adjacency'][:idx.shape[0],:idx.shape[0]]
+        adj = self.dataset['adjacency'][:idx_train.shape[0],:idx_train.shape[0]]
+        
         norm_GL = normalize_graph_laplacian(adj)
         norm_adj = normalize_adj_matrix(adj, adj.shape[0], self.device)
         
         model = self.model
         edge_module = self.model.edge_module
         network = self.model.network
+
         loss_edge = []
+        sm = []
+        con = []
+        spar = []
         loss_pred = []
         loss_total = []
         # Epoch
         print('how to rewire?')
         for epoch in range(self.config['max_iter']):
             print(' train epoch: {}/{}'.format(epoch+1, self.config['max_iter']))
+            print('nan 0: {}'.format(torch.count_nonzero(torch.isnan(norm_adj))))
             edge_module.train()
-            network.train()
-
+            #network.train()
+            
             if mode == 'train':
                 model.optims.zero_grad()
             
-            e_out = self.model.edge_module(x, adj)
+            e_out = edge_module(x, norm_adj)
+            print('nan 1: {}'.format(torch.count_nonzero(torch.isnan(e_out))))
             #print(e_out.min(),e_out.max())
             # Rewire
-            new_adj = self.reconstruct(e_out, adj)
+            new_adj = self.reconstruct(e_out, norm_adj)
+            #print(new_adj[:10,:10])
             new_adj = normalize_adj_matrix(new_adj, new_adj.shape[0], self.device)
+            #print(new_adj[:10,:10])
             #norm_out = normalize_adj_matrix(e_out, e_out.shape[0], self.device)
             #new_adj = self.config['lambda'] * norm_GL + (1 - self.config['lambda']) * norm_out
 
-            n_out = self.model.network(x, new_adj)
-            print(n_out[:10])
+            #n_out = self.model.network(x, new_adj)
+            #print(n_out[:10])
 
-            e_loss = self.edge_criterion(new_adj, x)
-            n_loss = self.network_criterion(input=n_out, target=y_hot)
+            smoothness, connectivity, sparsity = self.edge_criterion(new_adj, x)
+            sm.append(smoothness.item())
+            con.append(connectivity.item())
+            spar.append(sparsity.item())
+            e_loss = self.config['alpha'] * smoothness + self.config['beta'] * connectivity + self.config['gamma'] * sparsity
+            #n_loss = self.network_criterion(input=n_out[idx_train], target=y_hot[idx_train])
             #print(' train loss edge: {}, network {}'.format(e_loss.item(), n_loss.item()))
+            
+            
             loss_edge.append(e_loss.item())
-            loss_pred.append(n_loss.item())
-            loss_total.append(e_loss.item() + n_loss.item())
-            loss = e_loss + n_loss
+            #loss_pred.append(n_loss.item())
+            #loss_total.append(e_loss.item() + n_loss.item())
+            loss = e_loss
 
             self.model.optims.zero_grad()
             loss.backward()
             self.model.optims.step()
 
-            edge_module.eval()
-            network.eval()
+            #edge_module.eval()
+            #network.eval()
+            #val_accuracy = eval_classification(n_out[idx_val], n_out[idx_val])
+
         print('train end')
-        plt.plot(loss_edge, 'g') 
-        plt.plot(loss_pred, 'b')
-        plt.plot(loss_total, 'r')
+        plt.plot(sm, 'g', label="smoothness")
+        plt.plot(con, 'b', label="connectivity")
+        plt.plot(spar, 'y', label="sparsity")
+        plt.plot(loss_edge, 'r', label="total")
+        plt.legend()
         plt.show()
