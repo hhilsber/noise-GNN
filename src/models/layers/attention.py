@@ -2,6 +2,23 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+class SIMA(nn.Module):
+    def __init__(self, nbr_nodes, nbr_features, dropout=0.5):
+        super(SIMA, self).__init__()
+        self.weight_i = nn.Parameter(torch.randn(nbr_features, nbr_nodes))
+        self.weight_j = nn.Parameter(torch.randn(nbr_features, nbr_nodes))
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, node_features):
+        # Compute the attention scores for each pair of nodes
+        attention_i = self.dropout(torch.relu(torch.matmul(node_features, self.weight_i)))
+        attention_j = self.dropout(torch.relu(torch.matmul(node_features, self.weight_j)))
+        attention_j = attention_j.transpose(0, 1)
+        
+        # Compute the similarity matrix
+        similarity_matrix = torch.matmul(attention_i, attention_j)
+        return similarity_matrix
+
 class AttentionLayer(nn.Module):
     """
     graph attention

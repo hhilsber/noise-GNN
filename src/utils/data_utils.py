@@ -68,6 +68,7 @@ def normalize_adj_matrix_old(adj_matrix, nbr_nodes, device):
     adj_norm = torch.matmul(adj_norm, degree_norm)
     return adj_norm
 
+
 class Rewire(torch.nn.Module):
     """
     Rewire nodes using similarity matrix
@@ -75,7 +76,8 @@ class Rewire(torch.nn.Module):
     def __init__(self, ratio, device='cpu'):
         super(Rewire, self).__init__()
         self.device = device
-        self.bot_q = ratio
+        #self.bot_q = ratio
+        self.bot_q = 0.1
         self.top_q = 1. - ratio
 
     
@@ -83,15 +85,16 @@ class Rewire(torch.nn.Module):
         #normalize similarity?
         #normalized_z = F.normalize(H, dim=1)
         sim_norm = F.normalize(similarity, dim=1)
-        sim_mat = torch.mm(sim_norm, sim_norm.t()) * (torch.ones_like(sim_norm) - torch.eye(sim_norm.shape[0]))
+        sim_mat = torch.mm(sim_norm, sim_norm.t()) * (torch.ones_like(sim_norm).to(self.device) - torch.eye(sim_norm.shape[0]).to(self.device))
 
         quant_bot = torch.quantile(sim_mat, self.bot_q)
         print('edges removed: {}'.format(quant_bot))
         quant_top = torch.quantile(sim_mat, self.top_q)
         print('edges added: {}'.format(quant_top))
         
-        new_adj = torch.where(similarity <= quant_bot, 0, adjacency)
-        new_adj = torch.where(similarity > quant_top, sim_mat, new_adj)
+        #new_adj = torch.where(similarity <= quant_bot, 0, adjacency)
+        #new_adj = torch.where(similarity > quant_top, sim_mat, new_adj)
+        new_adj = torch.where(sim_mat > quant_top, sim_mat, 0)
         return new_adj.to(self.device)
 
 def create_lbl_mat(labels):
@@ -134,3 +137,24 @@ class NormalDataset(Dataset):
     def __getitem__(self, idx=-1):
         # Return dataset
         return self.feat.float(), self.adj
+
+class Rewire_old(torch.nn.Module):
+    """
+    Rewire nodes using similarity matrix
+    """
+    def __init__(self, ratio, device='cpu', thresh=0.7):
+        super(Rewire, self).__init__()
+        self.device = device
+        self.bot_q = ratio
+        self.top_q = 1. - ratio
+        self.thresh = thresh
+
+    
+    def forward(self, similarity, adjacency):
+        #normalize similarity?
+        #normalized_z = F.normalize(H, dim=1)
+        sim_mat = torch.mm(similarity, similarity.t())
+        sim_norm = F.normalize(sim_mat, dim=1) * (torch.ones_like(sim_mat).to(self.device) - torch.eye(sim_mat.shape[0]).to(self.device))
+        
+        new_adj = torch.where(sim_norm > self.thresh, sim_norm, 0)
+        return new_adj.to(self.device)
