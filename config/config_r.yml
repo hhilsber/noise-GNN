@@ -14,7 +14,7 @@ seed: 1232
 
 
 # Graph attention
-graph_edge_module: 'gat'
+graph_edge_module: 'gat2'
 gat_nhead: 1
 gat_alpha: 0.2
 hidden_size: 16
@@ -39,7 +39,7 @@ optimizer: 'adam'
 criterion: 'cross-entropy-loss'
 learning_rate: 0.01
 weight_decay: 0.0005
-max_iter: 10
+max_iter: 15
 batch_size: 1
 
 # Device

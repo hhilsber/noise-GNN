@@ -1,7 +1,7 @@
 import torch
 import torch.optim as optim
 
-from .layers.attention import GAT
+from .layers.attention import GAT, SIMA
 from .layers.convolution import GCN
 
 class NGNN(object):
@@ -42,6 +42,15 @@ class NGNN(object):
                                 out_act=self.config['gat_out_act'],
                                 nheads=self.config['gat_nhead'],
                                 alpha=self.config['gat_alpha'])
+            self.network = GCN(nfeat=self.config['nbr_features'],
+                                nclass=self.config['nbr_classes'],
+                                nhid=self.config['hidden_size'],
+                                dropout=self.config['dropout'])
+        if self.config['graph_edge_module'] == 'gat2':
+            print(self.config['graph_edge_module'])
+            self.edge_module = SIMA(nbr_nodes=self.config['train_size'],
+                                nbr_features=self.config['nbr_features'],
+                                dropout=self.config['dropout'])
             self.network = GCN(nfeat=self.config['nbr_features'],
                                 nclass=self.config['nbr_classes'],
                                 nhid=self.config['hidden_size'],

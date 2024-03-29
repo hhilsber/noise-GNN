@@ -20,7 +20,7 @@ hidden_size: 32
 gat_out_act: 'elu'
 
 # Rewire
-rewire_ratio: 0.20
+rewire_ratio: 0.1
 
 # Regularization
 dropout: 0.5
@@ -30,7 +30,7 @@ alpha: 1
 beta: 1
 gamma: 1
 # Graph combining
-lambda: 0.5
+lambda: 0.7
 
 # Training
 type_train: 'dky'
@@ -38,8 +38,7 @@ optimizer: 'adam'
 criterion: 'cross-entropy-loss'
 learning_rate: 0.01
 weight_decay: 0.0005
-max_iter: 0
-
+max_iter: 15
 batch_size: 1
 
 # Device

@@ -45,7 +45,7 @@ class Pipeline(object):
         self.model = NGNN(config)
 
         self.model.edge_module = self.model.edge_module.to(self.device)
-        self.edge_criterion = GRTLoss(config['train_size'], config['alpha'], config['beta'], config['gamma'])
+        self.edge_criterion = GRTLoss(config['train_size'], config['alpha'], config['beta'], config['gamma'], config['device'])
         self.model.network = self.model.network.to(self.device)
         self.network_criterion = nn.CrossEntropyLoss()
         self.reconstruct = Rewire(config['rewire_ratio'], config['device'])
@@ -63,6 +63,7 @@ class Pipeline(object):
 
         x = self.dataset['features'][idx_train]
         y = self.dataset['labels'][idx_train]
+        print(y[:10])
         y_hot = F.one_hot(y, self.config['nbr_classes']).float()
         adj = self.dataset['adjacency'][:idx_train.shape[0],:idx_train.shape[0]]
         print(adj[:10,:10])
@@ -84,24 +85,26 @@ class Pipeline(object):
         print('how to rewire?')
         for epoch in range(self.config['max_iter']):
             print(' train epoch: {}/{}'.format(epoch+1, self.config['max_iter']))
-            print('nan 0: {}'.format(torch.count_nonzero(torch.isnan(norm_adj))))
+            #print('nan 0: {}'.format(torch.count_nonzero(torch.isnan(norm_adj))))
             edge_module.train()
             #network.train()
             
             if mode == 'train':
                 model.optims.zero_grad()
             
-            e_out = edge_module(x, norm_adj)
-            print('nan 1: {}'.format(torch.count_nonzero(torch.isnan(e_out))))
+            e_out = edge_module(x)
+            #print('nan 1: {}'.format(torch.count_nonzero(torch.isnan(e_out))))
             #print(e_out.min(),e_out.max())
-            # Rewire
-            new_adj = self.reconstruct(e_out, norm_adj)
-            print('nan 2: {}'.format(torch.count_nonzero(torch.isnan(e_out))))
+            # Rewire$
+            
+            e_rec = self.reconstruct(e_out, norm_adj)
+            
+            #print('nan 2: {}'.format(torch.count_nonzero(torch.isnan(e_out))))
             #print(new_adj[:10,:10])
-            new_adj = normalize_adj_matrix(new_adj, new_adj.shape[0], self.device)
+            e_rec = normalize_adj_matrix(e_rec, e_rec.shape[0], self.device)
             #print(new_adj[:10,:10])
             #norm_out = normalize_adj_matrix(e_out, e_out.shape[0], self.device)
-            #new_adj = self.config['lambda'] * norm_GL + (1 - self.config['lambda']) * norm_out
+            new_adj = self.config['lambda'] * norm_adj + (1 - self.config['lambda']) * e_rec
 
             #n_out = self.model.network(x, new_adj)
             #print(n_out[:10])
