@@ -38,7 +38,7 @@ optimizer: 'adam'
 criterion: 'cross-entropy-loss'
 learning_rate: 0.01
 weight_decay: 0.0005
-max_iter: 6
+max_iter: 0
 batch_size: 1
 
 # Device

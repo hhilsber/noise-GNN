@@ -4,13 +4,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
 
-"""
-import torch_geometric.utils as tg
-from torch.utils.data import DataLoader
-from torch_geometric.loader import DataLoader
-from torch_geometric.data import Batch
-from torch_geometric.data import Data
-from torch_geometric.utils import scatter"""
 
 from .utils.load_utils import load_network
 from .utils.data_utils import *
@@ -72,6 +65,7 @@ class Pipeline(object):
         y = self.dataset['labels'][idx_train]
         y_hot = F.one_hot(y, self.config['nbr_classes']).float()
         adj = self.dataset['adjacency'][:idx_train.shape[0],:idx_train.shape[0]]
+        print(adj[:10,:10])
         
         norm_GL = normalize_graph_laplacian(adj)
         norm_adj = normalize_adj_matrix(adj, adj.shape[0], self.device)
@@ -135,9 +129,11 @@ class Pipeline(object):
             #val_accuracy = eval_classification(n_out[idx_val], n_out[idx_val])
 
         print('train end')
+        """
         plt.plot(sm, 'g', label="smoothness")
         plt.plot(con, 'b', label="connectivity")
         plt.plot(spar, 'y', label="sparsity")
         plt.plot(loss_edge, 'r', label="total")
         plt.legend()
         plt.show()
+        """
