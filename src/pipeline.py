@@ -26,7 +26,7 @@ class Pipeline(object):
         config['nbr_features'] = self.dataset['features'].shape[-1]
         config['nbr_classes'] = self.dataset['labels'].max().item() + 1
         config['nbr_nodes'] = self.dataset['features'].shape[0]
-        config['train_size'] = self.dataset['idx_train'].shape[0]
+        config['train_size'] = self.dataset['train_mask'].shape[0]
 
         # Config
         self.config = config

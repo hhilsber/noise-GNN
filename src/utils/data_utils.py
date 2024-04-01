@@ -8,6 +8,16 @@ import torch.nn.functional as F
 #from torch_geometric.data import Data
 from torch.utils.data import Dataset
 
+
+def edges_to_adjacency(edges, nbr_nodes):
+    adjacency_matrix = torch.zeros(nbr_nodes, nbr_nodes)
+    for i in range(edges.shape[1]):
+        node_i = edges[0, i]
+        node_j = edges[1, i]
+        adjacency_matrix[node_i, node_j] = 1
+    return adjacency_matrix
+
+
 def eval_classification(prediction, labels):
     """
     evaluate results

@@ -1,7 +1,7 @@
 # Data
 data_type: 'network'
+data_dir: './data'
 dataset_name: 'cora'
-data_dir: './data/cora/raw/'
 task_type: 'classification'
 
 # Output

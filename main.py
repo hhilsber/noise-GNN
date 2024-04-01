@@ -12,7 +12,7 @@ from src.pipeline import Pipeline
 ##################################### Main #####################################
 def main(config):
     model = Pipeline(config)
-    model.type_train()
+    #model.type_train()
 
 
 ##################################### Fcts #####################################
