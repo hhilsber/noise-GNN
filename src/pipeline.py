@@ -21,8 +21,7 @@ class Pipeline(object):
         
         # Data prep
         self.dataset = load_network(config)
-        #print(self.dataset['adjacency'].shape, self.dataset['features'].shape, self.dataset['labels'].shape)
-        #print(self.dataset['idx_train'].shape, self.dataset['idx_val'].shape, self.dataset['idx_test'].shape)
+        """
         config['nbr_features'] = self.dataset['features'].shape[-1]
         config['nbr_classes'] = self.dataset['labels'].max().item() + 1
         config['nbr_nodes'] = self.dataset['features'].shape[0]
@@ -51,7 +50,7 @@ class Pipeline(object):
         self.reconstruct = Rewire(config['rewire_ratio'], config['device'])
         
         if config['type_train'] == 'dky':
-            print('type_train: dont know yet')
+            print('type_train: dont know yet')"""
 
 
     def type_train(self):

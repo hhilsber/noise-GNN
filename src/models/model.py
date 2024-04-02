@@ -47,7 +47,7 @@ class NGNN(object):
                                 nhid=self.config['hidden_size'],
                                 dropout=self.config['dropout'])
         if self.config['graph_edge_module'] == 'gat2':
-            print(self.config['graph_edge_module'])
+            print('add activation {}'.format(self.config['graph_edge_module']))
             self.edge_module = SIMA(nbr_nodes=self.config['train_size'],
                                 nbr_features=self.config['nbr_features'],
                                 dropout=self.config['dropout'])
