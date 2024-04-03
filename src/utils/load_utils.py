@@ -37,7 +37,7 @@ def load_network(config):
             'val_mask': val_mask.to(device) if device else val_mask,
             'test_mask': test_mask.to(device) if device else test_mask}
     if dataset_name == 'ogbn-arxiv':
-        
+        """
         print(dataset_name)
         
         dataset = PygNodePropPredDataset(name = dataset_name)
@@ -51,5 +51,7 @@ def load_network(config):
         dataset.test_idx = test_idx
 
         #adjacency = torch.tensor([0.])
-        #data = {'adjacency': adjacency.to(device) if device else adjacency}
+        #data = {'adjacency': adjacency.to(device) if device else adjacency}"""
+        dataset = pkl.load(open(f'{data_dir}/{dataset_name}/dataset.pkl', 'rb'))
+        print(dataset.valid_idx.shape)
     return dataset
