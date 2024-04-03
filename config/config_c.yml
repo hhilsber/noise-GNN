@@ -1,6 +1,6 @@
 # Data
 data_type: 'network'
-data_dir: './data'
+data_dir: '../../data'
 dataset_name: 'cora'
 task_type: 'classification'
 
@@ -14,6 +14,8 @@ seed: 1232
 
 # Graph attention
 graph_edge_module: 'gat2'
+module: 'simple_gcn'
+nbr_neighbors: 5
 gat_nhead: 1
 gat_alpha: 0.2
 hidden_size: 32
@@ -38,7 +40,7 @@ optimizer: 'adam'
 criterion: 'cross-entropy-loss'
 learning_rate: 0.01
 weight_decay: 0.0005
-max_iter: 0
+max_epochs: 1
 
 batch_size: 1
 

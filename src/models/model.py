@@ -20,37 +20,7 @@ class NGNN(object):
         self.init_optimizer()
 
     def init_network(self):
-        if self.config['graph_edge_module'] == 'gat':
-            """
-            self.edge_module = GAT(nnode=self.config['nbr_nodes'],
-                                nfeat=self.config['nbr_features'],
-                                nclass=self.config['nbr_classes'],
-                                nhid=self.config['hidden_size'],
-                                dropout=self.config['dropout'],
-                                out_act=self.config['gat_out_act'],
-                                nheads=self.config['gat_nhead'],
-                                alpha=self.config['gat_alpha'])
-            self.network = GCN(nfeat=self.config['nbr_features'],
-                                nclass=self.config['nbr_classes'],
-                                nhid=self.config['hidden_size'],
-                                dropout=self.config['dropout'])"""
-            self.edge_module = GAT(nnode=self.config['train_size'],
-                                nfeat=self.config['nbr_features'],
-                                nclass=self.config['nbr_classes'],
-                                nhid=self.config['hidden_size'],
-                                dropout=self.config['dropout'],
-                                out_act=self.config['gat_out_act'],
-                                nheads=self.config['gat_nhead'],
-                                alpha=self.config['gat_alpha'])
-            self.network = GCN(nfeat=self.config['nbr_features'],
-                                nclass=self.config['nbr_classes'],
-                                nhid=self.config['hidden_size'],
-                                dropout=self.config['dropout'])
-        if self.config['graph_edge_module'] == 'gat2':
-            print('add activation {}'.format(self.config['graph_edge_module']))
-            self.edge_module = SIMA(nbr_nodes=self.config['train_size'],
-                                nbr_features=self.config['nbr_features'],
-                                dropout=self.config['dropout'])
+        if self.config['module'] == 'simple_gcn':
             self.network = GCN(nfeat=self.config['nbr_features'],
                                 nclass=self.config['nbr_classes'],
                                 nhid=self.config['hidden_size'],
@@ -58,15 +28,12 @@ class NGNN(object):
 
 
     def init_optimizer(self):
-        
-        if self.config['optimizer'] == 'adam':
-            """
-            self.edge_optimizer = torch.optim.Adam(self.edge_module.parameters(),
+        if self.config['optimizer'] == 'single_adam':
+            self.optimizer = torch.optim.Adam(self.network.parameters(),
                                                 lr=self.config['learning_rate'],
                                                 weight_decay=self.config['weight_decay'])
-            self.network_optimizer = torch.optim.Adam(self.network.parameters(),
-                                                lr=self.config['learning_rate'],
-                                                weight_decay=self.config['weight_decay'])"""
+
+        elif self.config['optimizer'] == 'double_adam':
             self.optims = MultipleOptimizer(torch.optim.Adam(self.edge_module.parameters(),
                                                 lr=self.config['learning_rate'],
                                                 weight_decay=self.config['weight_decay']),

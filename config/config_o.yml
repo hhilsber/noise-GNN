@@ -8,12 +8,20 @@ task_type: 'classification'
 seed: 1232
 
 
-# Graph attention
-graph_edge_module: 'gat2'
+# Graph model
+module: 'simple_gcn'
+hidden_size: 32
+nbr_neighbors: 5
 
+# Regularization
+dropout: 0.3
 
 # Training
-batch_size: 1
+optimizer: 'single_adam'
+learning_rate: 0.01
+weight_decay: 0.0005
+max_epochs: 5
+batch_size: 128
 
 # Device
 no_cuda: False
