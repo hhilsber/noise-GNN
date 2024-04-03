@@ -1,0 +1,28 @@
+Hi, I also had this problem but today I have solved it! Hope it can help u well!
+
+1- Conda create a new environment, I create 'PyG' environment with Python 3.9.
+2- You should install PYTORCH first, as reconmmended in page 'https://pytorch.org/get-started/previous-versions/', conda install pytorch==2.1.0 torchvision==0.16.0 torchaudio==2.1.0 cpuonly -c pytorch.
+3- Then, install those packages IN ORDER: ①torch_scatter②torch_sparse③torch_cluster④torch_spline_conv(Step3)⑤torch-geometric(Step4)，You can download the wheel from website 'https://data.pyg.org/whl/', and the version should match your pytorch version, for me, it's pytorch==2.1.0.
+
+pip install c:/users/hendr/Downloads/torch_scatter-2.1.2+pt21cpu-cp39-cp39-win_amd64.whl
+pip install torch-scatter -f https://data.pyg.org/whl/torch-2.1.0+${cpu}.html
+
+pip install c:/users/hendr/Downloads/torch_sparse-0.6.18+pt21cpu-cp39-cp39-win_amd64.whl
+pip install torch-sparse -f https://data.pyg.org/whl/torch-2.1.0+${cpu}.html
+
+pip install c:/users/hendr/Downloads/torch_cluster-1.6.3+pt21cpu-cp39-cp39-win_amd64.whl
+pip install torch-cluster -f https://data.pyg.org/whl/torch-2.1.0+${cpu}.html
+
+pip install c:/users/hendr/Downloads/torch_spline_conv-1.2.2+pt21cpu-cp39-cp39-win_amd64.whl
+pip install torch-spline-conv -f https://data.pyg.org/whl/torch-2.1.0+${cpu}.html
+
+
+pip install torch_geometric
+
+
+4- Finally, pip install torch_geometric, as recommended in 'https://pytorch-geometric.readthedocs.io/en/latest/install/installation.html', because I use CPU, it will be different if u use GPU, CUDA, maybe, so, double check it.
+5- If u use jupyter lab, remenber pip install ipykernel to change your environment.
+
+Finally, it works. Wish it will help you too! Good luck!
+
+Wuhan University, Gou Zhonghua's Lab.

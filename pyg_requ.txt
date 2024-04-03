@@ -1,0 +1,4 @@
+# python 3.9
+# pip install -r pyg_requ.txt
+
+ogb == 1.3.6

@@ -2,7 +2,6 @@ import torch
 import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
-import matplotlib.pyplot as plt
 from torch_geometric.loader import NeighborLoader
 
 from .utils.load_utils import load_network
@@ -33,20 +32,23 @@ class Pipeline(object):
         self.model.network = self.model.network.to(self.device)
         self.criterion = nn.CrossEntropyLoss()
 
-        loader = NeighborLoader(
+        self.train_loader = NeighborLoader(
             self.dataset[0],
             # Sample 30 neighbors for each node for 2 iterations
-            num_neighbors=[self.config['nbr_neighbors']] * self.config['max_epochs'],
+            num_neighbors=[self.config['nbr_neighbors']] * self.config['k_hops'],
             # Use a batch size of 128 for sampling training nodes
             batch_size=self.config['batch_size'],
             input_nodes=self.dataset.train_idx,
         )
-        sampled_data = next(iter(loader))
-        #print(sampled_data.batch_size)
 
     def train(self, train_loader, epoch, model1, optimizer1):
         print('Train epoch {}/{}'.format(epoch, self.config['max_epochs']))
-
+        
+        for batch in train_loader:
+            batch = batch.to(self.device)
+            #out = model(batch.x, batch.edge_index)
+            
+        return torch.tensor([0.])
 
     def loop(self):
         print('loop')

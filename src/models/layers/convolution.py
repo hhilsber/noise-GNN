@@ -1,14 +1,56 @@
 import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from torch_geometric.nn import GCNConv
+from torch_geometric.nn import global_mean_pool
+
+class SimpleGCN(nn.Module):
+    def __init__(self, in_size, hidden_dim, out_size, dropout_prob=0.5):
+        super(SimpleGCN, self).__init__()
+        
+        self.conv1 = GCNConv(in_size, hidden_dim)
+        self.conv2 = GCNConv(hidden_dim, out_size)
+        self.dropout = nn.Dropout(dropout_prob)
+
+    def forward(self, data):
+        x, edge_index = data.x, data.edge_index
+        
+        # First graph convolutional layer
+        x = self.conv1(x, edge_index)
+        x = F.relu(x)
+        x = self.dropout(x)
+        
+        # Second graph convolutional layer
+        x = self.conv2(x, edge_index)
+        x = F.relu(x)
+        x = self.dropout(x)
+
+        # Global pooling to aggregate node embeddings
+        x = global_mean_pool(x, data.batch)
+        
+        # Log-softmax activation for output
+        x = F.log_softmax(x, dim=1)
+        
+        return x
+
+
+
+
+
+
+
+#####################################################################################
+"""
+import torch
 import math
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.parameter import Parameter
 from torch.nn.modules.module import Module
-
 class GraphConvolution(Module):
-    """
-    Graph convolution layer, ref https://github.com/tkipf/pygcn
-    """
+
+    #Graph convolution layer, ref https://github.com/tkipf/pygcn
+
 
     def __init__(self, in_size, out_size, bias=True):
         super(GraphConvolution, self).__init__()
@@ -52,4 +94,4 @@ class GCN(nn.Module):
         x = F.relu(self.gc1(x, adj))
         x = F.dropout(x, self.dropout, training=self.training)
         x = self.gc2(x, adj)
-        return F.log_softmax(x, dim=1)
+        return F.log_softmax(x, dim=1)"""

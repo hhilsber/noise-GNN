@@ -12,6 +12,7 @@ seed: 1232
 module: 'simple_gcn'
 hidden_size: 32
 nbr_neighbors: 5
+k_hops: 2
 
 # Regularization
 dropout: 0.3
@@ -20,7 +21,7 @@ dropout: 0.3
 optimizer: 'single_adam'
 learning_rate: 0.01
 weight_decay: 0.0005
-max_epochs: 5
+max_epochs: 2
 batch_size: 128
 
 # Device

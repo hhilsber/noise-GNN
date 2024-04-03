@@ -2,7 +2,7 @@ import torch
 import torch.optim as optim
 
 from .layers.attention import GAT, SIMA
-from .layers.convolution import GCN
+from .layers.convolution import SimpleGCN
 
 class NGNN(object):
     """
@@ -21,10 +21,10 @@ class NGNN(object):
 
     def init_network(self):
         if self.config['module'] == 'simple_gcn':
-            self.network = GCN(nfeat=self.config['nbr_features'],
-                                nclass=self.config['nbr_classes'],
-                                nhid=self.config['hidden_size'],
-                                dropout=self.config['dropout'])
+            self.network = SimpleGCN(in_size=self.config['nbr_features'],
+                                hidden_dim=self.config['hidden_size'],
+                                out_size=self.config['nbr_classes'],
+                                dropout_prob=self.config['dropout'])
 
 
     def init_optimizer(self):

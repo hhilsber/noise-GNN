@@ -1,3 +1,1 @@
-python main.py -config config/config_c.yml
-
-s2 basic idea about pipeline
+python main.py -config config/config_o.yml
