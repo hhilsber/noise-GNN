@@ -7,12 +7,11 @@ task_type: 'classification'
 # Seed
 seed: 1232
 
-
 # Graph model
 module: 'simple_gcn'
 hidden_size: 32
-nbr_neighbors: 5
-k_hops: 2
+nbr_neighbors: 200
+k_hops: 5
 
 # Regularization
 dropout: 0.3
@@ -21,8 +20,9 @@ dropout: 0.3
 optimizer: 'single_adam'
 learning_rate: 0.01
 weight_decay: 0.0005
-max_epochs: 2
-batch_size: 128
+
+max_epochs: 10
+batch_size: 9000
 
 # Device
 no_cuda: False

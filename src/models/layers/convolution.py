@@ -12,9 +12,7 @@ class SimpleGCN(nn.Module):
         self.conv2 = GCNConv(hidden_dim, out_size)
         self.dropout = nn.Dropout(dropout_prob)
 
-    def forward(self, data):
-        x, edge_index = data.x, data.edge_index
-        
+    def forward(self, x, edge_index):
         # First graph convolutional layer
         x = self.conv1(x, edge_index)
         x = F.relu(x)
@@ -26,7 +24,7 @@ class SimpleGCN(nn.Module):
         x = self.dropout(x)
 
         # Global pooling to aggregate node embeddings
-        x = global_mean_pool(x, data.batch)
+        #x = global_mean_pool(x, data.batch)
         
         # Log-softmax activation for output
         x = F.log_softmax(x, dim=1)

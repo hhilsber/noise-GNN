@@ -1,0 +1,5 @@
+# python 3.9
+# pip install -r pyl_requ.txt
+
+ogb == 1.3.6
+matplotlib == 3.8.3

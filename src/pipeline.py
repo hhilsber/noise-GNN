@@ -2,9 +2,11 @@ import torch
 import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
-from torch_geometric.loader import NeighborLoader
+from torch_geometric.loader import DataLoader, NeighborLoader
+import matplotlib.pyplot as plt
 
 from .utils.load_utils import load_network
+from .utils.data_utils import classification_acc
 from .models.model import NGNN
 
 class Pipeline(object):
@@ -34,27 +36,86 @@ class Pipeline(object):
 
         self.train_loader = NeighborLoader(
             self.dataset[0],
-            # Sample 30 neighbors for each node for 2 iterations
             num_neighbors=[self.config['nbr_neighbors']] * self.config['k_hops'],
-            # Use a batch size of 128 for sampling training nodes
             batch_size=self.config['batch_size'],
             input_nodes=self.dataset.train_idx,
+            is_sorted=False,
+            shuffle=False
+        )
+        
+        self.valid_loader = NeighborLoader(
+            self.dataset[0],
+            num_neighbors=[self.config['nbr_neighbors']] * self.config['k_hops'],
+            batch_size=self.config['batch_size'],
+            input_nodes=self.dataset.valid_idx,
+            is_sorted=False,
+            shuffle=False
         )
 
     def train(self, train_loader, epoch, model1, optimizer1):
         print('Train epoch {}/{}'.format(epoch, self.config['max_epochs']))
-        
-        for batch in train_loader:
+        model1.train()
+
+        train_total=0
+        train_loss=0
+        train_acc=0 
+        #for batch in train_loader:
+        for i,batch in enumerate(train_loader):
             batch = batch.to(self.device)
-            #out = model(batch.x, batch.edge_index)
+            out = model1(batch.x, batch.edge_index)
+
+            # Only consider predictions and labels of seed nodes
+            y = batch.y[:batch.batch_size]
+            out = out[:batch.batch_size]
+            #out = torch.max(out, dim=1)[1]
             
-        return torch.tensor([0.])
+            loss_1 = self.criterion(input=out, target=y.squeeze())
+            acc_1 = classification_acc(out, y)
+            
+            train_total += 1
+            train_loss += loss_1.item()
+            train_acc += acc_1
+
+            optimizer1.zero_grad()
+            loss_1.backward()
+            optimizer1.step()
+        train_loss = float(train_loss)/float(train_total)
+        train_acc = float(train_acc)/float(train_total)
+        return train_loss, train_acc #torch.tensor([0.])
+    
+    def evaluate(self, valid_loader, model1):
+        model1.eval()
+        
+        val_total=0
+        val_acc=0 
+        for i,batch in enumerate(valid_loader):
+            batch = batch.to(self.device)
+            out = model1(batch.x, batch.edge_index)
+
+            # Only consider predictions and labels of seed nodes
+            y = batch.y[:batch.batch_size]
+            out = out[:batch.batch_size]
+
+            acc_1 = classification_acc(out, y)
+            val_total += 1
+            val_acc += acc_1
+        val_acc = float(val_acc)/float(val_total) 
+        return val_acc
 
     def loop(self):
         print('loop')
-
+        loss = []
+        train_acc_hist = []
+        val_acc_hist = []
         for epoch in range(1, self.config['max_epochs']+1):
-            self.model.network.train()
-            
-            out = self.train(self.train_loader, epoch, self.model.network, self.model.optimizer)
-        
+            train_loss, train_acc = self.train(self.train_loader, epoch, self.model.network, self.model.optimizer)
+            loss.append(train_loss)
+            train_acc_hist.append(train_acc)
+
+            val_acc = self.evaluate(self.valid_loader, self.model.network)
+            val_acc_hist.append(val_acc)
+        plt.plot(loss, 'g', label="loss")
+        plt.plot(train_acc_hist, 'b', label="train_acc")
+        plt.plot(val_acc_hist, 'r', label="val_acc")
+        plt.legend()
+        plt.show()
