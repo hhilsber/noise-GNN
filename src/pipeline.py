@@ -32,7 +32,7 @@ class Pipeline(object):
         self.model = NGNN(config)
         
         self.model.network = self.model.network.to(self.device)
-        self.criterion = nn.CrossEntropyLoss()
+        #self.criterion = nn.CrossEntropyLoss()
 
         self.train_loader = NeighborLoader(
             self.dataset[0],
@@ -63,13 +63,15 @@ class Pipeline(object):
         for i,batch in enumerate(train_loader):
             batch = batch.to(self.device)
             out = model1(batch.x, batch.edge_index)
+            #out = model1(batch)
 
             # Only consider predictions and labels of seed nodes
             y = batch.y[:batch.batch_size]
             out = out[:batch.batch_size]
             #out = torch.max(out, dim=1)[1]
             
-            loss_1 = self.criterion(input=out, target=y.squeeze())
+            #loss_1 = self.criterion(input=out, target=y.squeeze())
+            loss_1 = F.cross_entropy(out, y.squeeze())
             acc_1 = classification_acc(out, y)
             
             train_total += 1
@@ -91,7 +93,7 @@ class Pipeline(object):
         for i,batch in enumerate(valid_loader):
             batch = batch.to(self.device)
             out = model1(batch.x, batch.edge_index)
-
+            #out = model1(batch)
             # Only consider predictions and labels of seed nodes
             y = batch.y[:batch.batch_size]
             out = out[:batch.batch_size]

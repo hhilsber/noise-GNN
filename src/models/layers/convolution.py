@@ -5,7 +5,7 @@ from torch_geometric.nn import GCNConv
 from torch_geometric.nn import global_mean_pool
 
 class SimpleGCN(nn.Module):
-    def __init__(self, in_size, hidden_dim, out_size, dropout_prob=0.5):
+    def __init__(self, in_size, hidden_dim, out_size, dropout_prob=0.3):
         super(SimpleGCN, self).__init__()
         
         self.conv1 = GCNConv(in_size, hidden_dim)
@@ -13,6 +13,8 @@ class SimpleGCN(nn.Module):
         self.dropout = nn.Dropout(dropout_prob)
 
     def forward(self, x, edge_index):
+        #x, edge_index = data.x, data.edge_index
+
         # First graph convolutional layer
         x = self.conv1(x, edge_index)
         x = F.relu(x)
@@ -20,8 +22,8 @@ class SimpleGCN(nn.Module):
         
         # Second graph convolutional layer
         x = self.conv2(x, edge_index)
-        x = F.relu(x)
-        x = self.dropout(x)
+        #x = F.relu(x)
+        #x = self.dropout(x)
 
         # Global pooling to aggregate node embeddings
         #x = global_mean_pool(x, data.batch)

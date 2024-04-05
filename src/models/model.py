@@ -4,6 +4,8 @@ import torch.optim as optim
 from .layers.attention import GAT, SIMA
 from .layers.convolution import SimpleGCN
 
+from torch_geometric.nn import GraphSAGE
+
 class NGNN(object):
     """
     d
@@ -25,6 +27,11 @@ class NGNN(object):
                                 hidden_dim=self.config['hidden_size'],
                                 out_size=self.config['nbr_classes'],
                                 dropout_prob=self.config['dropout'])
+        elif self.config['module'] == 'sage':
+            self.network = GraphSAGE(in_channels=self.config['batch_size'],
+                                    hidden_channels=self.config['hidden_size'],
+                                    out_channels=self.config['nbr_classes'],
+                                    num_layers=self.config['num_layers'])
 
 
     def init_optimizer(self):
@@ -32,7 +39,9 @@ class NGNN(object):
             self.optimizer = torch.optim.Adam(self.network.parameters(),
                                                 lr=self.config['learning_rate'],
                                                 weight_decay=self.config['weight_decay'])
-
+        elif self.config['optimizer'] == 'adam_sage':
+            self.optimizer = torch.optim.Adam(self.network.parameters(),
+                                            lr=self.config['learning_rate'])
         elif self.config['optimizer'] == 'double_adam':
             self.optims = MultipleOptimizer(torch.optim.Adam(self.edge_module.parameters(),
                                                 lr=self.config['learning_rate'],
