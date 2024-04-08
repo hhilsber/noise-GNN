@@ -1,4 +1,4 @@
-python main.py -config config/config_o.yml
+python main.py -config config/config_mag.yml
 
 
 ls /mnt/data/datasets/pyg/2.0
