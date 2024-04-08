@@ -10,10 +10,10 @@ seed: 1232
 # Graph model
 module: 'simple_gcn'
 #module: 'sage'
-hidden_size: 32
-num_layers: 2
-nbr_neighbors: 60
-k_hops: 5
+hidden_size: 64
+num_layers: 3
+nbr_neighbors: [15,10,5]
+#k_hops: 5
 
 # Regularization
 dropout: 0.3
@@ -21,11 +21,12 @@ dropout: 0.3
 # Training
 #optimizer: 'single_adam'
 optimizer: 'adam_sage'
-learning_rate: 0.01
+learning_rate: 0.001
 weight_decay: 0.0005
 
-max_epochs: 7
-batch_size: 256
+max_epochs: 12
+batch_size: 1024
+num_workers: 1
 
 # Device
 no_cuda: False

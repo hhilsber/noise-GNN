@@ -23,10 +23,11 @@ class NGNN(object):
 
     def init_network(self):
         if self.config['module'] == 'simple_gcn':
-            self.network = SimpleGCN(in_size=self.config['nbr_features'],
-                                hidden_dim=self.config['hidden_size'],
-                                out_size=self.config['nbr_classes'],
-                                dropout_prob=self.config['dropout'])
+            self.network = SimpleGCN(in_channels=self.config['nbr_features'],
+                                hidden_channels=self.config['hidden_size'],
+                                out_channels=self.config['nbr_classes'],
+                                num_layers=self.config['num_layers'],
+                                dropout=self.config['dropout'])
         elif self.config['module'] == 'sage':
             self.network = GraphSAGE(in_channels=self.config['batch_size'],
                                     hidden_channels=self.config['hidden_size'],
