@@ -1,1 +1,6 @@
 python main.py -config config/config_o.yml
+
+
+ls /mnt/data/datasets/pyg/2.0
+
+clone git repo into home directory
