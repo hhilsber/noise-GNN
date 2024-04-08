@@ -1,6 +1,6 @@
 # Data
 data_type: 'network'
-data_dir: '/mnt/data/datasets/pyg/2.0/OGB_MAG/'
+data_dir: '/mnt/home/hhilsberg/noise-GNN'
 dataset_name: 'ogbn-mag'
 task_type: 'classification'
 
