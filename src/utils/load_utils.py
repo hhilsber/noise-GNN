@@ -44,5 +44,5 @@ def load_network(config):
     
     if dataset_name == 'ogbn-mag':
         root = config['data_dir']
-        dataset = PygNodePropPredDataset('ogbn-mag', root)
+        dataset = PygNodePropPredDataset('mag', root)
     return dataset
