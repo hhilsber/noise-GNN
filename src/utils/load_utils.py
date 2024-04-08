@@ -41,6 +41,7 @@ def load_network(config):
         dataset = PygNodePropPredDataset('ogbn-arxiv', root)
         #dataset = pkl.load(open(f'{data_dir}/{dataset_name}/dataset.pkl', 'rb'))
         #print("total nodes: {} --- split train/val/test {}/{}/{}".format(dataset.x.shape[0],dataset.train_idx.shape[0],dataset.valid_idx.shape[0],dataset.test_idx.shape[0]))
+    
     if dataset_name == 'ogbn-mag':
         root = config['data_dir']
         dataset = PygNodePropPredDataset('ogbn-mag', root)
