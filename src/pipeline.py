@@ -23,7 +23,8 @@ class Pipeline(object):
         self.split_idx = self.dataset.get_idx_split()
         self.data = self.dataset[0].to(self.device)
 
-        config['nbr_features'] = self.dataset.x.shape[-1]
+        #config['nbr_features'] = self.dataset.x.shape[-1]
+        config['nbr_features'] = self.dataset.num_features
         config['nbr_classes'] = self.dataset.y.max().item() + 1
         config['nbr_nodes'] = self.dataset.x.shape[0]
 

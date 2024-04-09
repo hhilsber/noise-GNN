@@ -1,10 +1,9 @@
 import torch
 import torch.optim as optim
 
-from .layers.attention import GAT, SIMA
 from .layers.convolution import SimpleGCN
+from .layers.sage import SAGE
 
-from torch_geometric.nn import GraphSAGE
 
 class NGNN(object):
     """
@@ -29,7 +28,7 @@ class NGNN(object):
                                 num_layers=self.config['num_layers'],
                                 dropout=self.config['dropout'])
         elif self.config['module'] == 'sage':
-            self.network = GraphSAGE(in_channels=self.config['batch_size'],
+            self.network = SAGE(in_channels=self.config['nbr_features'],
                                     hidden_channels=self.config['hidden_size'],
                                     out_channels=self.config['nbr_classes'],
                                     num_layers=self.config['num_layers'])

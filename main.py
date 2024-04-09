@@ -12,6 +12,7 @@ from src.pipeline import Pipeline
 ##################################### Main #####################################
 def main(config):
     model = Pipeline(config)
+    print('main')
     #model.loop()
 
 
