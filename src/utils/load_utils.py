@@ -14,9 +14,9 @@ def load_network(config):
     """
 
     device = config['device']
-    data_dir = config['data_dir']
     dataset_name = config['dataset_name']
-    
+    root = config['data_dir']
+
     if dataset_name == 'cora':
         dataset = pkl.load(open(f'{data_dir}/{dataset_name}/dataset.pkl', 'rb'))
         
@@ -36,16 +36,7 @@ def load_network(config):
             'train_mask': train_mask.to(device) if device else train_mask,
             'val_mask': val_mask.to(device) if device else val_mask,
             'test_mask': test_mask.to(device) if device else test_mask}
-    if dataset_name == 'ogbn-arxiv':
-        root = 'C:/Users/hendr/Documents/data'
-        dataset = PygNodePropPredDataset('ogbn-arxiv', root)
-        #dataset = pkl.load(open(f'{data_dir}/{dataset_name}/dataset.pkl', 'rb'))
-        #print("total nodes: {} --- split train/val/test {}/{}/{}".format(dataset.x.shape[0],dataset.train_idx.shape[0],dataset.valid_idx.shape[0],dataset.test_idx.shape[0]))
-    
-    if dataset_name == 'ogbn-mag':
-        root = config['data_dir']
-        dataset = PygNodePropPredDataset('ogbn-mag', root)
-    if dataset_name == 'ogbn-products':
-        root = config['data_dir']
-        dataset = PygNodePropPredDataset('ogbn-products', root)
+    else:
+        dataset = PygNodePropPredDataset(dataset_name, root)
+        
     return dataset
