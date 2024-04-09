@@ -13,6 +13,7 @@ from src.pipeline import Pipeline
 def main(config):
     model = Pipeline(config)
     print('main')
+    print('test')
     #model.loop()
 
 
