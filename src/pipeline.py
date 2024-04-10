@@ -1,3 +1,4 @@
+import os
 import torch
 import numpy as np
 import torch.nn as nn
@@ -10,6 +11,7 @@ from .utils.load_utils import load_network
 from .utils.data_utils import classification_acc
 from .models.model import NGNN
 
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 class Pipeline(object):
     """
     Processing pipeline
@@ -21,11 +23,11 @@ class Pipeline(object):
         # Data prep
         self.dataset = load_network(config)
         self.split_idx = self.dataset.get_idx_split()
-        self.data = self.dataset[0].to(self.device)
+        self.data = self.dataset[0]
 
         #config['nbr_features'] = self.dataset.x.shape[-1]
         config['nbr_features'] = self.dataset.num_features
-        config['nbr_classes'] = self.dataset.y.max().item() + 1
+        config['nbr_classes'] = self.dataset.num_classes #dataset.y.max().item() + 1
         config['nbr_nodes'] = self.dataset.x.shape[0]
 
         # Config
@@ -86,6 +88,7 @@ class Pipeline(object):
     
     def evaluate(self, model1, split_idx):
         model1.eval()
+
         out = model1.inference(self.data.x, self.valid_loader, self.device)
 
         y_true = self.data.y.cpu()

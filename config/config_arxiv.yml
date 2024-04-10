@@ -13,7 +13,7 @@ module: 'simple_gcn'
 hidden_size: 64
 num_layers: 3
 nbr_neighbors: [15,10,5]
-#k_hops: 5
+
 
 # Regularization
 dropout: 0.3
@@ -27,6 +27,7 @@ weight_decay: 0.0005
 max_epochs: 12
 batch_size: 1024
 num_workers: 1
+eval_type: 'test'
 
 # Device
 no_cuda: False

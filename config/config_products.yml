@@ -10,7 +10,7 @@ seed: 1232
 # Graph model
 module: 'sage'
 #module: 'sage'
-hidden_size: 64
+hidden_size: 256
 num_layers: 3
 nbr_neighbors: [15,10,5]
 #k_hops: 5

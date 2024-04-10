@@ -5,6 +5,7 @@ import pickle as pkl
 import torch
 import numpy as np
 from ogb.nodeproppred import PygNodePropPredDataset
+import torch_geometric.transforms as T
 
 from .data_utils import edges_to_adjacency
 
@@ -17,7 +18,12 @@ def load_network(config):
     dataset_name = config['dataset_name']
     root = config['data_dir']
 
-    if dataset_name == 'cora':
+
+    if dataset_name in ['ogbn-products']:
+        dataset = PygNodePropPredDataset(dataset_name, root)
+    elif dataset_name in ['ogbn-arxiv']:
+        dataset = PygNodePropPredDataset(dataset_name, root, transform=T.ToSparseTensor())
+    elif dataset_name == 'cora':
         dataset = pkl.load(open(f'{data_dir}/{dataset_name}/dataset.pkl', 'rb'))
         
         features = dataset.x
@@ -37,6 +43,6 @@ def load_network(config):
             'val_mask': val_mask.to(device) if device else val_mask,
             'test_mask': test_mask.to(device) if device else test_mask}
     else:
-        dataset = PygNodePropPredDataset(dataset_name, root)
+        print('wrong dataset name')
         
     return dataset

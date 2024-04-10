@@ -28,7 +28,7 @@ class SAGE(torch.nn.Module):
                 x = F.dropout(x, p=0.5, training=self.training)
         return x
 
-    def inference(self, x_all):
+    def inference(self, x_all, subgraph_loader, device):
         # Compute representations of nodes layer by layer, using *all*
         # available edges. This leads to faster computation in contrast to
         # immediately computing the final representations of each batch.
