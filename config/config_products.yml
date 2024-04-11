@@ -24,9 +24,12 @@ optimizer: 'adam_sage'
 learning_rate: 0.001
 weight_decay: 0.0005
 
-max_epochs: 15
+max_epochs: 11
 batch_size: 1024
 num_workers: 1
 
 # Device
 no_cuda: False
+
+# Plot
+do_plot: False

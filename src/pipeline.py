@@ -40,7 +40,7 @@ class Pipeline(object):
         self.evaluator = Evaluator(name=config['dataset_name'])
         #self.criterion = nn.CrossEntropyLoss()
 
-        
+        print('train: {}, valid: {}, test: {}'.format(self.split_idx['train'].shape[0],self.split_idx['valid'].shape[0],self.split_idx['test'].shape[0]))
 
         self.train_loader = NeighborLoader(
             self.data,
@@ -51,7 +51,16 @@ class Pipeline(object):
             num_workers=self.config['num_workers'],
             persistent_workers=True
         )
+        self.valid_loader = NeighborLoader(
+            self.data,
+            input_nodes=self.split_idx['valid'],
+            num_neighbors=self.config['nbr_neighbors'],
+            batch_size=self.config['batch_size'],
+            num_workers=self.config['num_workers'],
+            persistent_workers=True
+        )
         
+        """
         self.valid_loader = NeighborLoader(
             self.data,
             input_nodes=None,
@@ -59,7 +68,7 @@ class Pipeline(object):
             batch_size=4096,
             num_workers=self.config['num_workers'],
             persistent_workers=True
-        )
+        )"""
 
     def train(self, train_loader, epoch, model1, optimizer1):
         print('Train epoch {}/{}'.format(epoch, self.config['max_epochs']))
@@ -87,7 +96,24 @@ class Pipeline(object):
         train_acc = total_correct / self.split_idx['train'].size(0)
         return train_loss, train_acc
     
-    def evaluate(self, model1, split_idx):
+    def evaluate(self, valid_loader, model1):
+        model1.eval()
+
+        total_correct = 0
+        
+        for batch in valid_loader:
+            batch = batch.to(self.device)
+            out = model1(batch.x, batch.edge_index)
+            
+            # Only consider predictions and labels of seed nodes
+            out = out[:batch.batch_size]
+            y = batch.y[:batch.batch_size].squeeze()
+
+            total_correct += int(out.argmax(dim=-1).eq(y).sum())
+        val_acc = total_correct / self.split_idx['valid'].size(0)
+        return val_acc
+
+    def infer(self, model1, split_idx):
         model1.eval()
 
         out = model1.inference(self.data.x, self.valid_loader, self.device)
@@ -121,19 +147,20 @@ class Pipeline(object):
             loss.append(train_loss)
             train_acc_hist.append(train_acc)
 
-            #train_acc, val_acc, test_acc = self.evaluate(self.model.network, self.split_idx)
+            val_acc = self.evaluate(self.valid_loader, self.model.network)
             #train_acc_hist.append(train_acc)
             #val_acc_hist.append(val_acc)
             #test_acc_hist.append(test_acc)
-        plt.plot(loss, 'g', label="loss")
-        plt.plot(train_acc_hist, 'b', label="train_acc")
-        #plt.plot(val_acc_hist, 'r', label="val_acc")
-        #plt.plot(test_acc_hist, 'y', label="test_acc")
-        plt.legend()
-        #plt.show()
-        date = dt.datetime.date(dt.datetime.now())
-        name = '../plots/plot_dt{}{}_{}_lay{}_hid{}_lr{}_epo{}_bs{}_drop{}.png'.format(date.month,date.day,self.config['module'],self.config['num_layers'],self.config['hidden_size'],self.config['learning_rate'],self.config['max_epochs'],self.config['batch_size'],self.config['dropout'])
-        plt.savefig(name)
+        if self.config['do_plot']:
+            plt.plot(loss, 'g', label="loss")
+            plt.plot(train_acc_hist, 'b', label="train_acc")
+            #plt.plot(val_acc_hist, 'r', label="val_acc")
+            #plt.plot(test_acc_hist, 'y', label="test_acc")
+            plt.legend()
+            #plt.show()
+            date = dt.datetime.date(dt.datetime.now())
+            name = '../plots/plot_dt{}{}_{}_lay{}_hid{}_lr{}_epo{}_bs{}_drop{}.png'.format(date.month,date.day,self.config['module'],self.config['num_layers'],self.config['hidden_size'],self.config['learning_rate'],self.config['max_epochs'],self.config['batch_size'],self.config['dropout'])
+            plt.savefig(name)
 
 
 """
