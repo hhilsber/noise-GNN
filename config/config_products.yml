@@ -8,23 +8,20 @@ task_type: 'classification'
 seed: 1232
 
 # Graph model
-module: 'sage'
-#module: 'sage'
+module: 'gcn'
 hidden_size: 256
 num_layers: 3
 nbr_neighbors: [15,10,5]
-#k_hops: 5
 
 # Regularization
 dropout: 0.3
 
 # Training
-#optimizer: 'single_adam'
-optimizer: 'adam_sage'
+optimizer: 'adam'
 learning_rate: 0.001
 weight_decay: 0.0005
 
-max_epochs: 11
+max_epochs: 8
 batch_size: 1024
 num_workers: 1
 
@@ -32,4 +29,4 @@ num_workers: 1
 no_cuda: False
 
 # Plot
-do_plot: False
+do_plot: True

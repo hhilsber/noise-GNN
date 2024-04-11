@@ -21,7 +21,7 @@ class NGNN(object):
         self.init_optimizer()
 
     def init_network(self):
-        if self.config['module'] == 'simple_gcn':
+        if self.config['module'] == 'gcn':
             self.network = SimpleGCN(in_channels=self.config['nbr_features'],
                                 hidden_channels=self.config['hidden_size'],
                                 out_channels=self.config['nbr_classes'],
@@ -35,13 +35,13 @@ class NGNN(object):
 
 
     def init_optimizer(self):
-        if self.config['optimizer'] == 'single_adam':
+        if self.config['optimizer'] == 'adam':
+            self.optimizer = torch.optim.Adam(self.network.parameters(),
+                                            lr=self.config['learning_rate'])
+        elif self.config['optimizer'] == 'single_adam':
             self.optimizer = torch.optim.Adam(self.network.parameters(),
                                                 lr=self.config['learning_rate'],
                                                 weight_decay=self.config['weight_decay'])
-        elif self.config['optimizer'] == 'adam_sage':
-            self.optimizer = torch.optim.Adam(self.network.parameters(),
-                                            lr=self.config['learning_rate'])
         elif self.config['optimizer'] == 'double_adam':
             self.optims = MultipleOptimizer(torch.optim.Adam(self.edge_module.parameters(),
                                                 lr=self.config['learning_rate'],

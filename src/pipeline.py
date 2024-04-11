@@ -9,7 +9,7 @@ from ogb.nodeproppred import Evaluator
 import datetime as dt
 
 from .utils.load_utils import load_network
-from .utils.data_utils import classification_acc
+from .utils.noise import flip_label
 from .models.model import NGNN
 
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
@@ -25,12 +25,12 @@ class Pipeline(object):
         self.dataset = load_network(config)
         self.split_idx = self.dataset.get_idx_split()
         self.data = self.dataset[0]
-
-        #config['nbr_features'] = self.dataset.x.shape[-1]
-        config['nbr_features'] = self.dataset.num_features
+        yhn = flip_label(F.one_hot(self.data.y, self.dataset.num_classes).squeeze())
+        
+        config['nbr_features'] = self.dataset.num_features #self.dataset.x.shape[-1]
         config['nbr_classes'] = self.dataset.num_classes #dataset.y.max().item() + 1
         config['nbr_nodes'] = self.dataset.x.shape[0]
-
+        
         # Config
         self.config = config
 
@@ -148,13 +148,13 @@ class Pipeline(object):
             train_acc_hist.append(train_acc)
 
             val_acc = self.evaluate(self.valid_loader, self.model.network)
-            #train_acc_hist.append(train_acc)
-            #val_acc_hist.append(val_acc)
+            val_acc_hist.append(val_acc)
             #test_acc_hist.append(test_acc)
+        print('train acc: {}, valid acc: {}'.format(train_acc,val_acc))
         if self.config['do_plot']:
             plt.plot(loss, 'g', label="loss")
             plt.plot(train_acc_hist, 'b', label="train_acc")
-            #plt.plot(val_acc_hist, 'r', label="val_acc")
+            plt.plot(val_acc_hist, 'r', label="val_acc")
             #plt.plot(test_acc_hist, 'y', label="test_acc")
             plt.legend()
             #plt.show()

@@ -9,12 +9,13 @@ def flip_label(labels, prob=0.3):
     """
     
     new_y = np.copy(labels.numpy())
+    print(new_y.shape)
     for idx in range(new_y.shape[0]):
         if np.random.rand() <= prob:
             class_prob = (np.ones((new_y.shape[1])) - new_y[idx,:]) * (1/(new_y.shape[1]-1))
             flipped = np.random.multinomial(1, class_prob, 1)[0]
             new_y[idx] = flipped
-    return torch.from_numpy(new_y)
+    return torch.from_numpy(new_y).argmax(dim=-1)
 
 def add_edge_noise(adjacency, prob=0.4):
     """

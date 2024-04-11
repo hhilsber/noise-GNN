@@ -11,7 +11,6 @@ class SimpleGCN(torch.nn.Module):
         
         """
         https://github.com/snap-stanford/ogb/blob/master/examples/nodeproppred/mag/gnn.py
-        https://github.com/pyg-team/pytorch_geometric/blob/master/examples/ogbn_products_sage.py
 
         """
         self.num_layers = num_layers
