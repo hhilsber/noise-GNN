@@ -6,6 +6,7 @@ import torch.nn.functional as F
 from torch_geometric.loader import DataLoader, NeighborLoader
 import matplotlib.pyplot as plt
 from ogb.nodeproppred import Evaluator
+import datetime as dt
 
 from .utils.load_utils import load_network
 from .utils.data_utils import classification_acc
@@ -118,18 +119,21 @@ class Pipeline(object):
         for epoch in range(1, self.config['max_epochs']+1):
             train_loss, train_acc = self.train(self.train_loader, epoch, self.model.network, self.model.optimizer)
             loss.append(train_loss)
-            #train_acc_hist.append(train_acc)
-
-            train_acc, val_acc, test_acc = self.evaluate(self.model.network, self.split_idx)
             train_acc_hist.append(train_acc)
-            val_acc_hist.append(val_acc)
-            test_acc_hist.append(test_acc)
+
+            #train_acc, val_acc, test_acc = self.evaluate(self.model.network, self.split_idx)
+            #train_acc_hist.append(train_acc)
+            #val_acc_hist.append(val_acc)
+            #test_acc_hist.append(test_acc)
         plt.plot(loss, 'g', label="loss")
         plt.plot(train_acc_hist, 'b', label="train_acc")
-        plt.plot(val_acc_hist, 'r', label="val_acc")
-        plt.plot(test_acc_hist, 'y', label="test_acc")
+        #plt.plot(val_acc_hist, 'r', label="val_acc")
+        #plt.plot(test_acc_hist, 'y', label="test_acc")
         plt.legend()
-        plt.show()
+        #plt.show()
+        date = dt.datetime.date(dt.datetime.now())
+        name = '../plots/plot_dt{}{}_{}_lay{}_hid{}_lr{}_epo{}_bs{}_drop{}.png'.format(date.month,date.day,self.config['module'],self.config['num_layers'],self.config['hidden_size'],self.config['learning_rate'],self.config['max_epochs'],self.config['batch_size'],self.config['dropout'])
+        plt.savefig(name)
 
 
 """
