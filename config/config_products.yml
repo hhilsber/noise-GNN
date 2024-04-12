@@ -30,3 +30,7 @@ no_cuda: False
 
 # Plot
 do_plot: True
+
+# Noise
+noise_loss: False
+flip_rate: 0.4

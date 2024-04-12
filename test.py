@@ -14,5 +14,6 @@ y = torch.tensor([[0,1,2,2,2]])
 
 
 date = dt.datetime.date(dt.datetime.now())
-name = 'abc_{}{}_{}'.format(date.month,date.day,a)
-print(name)
+t = 0.8435
+b = 0.6455
+print('t: {:.2f}, b: {:.2f}'.format(t,b))
