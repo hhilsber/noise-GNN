@@ -7,7 +7,6 @@ import numpy as np
 from ogb.nodeproppred import PygNodePropPredDataset
 import torch_geometric.transforms as T
 
-from .data_utils import edges_to_adjacency
 
 def load_network(config):
     """
@@ -33,7 +32,7 @@ def load_network(config):
         val_mask = dataset.val_mask
         test_mask = dataset.test_mask
         
-        adjacency = edges_to_adjacency(edge_index, features.shape[0])
+        #adjacency = edges_to_adjacency(edge_index, features.shape[0])
 
         data = {'adjacency': adjacency.to(device) if device else adjacency,
             'features': features.to(device) if device else features,
