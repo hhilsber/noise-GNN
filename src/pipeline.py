@@ -59,11 +59,7 @@ class Pipeline(object):
             num_workers=self.config['num_workers'],
             persistent_workers=True
         )
-        print(len(self.train_loader),len(self.valid_loader))
-        batch = next(iter(self.train_loader))
-        print(batch.n_id[:10])
-        batch = next(iter(self.valid_loader))
-        print(batch.n_id[:10])
+        
         """
         self.valid_loader = NeighborLoader(
             self.data,

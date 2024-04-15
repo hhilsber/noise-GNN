@@ -9,8 +9,8 @@ seed: 1232
 
 # Graph model
 module: 'gcn'
-hidden_size: 256
-num_layers: 3
+hidden_size: 128
+num_layers: 2
 nbr_neighbors: [15,10,5]
 
 # Regularization
@@ -26,10 +26,10 @@ batch_size: 1024
 num_workers: 1
 
 # Device
-no_cuda: False
+no_cuda: True
 
 # Plot
-do_plot: True
+do_plot: False
 
 # Noise
 noise_loss: False
