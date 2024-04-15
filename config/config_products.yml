@@ -9,7 +9,7 @@ seed: 1232
 
 # Graph model
 module: 'gcn'
-hidden_size: 128
+hidden_size: 64
 num_layers: 2
 nbr_neighbors: [15,10,5]
 
@@ -21,7 +21,7 @@ optimizer: 'adam'
 learning_rate: 0.001
 weight_decay: 0.0005
 
-max_epochs: 1
+max_epochs: 8
 batch_size: 1024
 num_workers: 1
 
@@ -29,8 +29,11 @@ num_workers: 1
 no_cuda: True
 
 # Plot
-do_plot: False
+do_plot: True
 
 # Noise
-noise_loss: False
-flip_rate: 0.4
+noise_rate: 0.3
+
+# Co-teaching
+ct_tk: 4
+ct_exp: 1

@@ -12,6 +12,7 @@ from .utils.load_utils import load_network
 from .utils.data_utils import topk_accuracy
 from .utils.noise import flip_label
 from .models.model import NGNN
+from .utils.losses import CTLoss
 
 #os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 class Pipeline(object):
@@ -26,11 +27,16 @@ class Pipeline(object):
         self.dataset = load_network(config)
         self.split_idx = self.dataset.get_idx_split()
         self.data = self.dataset[0]
-        self.data.yhn = flip_label(F.one_hot(self.data.y, self.dataset.num_classes).squeeze(), config['flip_rate'])
+        self.data.yhn = flip_label(F.one_hot(self.data.y, self.dataset.num_classes).squeeze(), config['noise_rate'])
+        self.noise_or_not = (self.data.y.squeeze() == self.data.yhn) #.int() # true if same lbl
         
         config['nbr_features'] = self.dataset.num_features #self.dataset.x.shape[-1]
         config['nbr_classes'] = self.dataset.num_classes #dataset.y.max().item() + 1
         config['nbr_nodes'] = self.dataset.x.shape[0]
+        
+        # Drop rate schedule for co-teaching
+        self.rate_schedule = np.ones(config['max_epochs'])*config['noise_rate']
+        self.rate_schedule[:config['ct_tk']] = np.linspace(0, config['noise_rate']**config['ct_exp'], config['ct_tk'])
         
         # Config
         self.config = config
@@ -39,6 +45,7 @@ class Pipeline(object):
         self.model1 = NGNN(config)
         self.model2 = NGNN(config)
         self.evaluator = Evaluator(name=config['dataset_name'])
+        self.criterion = CTLoss(self.device)
 
         print('train: {}, valid: {}, test: {}'.format(self.split_idx['train'].shape[0],self.split_idx['valid'].shape[0],self.split_idx['test'].shape[0]))
         
@@ -62,47 +69,44 @@ class Pipeline(object):
   
 
     def train(self, train_loader, epoch, model1, optimizer1, model2, optimizer2):
-        print('Train epoch {}/{}'.format(epoch, self.config['max_epochs']))
+        print('Train epoch {}/{}'.format(epoch+1, self.config['max_epochs']))
         model1.train()
         model2.train()
 
-        pure_ratio_list=[]
         pure_ratio_1_list=[]
         pure_ratio_2_list=[]
-        train_total=0
-        train_correct=0 
-        train_total2=0
-        train_correct2=0 
+        total_correct_1=0
+        total_correct_2=0
 
         for batch in train_loader:
-            optimizer1.zero_grad()
-            optimizer2.zero_grad()
-
             batch = batch.to(self.device)
-            ind = batch.n_id
             # Only consider predictions and labels of seed nodes
             out1 = model1(batch.x, batch.edge_index)[:batch.batch_size]
             out2 = model2(batch.x, batch.edge_index)[:batch.batch_size]
             y = batch.y[:batch.batch_size].squeeze()
-            yn = batch.yhn[:batch.batch_size].squeeze()
+            yhn = batch.yhn[:batch.batch_size].squeeze()
             
-            acc1, _ = topk_accuracy(out1, y, batch.batch_size, topk=(1, 5))
-            
-            if self.config['noise_loss']:
-                loss_1 = F.cross_entropy(out, yn)
-            else:
-                loss_1 = F.cross_entropy(out, y)
-            
-            total_loss += float(loss_1)
-            total_correct_true += int(out.argmax(dim=-1).eq(y).sum())
-            total_correct_noise += int(out.argmax(dim=-1).eq(yn).sum())
+            loss_1, loss_2, pure_ratio_1, pure_ratio_2 = self.criterion(out1, out2, yhn, self.rate_schedule[epoch], batch.n_id, self.noise_or_not)
+            pure_ratio_1_list.append(100*pure_ratio_1)
+            pure_ratio_2_list.append(100*pure_ratio_2)
 
+            total_correct_1 += int(out1.argmax(dim=-1).eq(y).sum())
+            total_correct_2 += int(out2.argmax(dim=-1).eq(y).sum())
+
+            optimizer1.zero_grad()
             loss_1.backward()
             optimizer1.step()
-        train_loss = total_loss / len(train_loader)
-        train_acc_true = total_correct_true / self.split_idx['train'].size(0)
-        train_acc_noise = total_correct_noise / self.split_idx['train'].size(0)
-        return train_acc1, train_acc2, pure_ratio_1_list, pure_ratio_2_list
+            optimizer2.zero_grad()
+            loss_2.backward()
+            optimizer2.step()
+        #train_acc1=float(train_correct)/float(train_total)
+        #train_acc2=float(train_correct2)/float(train_total2)
+        #train_loss = total_loss / len(train_loader)
+        #train_acc_true = total_correct_true / self.split_idx['train'].size(0)
+        #train_acc_noise = total_correct_noise / self.split_idx['train'].size(0)
+        train_acc_1 = total_correct_1 / self.split_idx['train'].size(0)
+        train_acc_2 = total_correct_2 / self.split_idx['train'].size(0)
+        return train_acc_1, train_acc_2, pure_ratio_1_list, pure_ratio_2_list
     
     def evaluate(self, valid_loader, model1, model2):
         model1.eval()
@@ -132,32 +136,31 @@ class Pipeline(object):
         optimizer1 = self.model1.optimizer
         optimizer2 = self.model2.optimizer
 
-        loss = []
-        train_acc_true_hist = []
-        train_acc_noise_hist = []
-        val_acc_true_hist = []
-        val_acc_noise_hist = []
         
-        for epoch in range(1, self.config['max_epochs']+1):
+        train_acc_1_hist = []
+        train_acc_2_hist = []
+        
+        
+        for epoch in range(self.config['max_epochs']):
             print('adjust lr')
-            train_acc1, train_acc2, pure_ratio_1_list, pure_ratio_2_list = self.train(self.train_loader, epoch, model1, optimizer1, model2, optimizer2)
-           
+            train_acc_1, train_acc_2, pure_ratio_1_list, pure_ratio_2_list = self.train(self.train_loader, epoch, model1, optimizer1, model2, optimizer2)
+            train_acc_1_hist.append(train_acc_1)
+            train_acc_2_hist.append(train_acc_2)
 
             """
             val_acc_true, val_acc_noise = self.evaluate(self.valid_loader, self.model.network)
             val_acc_true_hist.append(val_acc_true)
             val_acc_noise_hist.append(val_acc_noise)"""
             
-        print('train acc true: {:.2f}, train acc noise: {:.2f}, valid acc true: {:.2f}, valid acc noise: {:.2f}'.format(train_acc_true,train_acc_noise,val_acc_true,val_acc_noise))
+        #print('train acc true: {:.2f}, train acc noise: {:.2f}, valid acc true: {:.2f}, valid acc noise: {:.2f}'.format(train_acc_true,train_acc_noise,val_acc_true,val_acc_noise))
         if self.config['do_plot']:
-            #plt.plot(loss, 'y', label="loss")
-            plt.plot(train_acc_true_hist, 'blue', label="train_acc_true")
-            plt.plot(val_acc_true_hist, 'red', label="val_acc_true")
-            plt.plot(train_acc_noise_hist, 'green', label="train_acc_noise")
-            plt.plot(val_acc_noise_hist, 'darkorange', label="val_acc_noise")
+            plt.plot(train_acc_1_hist, 'blue', label="train_acc_1_hist")
+            plt.plot(train_acc_2_hist, 'red', label="train_acc_2_hist")
+            #plt.plot(train_acc_noise_hist, 'green', label="train_acc_noise")
+            #plt.plot(val_acc_noise_hist, 'darkorange', label="val_acc_noise")
             
             plt.legend()
             #plt.show()
             date = dt.datetime.date(dt.datetime.now())
-            name = '../plots/dt{}{}_{}_noise_{}_flip{}_lay{}_hid{}_lr{}_epo{}_bs{}_drop{}.png'.format(date.month,date.day,self.config['module'],self.config['noise_loss'],self.config['flip_rate'],self.config['num_layers'],self.config['hidden_size'],self.config['learning_rate'],self.config['max_epochs'],self.config['batch_size'],self.config['dropout'])
+            name = '../plots/coteaching/dt{}{}_{}_noise{}_lay{}_hid{}_lr{}_epo{}_bs{}_drop{}_ctck{}_ctexp{}.png'.format(date.month,date.day,self.config['module'],self.config['noise_rate'],self.config['num_layers'],self.config['hidden_size'],self.config['learning_rate'],self.config['max_epochs'],self.config['batch_size'],self.config['dropout'],self.config['ct_tk'],self.config['ct_exp'])
             plt.savefig(name)
