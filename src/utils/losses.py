@@ -33,7 +33,8 @@ class CTLoss(nn.Module):
         loss_1_update = F.cross_entropy(y_1[ind_2_update], y_noise[ind_2_update])
         loss_2_update = F.cross_entropy(y_2[ind_1_update], y_noise[ind_1_update])
 
-        return torch.sum(loss_1_update)/num_remember, torch.sum(loss_2_update)/num_remember, pure_ratio_1, pure_ratio_2
+        #return torch.sum(loss_1_update)/num_remember, torch.sum(loss_2_update)/num_remember, pure_ratio_1, pure_ratio_2
+        return loss_1_update, loss_2_update, pure_ratio_1, pure_ratio_2
 
 class BCELoss(nn.Module):
     """
