@@ -3,6 +3,8 @@ data_type: 'network'
 data_dir: '../data'
 dataset_name: 'ogbn-products'
 task_type: 'classification'
+train_type: 'coteaching'
+compare: True
 
 # Seed
 seed: 1232
@@ -21,7 +23,7 @@ optimizer: 'adam'
 learning_rate: 0.001
 weight_decay: 0.0005
 
-max_epochs: 10
+max_epochs: 12
 batch_size: 1024
 num_workers: 1
 
@@ -32,8 +34,8 @@ no_cuda: True
 do_plot: True
 
 # Noise
-noise_rate: 0.3
+noise_rate: 0.4
 
 # Co-teaching
-ct_tk: 6
+ct_tk: 5
 ct_exp: 1
