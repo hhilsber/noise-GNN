@@ -117,7 +117,6 @@ class Pipeline(object):
         return train_loss_1, train_loss_2, train_acc_1, train_acc_2, pure_ratio_1_list, pure_ratio_2_list
     
     def train(self, train_loader, epoch, model, optimizer):
-        print('Train compare')
         print('Train epoch {}/{}'.format(epoch+1, self.config['max_epochs']))
         model.train()
 
@@ -210,6 +209,7 @@ class Pipeline(object):
             val_acc_2_hist.append(val_acc_2)
         
         if self.config['compare']:
+            print('Train compare')
             model_c = self.model_c.network.to(self.device)
             optimizer_c = self.model_c.optimizer
             train_loss_hist = []
@@ -233,7 +233,8 @@ class Pipeline(object):
             if self.config['compare']:
                 plt.plot(train_acc_hist, 'red', label="train_acc_hist")
                 plt.plot(val_acc_hist, 'peachpuff', label="val_acc_hist")
-            plt.axhline(y=0.9, color='black', linestyle='-')
+            plt.axhline(y=0.8, color='grey', linestyle='--')
+            plt.axhline(y=0.9, color='grey', linestyle='--')
             plt.ylim(0,1)
             plt.legend()
             """
@@ -249,5 +250,5 @@ class Pipeline(object):
             plt.legend()
             #plt.show()
             date = dt.datetime.date(dt.datetime.now())
-            name = '../plots/coteaching/dt{}{}_{}_noise{}_lay{}_hid{}_lr{}_epo{}_bs{}_drop{}_ctck{}_ctexp{}.png'.format(date.month,date.day,self.config['module'],self.config['noise_rate'],self.config['num_layers'],self.config['hidden_size'],self.config['learning_rate'],self.config['max_epochs'],self.config['batch_size'],self.config['dropout'],self.config['ct_tk'],self.config['ct_exp'])
+            name = '../plots/coteaching/dt{}{}_{}_noise{}_lay{}_hid{}_lr{}_epo{}_bs{}_drop{}_ctck{}_ctexp{}_neigh20155.png'.format(date.month,date.day,self.config['module'],self.config['noise_rate'],self.config['num_layers'],self.config['hidden_size'],self.config['learning_rate'],self.config['max_epochs'],self.config['batch_size'],self.config['dropout'],self.config['ct_tk'],self.config['ct_exp'])
             plt.savefig(name)

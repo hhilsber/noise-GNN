@@ -16,7 +16,6 @@ class NGNN(object):
         self.score_func = None
         self.metric_name = None
 
-
         self.init_network()
         self.init_optimizer()
 
