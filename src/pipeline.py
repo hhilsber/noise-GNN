@@ -69,7 +69,6 @@ class Pipeline(object):
             num_workers=self.config['num_workers'],
             persistent_workers=True
         )
-  
 
     def train_ct(self, train_loader, epoch, model1, optimizer1, model2, optimizer2):
         print('Train epoch {}/{}'.format(epoch+1, self.config['max_epochs']))
@@ -99,8 +98,8 @@ class Pipeline(object):
             total_loss_2 += float(loss_2)
             total_correct_1 += int(out1.argmax(dim=-1).eq(y).sum())
             total_correct_2 += int(out2.argmax(dim=-1).eq(y).sum())
-            total_ratio_1 += pure_ratio_1
-            total_ratio_2 += pure_ratio_2
+            total_ratio_1 += (100*pure_ratio_1)
+            total_ratio_2 += (100*pure_ratio_2)
 
             optimizer1.zero_grad()
             loss_1.backward()
@@ -112,8 +111,8 @@ class Pipeline(object):
         train_loss_2 = total_loss_2 / len(train_loader)
         train_acc_1 = total_correct_1 / self.split_idx['train'].size(0)
         train_acc_2 = total_correct_2 / self.split_idx['train'].size(0)
-        pure_ratio_1_list = total_ratio_1 / self.split_idx['train'].size(0)
-        pure_ratio_2_list = total_ratio_2 / self.split_idx['train'].size(0)
+        pure_ratio_1_list = total_ratio_1 / len(train_loader)
+        pure_ratio_2_list = total_ratio_2 / len(train_loader)
         return train_loss_1, train_loss_2, train_acc_1, train_acc_2, pure_ratio_1_list, pure_ratio_2_list
     
     def train(self, train_loader, epoch, model, optimizer):
@@ -225,7 +224,7 @@ class Pipeline(object):
         
         if self.config['do_plot']:
             plt.figure()
-            plt.subplot(211)
+            plt.subplot(311)
             plt.plot(train_acc_1_hist, 'blue', label="train_acc_1_hist")
             plt.plot(train_acc_2_hist, 'purple', label="train_acc_2_hist")
             plt.plot(val_acc_1_hist, 'darkgreen', label="val_acc_1_hist")
@@ -235,14 +234,18 @@ class Pipeline(object):
                 plt.plot(val_acc_hist, 'peachpuff', label="val_acc_hist")
             plt.axhline(y=0.8, color='grey', linestyle='--')
             plt.axhline(y=0.9, color='grey', linestyle='--')
-            plt.ylim(0,1)
+            plt.legend(loc='lower center')
+            #plt.ylim(0,1)
             plt.legend()
-            """
+            
             plt.subplot(312)
             plt.plot(pure_ratio_1_hist, 'blue', label="pure_ratio_1_hist")
             plt.plot(pure_ratio_2_hist, 'red', label="pure_ratio_2_hist")
-            plt.legend()"""
-            plt.subplot(212)
+            plt.axhline(y=0.8, color='grey', linestyle='--')
+            plt.axhline(y=0.9, color='grey', linestyle='--')
+            plt.legend()
+
+            plt.subplot(313)
             plt.plot(train_loss_1_hist, 'blue', label="train_loss_1_hist")
             plt.plot(train_loss_2_hist, 'darkgreen', label="train_loss_2_hist")
             if self.config['compare']:
@@ -250,5 +253,5 @@ class Pipeline(object):
             plt.legend()
             #plt.show()
             date = dt.datetime.date(dt.datetime.now())
-            name = '../plots/coteaching/dt{}{}_{}_noise{}_lay{}_hid{}_lr{}_epo{}_bs{}_drop{}_ctck{}_ctexp{}_neigh20155.png'.format(date.month,date.day,self.config['module'],self.config['noise_rate'],self.config['num_layers'],self.config['hidden_size'],self.config['learning_rate'],self.config['max_epochs'],self.config['batch_size'],self.config['dropout'],self.config['ct_tk'],self.config['ct_exp'])
+            name = '../plots/coteaching/dt{}{}_{}_noise{}_lay{}_hid{}_lr{}_epo{}_bs{}_drop{}_ctck{}_ctexp{}_neigh{}{}{}.png'.format(date.month,date.day,self.config['module'],self.config['noise_rate'],self.config['num_layers'],self.config['hidden_size'],self.config['learning_rate'],self.config['max_epochs'],self.config['batch_size'],self.config['dropout'],self.config['ct_tk'],self.config['ct_exp'],self.config['nbr_neighbors'][0],self.config['nbr_neighbors'][1],self.config['nbr_neighbors'][2])
             plt.savefig(name)

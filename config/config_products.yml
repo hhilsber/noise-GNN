@@ -11,19 +11,19 @@ seed: 1232
 
 # Graph model
 module: 'gcn'
-hidden_size: 256
-num_layers: 4
-nbr_neighbors: [20,15,5]
+hidden_size: 64
+num_layers: 2
+nbr_neighbors: [15,10,5]
 
 # Regularization
-dropout: 0.3
+dropout: 0.4
 
 # Training
 optimizer: 'adam'
 learning_rate: 0.001
 weight_decay: 0.0005
 
-max_epochs: 10
+max_epochs: 12
 batch_size: 1024
 num_workers: 1
 
