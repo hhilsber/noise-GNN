@@ -11,12 +11,12 @@ seed: 1232
 
 # Graph model
 module: 'gcn'
-hidden_size: 64
+hidden_size: 128
 num_layers: 2
 nbr_neighbors: [15,10,5]
 
 # Regularization
-dropout: 0.4
+dropout: 0.3
 
 # Training
 optimizer: 'adam'
@@ -34,8 +34,9 @@ no_cuda: True
 do_plot: True
 
 # Noise
-noise_rate: 0.4
+noise_rate: 0.3
 
 # Co-teaching
-ct_tk: 4
+ct_tk: 5
 ct_exp: 1
+ct_tau: 1.25

@@ -47,9 +47,9 @@ class Pipeline(object):
         self.evaluator = Evaluator(name=config['dataset_name'])
 
         # Drop rate schedule for co-teaching
-        self.rate_schedule = np.ones(self.config['max_epochs'])*self.config['noise_rate']
+        self.rate_schedule = np.ones(self.config['max_epochs'])*self.config['noise_rate']*self.config['ct_tau']
         self.rate_schedule[:self.config['ct_tk']] = np.linspace(0, self.config['noise_rate']**self.config['ct_exp'], self.config['ct_tk'])
-
+        
         print('train: {}, valid: {}, test: {}'.format(self.split_idx['train'].shape[0],self.split_idx['valid'].shape[0],self.split_idx['test'].shape[0]))
         
         self.train_loader = NeighborLoader(
@@ -223,35 +223,41 @@ class Pipeline(object):
                 val_acc_hist.append(val_acc)
         
         if self.config['do_plot']:
-            plt.figure()
-            plt.subplot(311)
-            plt.plot(train_acc_1_hist, 'blue', label="train_acc_1_hist")
-            plt.plot(train_acc_2_hist, 'purple', label="train_acc_2_hist")
-            plt.plot(val_acc_1_hist, 'darkgreen', label="val_acc_1_hist")
-            plt.plot(val_acc_2_hist, 'chartreuse', label="val_acc_2_hist")
-            if self.config['compare']:
-                plt.plot(train_acc_hist, 'red', label="train_acc_hist")
-                plt.plot(val_acc_hist, 'peachpuff', label="val_acc_hist")
-            plt.axhline(y=0.8, color='grey', linestyle='--')
-            plt.axhline(y=0.9, color='grey', linestyle='--')
-            plt.legend(loc='lower center')
-            #plt.ylim(0,1)
-            plt.legend()
-            
-            plt.subplot(312)
-            plt.plot(pure_ratio_1_hist, 'blue', label="pure_ratio_1_hist")
-            plt.plot(pure_ratio_2_hist, 'red', label="pure_ratio_2_hist")
-            plt.axhline(y=0.8, color='grey', linestyle='--')
-            plt.axhline(y=0.9, color='grey', linestyle='--')
-            plt.legend()
+            fig, axs = plt.subplots(3, 1, figsize=(10, 15))
 
-            plt.subplot(313)
-            plt.plot(train_loss_1_hist, 'blue', label="train_loss_1_hist")
-            plt.plot(train_loss_2_hist, 'darkgreen', label="train_loss_2_hist")
+            # Plot 1
+            line1, = axs[0].plot(train_acc_1_hist, 'blue', label="train_acc_1_hist")
+            line2, = axs[0].plot(train_acc_2_hist, 'darkgreen', label="train_acc_2_hist")
+            line3, = axs[0].plot(val_acc_1_hist, 'purple', label="val_acc_1_hist")
+            line4, = axs[0].plot(val_acc_2_hist, 'chartreuse', label="val_acc_2_hist")
+            axs[0].axhline(y=0.8, color='grey', linestyle='--')
+            axs[0].axhline(y=0.9, color='grey', linestyle='--')
             if self.config['compare']:
-                plt.plot(train_loss_hist, 'red', label="train_loss_hist")
-            plt.legend()
+                line5, = axs[0].plot(train_acc_hist, 'red', label="train_acc_hist")
+                line6, = axs[0].plot(val_acc_hist, 'peachpuff', label="val_acc_hist")
+                axs[0].legend(handles=[line1, line2, line3, line4, line5, line6], loc='upper left', bbox_to_anchor=(1.05, 1))
+            else:
+                axs[0].legend(handles=[line1, line2, line3, line4], loc='upper left', bbox_to_anchor=(1.05, 1))
+            axs[0].set_title('Plot 1')
+
+            # Plot 2
+            axs[1].plot(pure_ratio_1_hist, 'blue', label="pure_ratio_1_hist")
+            axs[1].plot(pure_ratio_2_hist, 'darkgreen', label="pure_ratio_2_hist")
+            axs[1].axhline(y=0.8, color='grey', linestyle='--')
+            axs[1].axhline(y=0.9, color='grey', linestyle='--')
+            axs[1].legend()
+            axs[1].set_title('Plot 2')
+
+            # Plot 3
+            axs[2].plot(train_loss_1_hist, 'blue', label="train_loss_1_hist")
+            axs[2].plot(train_loss_2_hist, 'darkgreen', label="train_loss_2_hist")
+            if self.config['compare']:
+                axs[2].plot(train_loss_hist, 'red', label="train_loss_hist")
+            axs[2].legend()
+            axs[2].set_title('Plot 3')
+
+            plt.tight_layout()
             #plt.show()
             date = dt.datetime.date(dt.datetime.now())
-            name = '../plots/coteaching/dt{}{}_{}_noise{}_lay{}_hid{}_lr{}_epo{}_bs{}_drop{}_ctck{}_ctexp{}_neigh{}{}{}.png'.format(date.month,date.day,self.config['module'],self.config['noise_rate'],self.config['num_layers'],self.config['hidden_size'],self.config['learning_rate'],self.config['max_epochs'],self.config['batch_size'],self.config['dropout'],self.config['ct_tk'],self.config['ct_exp'],self.config['nbr_neighbors'][0],self.config['nbr_neighbors'][1],self.config['nbr_neighbors'][2])
+            name = '../plots/coteaching/dt{}{}_{}_noise{}_lay{}_hid{}_lr{}_epo{}_bs{}_drop{}_ctck{}_ctexp{}_cttau{}_neigh{}{}{}.png'.format(date.month,date.day,self.config['module'],self.config['noise_rate'],self.config['num_layers'],self.config['hidden_size'],self.config['learning_rate'],self.config['max_epochs'],self.config['batch_size'],self.config['dropout'],self.config['ct_tk'],self.config['ct_exp'],self.config['ct_tau'],self.config['nbr_neighbors'][0],self.config['nbr_neighbors'][1],self.config['nbr_neighbors'][2])
             plt.savefig(name)
