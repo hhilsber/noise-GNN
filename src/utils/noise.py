@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 import random
-
+import torch.nn.functional as F
 
 def flip_label(labels, nbr_classes, noise_type='rand', prob=0.3):
     """
@@ -24,7 +24,8 @@ def flip_label(labels, nbr_classes, noise_type='rand', prob=0.3):
             lbl = labels[i].item()
             flipped = np.random.multinomial(1, P[lbl,:], 1)[0]
             noisy_labels[i] = np.where(flipped == 1)[0]
-    return noisy_labels
+        noisy_labels = torch.from_numpy(noisy_labels).squeeze()
+    return noisy_labels.squeeze()
 
 def add_edge_noise(adjacency, prob=0.4):
     """
