@@ -27,7 +27,7 @@ class Pipeline(object):
         self.dataset = load_network(config)
         self.split_idx = self.dataset.get_idx_split()
         self.data = self.dataset[0]
-        self.data.yhn = flip_label(F.one_hot(self.data.y, self.dataset.num_classes).squeeze(), config['noise_rate'])
+        self.data.yhn = flip_label(self.data.y, self.dataset.num_classes, config['noise_type'], config['noise_rate'])
         self.noise_or_not = (self.data.y.squeeze() == self.data.yhn) #.int() # true if same lbl
         
         config['nbr_features'] = self.dataset.num_features #self.dataset.x.shape[-1]
@@ -38,17 +38,16 @@ class Pipeline(object):
         self.config = config
 
         # Initialize the model
-        if config['train_type'] == 'coteaching':
+        if self.config['train_type'] in ['coteaching','both']:
             self.model1 = NGNN(config)
             self.model2 = NGNN(config)
             self.criterion = CTLoss(self.device)
-        if config['compare']:
+            # Drop rate schedule for co-teaching
+            self.rate_schedule = np.ones(self.config['max_epochs'])*self.config['noise_rate']*self.config['ct_tau']
+            self.rate_schedule[:self.config['ct_tk']] = np.linspace(0, self.config['noise_rate']**self.config['ct_exp'], self.config['ct_tk'])
+        if self.config['train_type'] in ['baseline','both']:
             self.model_c = NGNN(config)
         self.evaluator = Evaluator(name=config['dataset_name'])
-
-        # Drop rate schedule for co-teaching
-        self.rate_schedule = np.ones(self.config['max_epochs'])*self.config['noise_rate']*self.config['ct_tau']
-        self.rate_schedule[:self.config['ct_tk']] = np.linspace(0, self.config['noise_rate']**self.config['ct_exp'], self.config['ct_tk'])
         
         print('train: {}, valid: {}, test: {}'.format(self.split_idx['train'].shape[0],self.split_idx['valid'].shape[0],self.split_idx['test'].shape[0]))
         
@@ -178,37 +177,35 @@ class Pipeline(object):
 
     def loop(self):
         print('loop')
-        model1 = self.model1.network.to(self.device)
-        model2 = self.model2.network.to(self.device)
-        optimizer1 = self.model1.optimizer
-        optimizer2 = self.model2.optimizer
         print('adjust lr')
 
-        train_loss_1_hist = []
-        train_loss_2_hist = []
-        train_acc_1_hist = []
-        train_acc_2_hist = []
-        pure_ratio_1_hist = []
-        pure_ratio_2_hist = []
-        val_acc_1_hist = []
-        val_acc_2_hist = []
-        
-        
-        for epoch in range(self.config['max_epochs']):
-            train_loss_1, train_loss_2, train_acc_1, train_acc_2, pure_ratio_1_list, pure_ratio_2_list = self.train_ct(self.train_loader, epoch, model1, optimizer1, model2, optimizer2)
-            train_loss_1_hist.append(train_loss_1)
-            train_loss_2_hist.append(train_loss_2)
-            train_acc_1_hist.append(train_acc_1)
-            train_acc_2_hist.append(train_acc_2)
-            pure_ratio_1_hist.append(pure_ratio_1_list)
-            pure_ratio_2_hist.append(pure_ratio_2_list)
+        if self.config['train_type'] in ['coteaching','both']:
+            print('Train coteaching')
 
-            val_acc_1, val_acc_2 = self.evaluate_ct(self.valid_loader, model1, model2)
-            val_acc_1_hist.append(val_acc_1)
-            val_acc_2_hist.append(val_acc_2)
+            train_loss_1_hist = []
+            train_loss_2_hist = []
+            train_acc_1_hist = []
+            train_acc_2_hist = []
+            pure_ratio_1_hist = []
+            pure_ratio_2_hist = []
+            val_acc_1_hist = []
+            val_acc_2_hist = []
+            
+            for epoch in range(self.config['max_epochs']):
+                train_loss_1, train_loss_2, train_acc_1, train_acc_2, pure_ratio_1_list, pure_ratio_2_list = self.train_ct(self.train_loader, epoch, self.model1.network.to(self.device), self.model1.optimizer, self.model2.network.to(self.device), self.model2.optimizer)
+                train_loss_1_hist.append(train_loss_1)
+                train_loss_2_hist.append(train_loss_2)
+                train_acc_1_hist.append(train_acc_1)
+                train_acc_2_hist.append(train_acc_2)
+                pure_ratio_1_hist.append(pure_ratio_1_list)
+                pure_ratio_2_hist.append(pure_ratio_2_list)
+
+                val_acc_1, val_acc_2 = self.evaluate_ct(self.valid_loader, self.model1.network.to(self.device), self.model2.network.to(self.device))
+                val_acc_1_hist.append(val_acc_1)
+                val_acc_2_hist.append(val_acc_2)
         
-        if self.config['compare']:
-            print('Train compare')
+        if self.config['train_type'] in ['baseline','both']:
+            print('Train basline')
             model_c = self.model_c.network.to(self.device)
             optimizer_c = self.model_c.optimizer
             train_loss_hist = []
@@ -224,40 +221,42 @@ class Pipeline(object):
         
         if self.config['do_plot']:
             fig, axs = plt.subplots(3, 1, figsize=(10, 15))
-
-            # Plot 1
-            line1, = axs[0].plot(train_acc_1_hist, 'blue', label="train_acc_1_hist")
-            line2, = axs[0].plot(train_acc_2_hist, 'darkgreen', label="train_acc_2_hist")
-            line3, = axs[0].plot(val_acc_1_hist, 'purple', label="val_acc_1_hist")
-            line4, = axs[0].plot(val_acc_2_hist, 'chartreuse', label="val_acc_2_hist")
+            
             axs[0].axhline(y=0.8, color='grey', linestyle='--')
             axs[0].axhline(y=0.9, color='grey', linestyle='--')
-            if self.config['compare']:
+            if self.config['train_type'] in ['coteaching','both']:
+                line1, = axs[0].plot(train_acc_1_hist, 'blue', label="train_acc_1_hist")
+                line2, = axs[0].plot(train_acc_2_hist, 'darkgreen', label="train_acc_2_hist")
+                line3, = axs[0].plot(val_acc_1_hist, 'purple', label="val_acc_1_hist")
+                line4, = axs[0].plot(val_acc_2_hist, 'chartreuse', label="val_acc_2_hist")
+                
+                axs[1].plot(pure_ratio_1_hist, 'blue', label="pure_ratio_1_hist")
+                axs[1].plot(pure_ratio_2_hist, 'darkgreen', label="pure_ratio_2_hist")
+                axs[1].legend()
+
+                axs[2].plot(train_loss_1_hist, 'blue', label="train_loss_1_hist")
+                axs[2].plot(train_loss_2_hist, 'darkgreen', label="train_loss_2_hist")
+                
+            if self.config['train_type'] in ['baseline','both']:
                 line5, = axs[0].plot(train_acc_hist, 'red', label="train_acc_hist")
                 line6, = axs[0].plot(val_acc_hist, 'peachpuff', label="val_acc_hist")
-                axs[0].legend(handles=[line1, line2, line3, line4, line5, line6], loc='upper left', bbox_to_anchor=(1.05, 1))
-            else:
-                axs[0].legend(handles=[line1, line2, line3, line4], loc='upper left', bbox_to_anchor=(1.05, 1))
-            axs[0].set_title('Plot 1')
 
-            # Plot 2
-            axs[1].plot(pure_ratio_1_hist, 'blue', label="pure_ratio_1_hist")
-            axs[1].plot(pure_ratio_2_hist, 'darkgreen', label="pure_ratio_2_hist")
-            axs[1].axhline(y=0.8, color='grey', linestyle='--')
-            axs[1].axhline(y=0.9, color='grey', linestyle='--')
-            axs[1].legend()
-            axs[1].set_title('Plot 2')
-
-            # Plot 3
-            axs[2].plot(train_loss_1_hist, 'blue', label="train_loss_1_hist")
-            axs[2].plot(train_loss_2_hist, 'darkgreen', label="train_loss_2_hist")
-            if self.config['compare']:
                 axs[2].plot(train_loss_hist, 'red', label="train_loss_hist")
+            
+            if self.config['train_type'] in ['coteaching']:
+                axs[0].legend(handles=[line1, line2, line3, line4], loc='upper left', bbox_to_anchor=(1.05, 1))
+            elif self.config['train_type'] in ['baseline']:
+                axs[0].legend(handles=[line6, line5], loc='upper left', bbox_to_anchor=(1.05, 1))
+            else:
+                axs[0].legend(handles=[line1, line2, line3, line4, line5, line6], loc='upper left', bbox_to_anchor=(1.05, 1))
+            
+            axs[0].set_title('Plot 1')
+            axs[1].set_title('Plot 2')
             axs[2].legend()
             axs[2].set_title('Plot 3')
 
             plt.tight_layout()
             #plt.show()
             date = dt.datetime.date(dt.datetime.now())
-            name = '../plots/coteaching/dt{}{}_{}_noise{}_lay{}_hid{}_lr{}_epo{}_bs{}_drop{}_ctck{}_ctexp{}_cttau{}_neigh{}{}{}.png'.format(date.month,date.day,self.config['module'],self.config['noise_rate'],self.config['num_layers'],self.config['hidden_size'],self.config['learning_rate'],self.config['max_epochs'],self.config['batch_size'],self.config['dropout'],self.config['ct_tk'],self.config['ct_exp'],self.config['ct_tau'],self.config['nbr_neighbors'][0],self.config['nbr_neighbors'][1],self.config['nbr_neighbors'][2])
+            name = '../plots/coteaching/dt{}{}_{}_{}_noise_{}{}_lay{}_hid{}_lr{}_epo{}_bs{}_drop{}_ctck{}_ctexp{}_cttau{}_neigh{}{}{}.png'.format(date.month,date.day,self.config['train_type'],self.config['module'],self.config['noise_type'],self.config['noise_rate'],self.config['num_layers'],self.config['hidden_size'],self.config['learning_rate'],self.config['max_epochs'],self.config['batch_size'],self.config['dropout'],self.config['ct_tk'],self.config['ct_exp'],self.config['ct_tau'],self.config['nbr_neighbors'][0],self.config['nbr_neighbors'][1],self.config['nbr_neighbors'][2])
             plt.savefig(name)

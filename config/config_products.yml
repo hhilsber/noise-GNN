@@ -3,14 +3,13 @@ data_type: 'network'
 data_dir: '../data'
 dataset_name: 'ogbn-products'
 task_type: 'classification'
-train_type: 'coteaching'
-compare: True
+train_type: 'both' # coteaching   baseline   both
 
 # Seed
 seed: 1232
 
 # Graph model
-module: 'gcn'
+module: 'sage'
 hidden_size: 128
 num_layers: 2
 nbr_neighbors: [15,10,5]
@@ -23,7 +22,7 @@ optimizer: 'adam'
 learning_rate: 0.001
 weight_decay: 0.0005
 
-max_epochs: 12
+max_epochs: 25
 batch_size: 1024
 num_workers: 1
 
@@ -34,9 +33,10 @@ no_cuda: True
 do_plot: True
 
 # Noise
-noise_rate: 0.3
+noise_rate: 0.35
+noise_type: 'pair' # pair   rand
 
 # Co-teaching
 ct_tk: 5
 ct_exp: 1
-ct_tau: 1.25
+ct_tau: 1
