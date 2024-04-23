@@ -34,7 +34,7 @@ do_plot: True
 
 # Noise
 noise_rate: 0.4
-noise_type: 'pair' # pair   rand
+noise_type: 'pair' # pair   sym
 
 # Co-teaching
 ct_tk: 5

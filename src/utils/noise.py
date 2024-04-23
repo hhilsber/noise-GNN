@@ -3,28 +3,23 @@ import numpy as np
 import random
 import torch.nn.functional as F
 
-def flip_label(labels, nbr_classes, noise_type='rand', prob=0.3):
+def flip_label(labels, nbr_classes, noise_type='sym', prob=0.3):
     """
     labels
     prob: probability to flip to another class
     """
-    if noise_type == 'rand':
-        new_y = np.copy(F.one_hot(labels, nbr_classes).squeeze().numpy())
-        for i in range(new_y.shape[0]):
-            if np.random.rand() <= prob:
-                class_prob = (np.ones((new_y.shape[1])) - new_y[i,:]) * (1/(new_y.shape[1]-1))
-                flipped = np.random.multinomial(1, class_prob, 1)[0]
-                new_y[i] = flipped
-        noisy_labels = torch.from_numpy(new_y).argmax(dim=-1)
+    if noise_type == 'sym':
+        P = np.diag(np.array([1-prob] * nbr_classes), k=0) + (np.ones((nbr_classes,nbr_classes)) - np.diag(np.ones(nbr_classes), k=0)) * (prob/(nbr_classes-1))
+
     elif noise_type == 'pair':
         P = np.diag(np.array([1-prob] * nbr_classes), k=0) + np.diag(np.array([prob] * (nbr_classes-1)), k=1) + np.diag(np.array([prob]), k=-(nbr_classes-1))
 
-        noisy_labels = np.copy(labels.numpy())
-        for i in range(labels.shape[0]):
-            lbl = labels[i].item()
-            flipped = np.random.multinomial(1, P[lbl,:], 1)[0]
-            noisy_labels[i] = np.where(flipped == 1)[0]
-        noisy_labels = torch.from_numpy(noisy_labels).squeeze()
+    noisy_labels = np.copy(labels.numpy())
+    for i in range(labels.shape[0]):
+        lbl = labels[i].item()
+        flipped = np.random.multinomial(1, P[lbl,:], 1)[0]
+        noisy_labels[i] = np.where(flipped == 1)[0]
+    noisy_labels = torch.from_numpy(noisy_labels).squeeze()
     return noisy_labels.squeeze()
 
 def add_edge_noise(adjacency, prob=0.4):
