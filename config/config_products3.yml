@@ -33,7 +33,7 @@ no_cuda: True
 do_plot: True
 
 # Noise
-noise_rate: 0.35
+noise_rate: 0.4
 noise_type: 'pair' # pair   sym
 
 # Co-teaching

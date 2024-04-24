@@ -1,5 +1,5 @@
 import logging
-import datetime as dt
+import matplotlib
 
 def initialize_logger(config, file_name):
     # Clear handlers if they were created in other runs
@@ -16,7 +16,10 @@ def initialize_logger(config, file_name):
     logger.error('This is an error message')
     logger.critical('This is a critical message')
     """
-
+    # Suppress debug-level messages from Matplotlib
+    matplotlib_logger = logging.getLogger('matplotlib')
+    matplotlib_logger.setLevel(logging.WARNING)
+    
     logger = logging.getLogger()
     for key in sorted(config.keys()):
         val = config[key]

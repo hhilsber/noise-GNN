@@ -10,6 +10,7 @@ import datetime as dt
 
 from .utils.load_utils import load_network
 from .utils.data_utils import topk_accuracy
+from .utils.utils import initialize_logger
 from .utils.noise import flip_label
 from .models.model import NGNN
 from .utils.losses import CTLoss
@@ -232,7 +233,9 @@ class Pipeline(object):
                 val_acc = self.evaluate(self.valid_loader, self.model_c.network.to(self.device))
                 val_acc_hist.append(val_acc)
                 self.logger.info('   Train epoch {}/{} --- acc t: {:.4f} v: {:.4f}'.format(epoch+1,self.config['max_epochs'],train_acc,val_acc))
-        
+        print('Done')
+        self.logger.info('Done')
+
         if self.config['do_plot']:
             fig, axs = plt.subplots(3, 1, figsize=(10, 15))
             
@@ -271,5 +274,5 @@ class Pipeline(object):
 
             plt.tight_layout()
             #plt.show()
-            plot_name = '../out_plots/coteaching/' + self.output_name + '.plt'
+            plot_name = '../out_plots/coteaching/' + self.output_name + '.png'
             plt.savefig(plot_name)
