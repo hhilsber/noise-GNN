@@ -39,4 +39,4 @@ noise_type: 'pair' # pair   sym
 # Co-teaching
 ct_tk: 5
 ct_exp: 1
-ct_tau: 1.25
+ct_tau: 1.15
