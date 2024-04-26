@@ -35,7 +35,7 @@ class Pipeline(object):
         config['nbr_features'] = self.dataset.num_features #self.dataset.x.shape[-1]
         config['nbr_classes'] = self.dataset.num_classes #dataset.y.max().item() + 1
         config['nbr_nodes'] = self.dataset.x.shape[0]
-        
+        print('ssh test')
         # Config
         self.config = config
 
