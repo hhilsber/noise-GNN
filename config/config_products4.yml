@@ -1,5 +1,5 @@
 # Data
-batch_id: 4
+batch_id: 5
 data_type: 'network'
 data_dir: '../data'
 dataset_name: 'ogbn-products'
@@ -10,7 +10,7 @@ train_type: 'both' # coteaching   baseline   both
 seed: 1232
 
 # Graph model
-module: 'sage'
+module: 'gcn'
 hidden_size: 128
 num_layers: 2
 nbr_neighbors: [15,10,5]
