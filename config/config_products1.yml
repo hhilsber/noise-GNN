@@ -15,7 +15,7 @@ num_layers: 2
 nbr_neighbors: [15,10,5]
 
 # Compare network
-train_type: 'baseline' # coteaching   baseline   both
+train_type: 'nalgo' # nalgo   baseline   both
 compare_loss : 'back' # normal back
 
 # Regularization
@@ -25,7 +25,7 @@ dropout: 0.5
 optimizer: 'adam'
 learning_rate: 0.001 #weight_decay: 0.0005
 
-max_epochs: 20
+max_epochs: 1
 batch_size: 1024
 num_workers: 1
 
@@ -39,7 +39,8 @@ do_plot: True
 noise_rate: 0.45
 noise_type: 'pair' # pair   sym
 
-# Co-teaching
+# Algo Co-teaching or CNCLU
+algo_type: 'cn_soft' # ct cn_soft cn_hard
 ct_tk: 5
 ct_exp: 1
 ct_tau: 1.15

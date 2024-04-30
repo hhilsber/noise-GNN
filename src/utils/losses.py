@@ -3,7 +3,6 @@ import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
 
-
 def backward_correction(output, labels, C, device, nclass):
     '''
     https://github.com/gear/denoising-gnn/blob/master/models/loss.py
@@ -34,7 +33,7 @@ class CTLoss(nn.Module):
         super(CTLoss, self).__init__()
         self.device = device
     
-    def forward(self, y_1, y_2, y_noise, forget_rate, ind, noise_or_not):
+    def forward(self, y_1, y_2, y_noise, forget_rate, ind, noise_or_not, epoch=None, before_loss_1=None, before_loss_2=None, sn_1=None, sn_2=None, co_lambda=None):
         loss_1 = F.cross_entropy(y_1, y_noise, reduction = 'none')
         ind_1_sorted = np.argsort(loss_1.data)
         loss_1_sorted = loss_1[ind_1_sorted]
@@ -56,56 +55,163 @@ class CTLoss(nn.Module):
         loss_2_update = F.cross_entropy(y_2[ind_1_update], y_noise[ind_1_update])
 
         #return torch.sum(loss_1_update)/num_remember, torch.sum(loss_2_update)/num_remember, pure_ratio_1, pure_ratio_2
-        return loss_1_update, loss_2_update, pure_ratio_1, pure_ratio_2
+        return loss_1_update, loss_2_update, pure_ratio_1, pure_ratio_2, 0, 0, 0, 0
 
-class BCELoss(nn.Module):
+class CNCLULossSoft(nn.Module):
     """
-    Binary cross-entropy loss
+    CNCLU loss
+    https://github.com/xiaoboxia/CNLCU/blob/main/loss.py
     """
-    def __init__(self, label_mat, device):
-        super(BCELoss, self).__init__()
-        self.label_mat = label_mat.to(device)
-        self.criterion = nn.BCEWithLogitsLoss()
-    
-    def forward(self, output):
-        loss = self.criterion(output, self.label_mat)
-        return loss
-
-class GRTLoss(nn.Module):
-    """
-    Graph Regularization Technique Loss
-    """
-    def __init__(self, nbr_nodes, alpha, beta, gamma, device):
-        super(GRTLoss, self).__init__()
-        self.n = nbr_nodes
-        self.alpha = alpha
-        self.beta = beta
-        self.gamma = gamma
+    def __init__(self, device):
+        super(CTLoss, self).__init__()
         self.device = device
+
+    def loss_ours_soft(self, y_1, y_2, y_noise, forget_rate, ind, noise_or_not, epoch, before_loss_1, before_loss_2, sn_1, sn_2, co_lambda):
+        # before_loss: the mean of soft_losses with size: batch_size * 1
+        # co_lambda: sigma^2
+        # sn_1, sn_2: selection number 
+        before_loss_1, before_loss_2 = torch.from_numpy(before_loss_1).cuda().float(), torch.from_numpy(before_loss_2).cuda().float()
+        
+        s = torch.tensor(epoch + 1).float() # as the epoch starts from 0
+        co_lambda = torch.tensor(co_lambda).float()
+        
+        loss_1 = F.cross_entropy(y_1, y_noise, reduction='none')
+        #loss_1 = soft_process(loss_1)
+        loss_1 = torch.log(1+loss_1+loss_1*loss_1/2)
+
+        loss_1_mean = (before_loss_1 * s + loss_1) / (s + 1)
+        confidence_bound_1 = co_lambda * (s + (co_lambda * torch.log(2 * s)) / (s * s)) / ((sn_1 + 1) - co_lambda)
+        soft_criterion_1 = F.relu(loss_1_mean.float() - confidence_bound_1.cuda().float())
+            
+        ind_1_sorted = np.argsort(soft_criterion_1.cpu().data).cuda()
+        soft_criterion_1_sorted = soft_criterion_1[ind_1_sorted]
+        
     
-    def forward(self, A, X):
-        D = compute_degree_matrix(A)
-        L = compute_laplacian_matrix(D, A)
+        loss_2 = F.cross_entropy(y_2, y_noise, reduction='none')
+        #loss_2 = soft_process(loss_2)
+        loss_2 = torch.log(1+loss_1+loss_1*loss_1/2)
+        
+        loss_2_mean = (before_loss_2 * s + loss_2) / (s + 1)
+        confidence_bound_2 = co_lambda * (s + (co_lambda * torch.log(2 * s)) / (s * s)) / ((sn_2 + 1) - co_lambda)
+        soft_criterion_2 = F.relu(loss_2_mean.float() - confidence_bound_2.cuda().float())
+        ind_2_sorted = np.argsort(soft_criterion_2.cpu().data).cuda() 
+        
+        soft_criterion_2_sorted = soft_criterion_2[ind_2_sorted]
+                                        
+                                        
+        remember_rate = 1 - forget_rate
+        num_remember = int(remember_rate * len(soft_criterion_1_sorted))
+        
+        # index for updates
+        ind_1_update = ind_1_sorted[0][:num_remember].cpu()
+        ind_2_update = ind_2_sorted[0][:num_remember].cpu()
+        
+        if len(ind_1_update) == 0:
+            ind_1_update = ind_1_sorted.cpu().numpy()
+            ind_2_update = ind_2_sorted.cpu().numpy()
+            num_remember = ind_1_update.shape[0]
+        
 
-        smoothness = compute_smoothness(X, L, self.n)
-        connectivity = compute_connectivity(A, self.n, self.device)
-        sparsity = compute_sparsity(A, self.n)
-        #print("smoothness {} connectivity {}  sparsity {}".format(smoothness,connectivity,sparsity))
-        #loss = self.alpha * smoothness + self.beta * connectivity + self.gamma * sparsity
-        #return loss
-        return smoothness, connectivity, sparsity
+        pure_ratio_1 = np.sum(noise_or_not[ind[ind_1_sorted.cpu()[0][:num_remember]]])/float(num_remember)
+        pure_ratio_2 = np.sum(noise_or_not[ind[ind_2_sorted.cpu()[0][:num_remember]]])/float(num_remember)
+        
+    
+        loss_1_update = F.cross_entropy(y_1[ind_2_update], t[ind_2_update])
+        loss_2_update = F.cross_entropy(y_2[ind_1_update], t[ind_1_update])
 
-def compute_smoothness(X, L, nbr_nodes):
-    XtL = torch.matmul(torch.transpose(X, 0, 1), L)
-    smoothness = (1/(nbr_nodes*nbr_nodes)) * torch.trace(torch.matmul(XtL, X))
-    return smoothness
-def compute_connectivity(A, nbr_nodes, device):
-    #log_A1 = torch.log(torch.matmul(A, torch.ones(nbr_nodes).long()))
-    #print(A)
-    log_A1 = torch.log(torch.matmul(A, torch.ones(nbr_nodes).to(device)))
-    #print(log_A1)
-    connectivity = (-1/nbr_nodes) * torch.matmul(torch.ones((1,nbr_nodes)).to(device), log_A1)
-    return connectivity
-def compute_sparsity(A, nbr_nodes):
-    sparsity = (1/(nbr_nodes*nbr_nodes)) * torch.pow(torch.linalg.norm(A.float(), ord='fro'), exponent=2)
-    return sparsity
+        return torch.sum(loss_1_update)/num_remember, torch.sum(loss_2_update)/num_remember, pure_ratio_1, pure_ratio_2, ind_1_update, ind_2_update, loss_1_mean, loss_2_mean
+
+
+
+def hard_process(loss):
+    # loss: numpy_matrix
+    # return: loss_matrix
+    loss = loss.detach().cpu().numpy()
+    dim_1, dim_2 = loss.shape[0], loss.shape[1]
+    if dim_2 >= 5:
+        lof = LocalOutlierFactor(n_neighbors=2, algorithm='auto', contamination=0.1, n_jobs=-1)
+        #lof = KNN(n_neighbors=2)
+        t_o = []
+        for i in range(dim_1):
+            loss_single = loss[i].reshape((-1, 1))
+            outlier_predict_bool = lof.fit_predict(loss_single)
+            outlier_number = np.sum(outlier_predict_bool>0)
+            loss_single[outlier_predict_bool==1] = 0.
+            loss[i,:] = loss_single.transpose()
+            t_o.append(outlier_number)
+        t_o = np.array(t_o).reshape((dim_1, 1))
+    else:
+        t_o = np.zeros((dim_1, 1))
+    loss = torch.from_numpy(loss).cuda().float()
+    return loss, t_o
+
+
+
+def loss_ours_hard(epoch, before_loss_1, before_loss_2, sn_1, sn_2, y_1, y_2, t, forget_rate, ind, noise_or_not, co_lambda, loss_bound):
+    # before_loss: the losses with size: batch_size * time_step type numpy
+    # co_lambda: t_min
+    # sn_1, sn_2: selection number 
+
+  
+    s = torch.tensor(epoch + 1).float() # as the epoch starts from 0
+    co_lambda = torch.tensor(co_lambda).float()
+    loss_bound = torch.tensor(loss_bound).float()
+    loss_1 = F.cross_entropy(y_1, t, reduction='none')
+ 
+    before_and_loss_1 = torch.cat((torch.from_numpy(before_loss_1).cuda().float(), loss_1.unsqueeze(1).float()), 1)
+
+    before_and_loss_1_hard, t_o_1 = hard_process(before_and_loss_1)
+    loss_1_mean = torch.mean(before_and_loss_1_hard, dim=1)
+    confidence_bound_1_list = []
+    for i in range(loss_1_mean.shape[0]):
+        confidence_bound_1 = 2 * torch.sqrt(2 * co_lambda) * loss_bound * (s + 1.414 * torch.tensor(t_o_1[i]).double()) * torch.sqrt(torch.log(4*s)/sn_1[i]) / ((s - torch.tensor(t_o_1[i]).double()) * torch.sqrt(s))
+        confidence_bound_1_list.append(confidence_bound_1)
+        
+    confidence_bound_1_numpy = torch.from_numpy(np.array(confidence_bound_1_list)).float().cuda()
+    
+    hard_criterion_1 = F.relu(loss_1_mean - confidence_bound_1_numpy)
+      
+    ind_1_sorted = np.argsort(hard_criterion_1.cpu().data).cuda()
+    hard_criterion_1_sorted = hard_criterion_1[ind_1_sorted]
+    
+   
+    loss_2 = F.cross_entropy(y_2, t, reduction='none')
+ 
+    before_and_loss_2 = torch.cat((torch.from_numpy(before_loss_2).cuda().float(), loss_2.unsqueeze(1).float()), 1)
+
+    before_and_loss_2_hard, t_o_2 = hard_process(before_and_loss_2)
+    loss_2_mean = torch.mean(before_and_loss_2_hard, dim=1)
+    confidence_bound_2_list = []
+    for i in range(loss_2_mean.shape[0]):
+        confidence_bound_2 = 2 * torch.sqrt(2 * co_lambda) * loss_bound * (s + 1.414 * torch.tensor(t_o_2[i]).double()) * torch.sqrt(torch.log(4*s)/sn_2[i]) / ((s - torch.tensor(t_o_2[i]).double()) * torch.sqrt(s))
+        confidence_bound_2_list.append(confidence_bound_2)
+        
+    confidence_bound_2_numpy = torch.from_numpy(np.array(confidence_bound_2_list)).float().cuda()
+    
+    hard_criterion_2 = F.relu(loss_2_mean - confidence_bound_2_numpy)
+      
+    ind_2_sorted = np.argsort(hard_criterion_2.cpu().data).cuda()
+    hard_criterion_2_sorted = hard_criterion_2[ind_2_sorted]
+                                      
+                                      
+    remember_rate = 1 - forget_rate
+    num_remember = int(remember_rate * len(hard_criterion_1_sorted))
+    
+    # index for updates
+    ind_1_update = ind_1_sorted[:num_remember].cpu().numpy()
+    ind_2_update = ind_2_sorted[:num_remember].cpu().numpy()
+    
+    if len(ind_1_update) == 0:
+        ind_1_update = ind_1_sorted.cpu().numpy()
+        ind_2_update = ind_2_sorted.cpu().numpy()
+        num_remember = ind_1_update.shape[0]
+    
+
+    pure_ratio_1 = np.sum(noise_or_not[ind[ind_1_sorted.cpu()[:num_remember]]])/float(num_remember)
+    pure_ratio_2 = np.sum(noise_or_not[ind[ind_2_sorted.cpu()[:num_remember]]])/float(num_remember)
+    
+ 
+    loss_1_update = F.cross_entropy(y_1[ind_2_update], t[ind_2_update])
+    loss_2_update = F.cross_entropy(y_2[ind_1_update], t[ind_1_update])
+    
+    return torch.sum(loss_1_update)/num_remember, torch.sum(loss_2_update)/num_remember, pure_ratio_1, pure_ratio_2, ind_1_update, ind_2_update, loss_1, loss_2
