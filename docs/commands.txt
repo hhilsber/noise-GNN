@@ -1,4 +1,4 @@
-python main.py -config config/config_mag.yml
+python main.py -config config/config_products1.yml
 
 
 ls /mnt/data/datasets/pyg/2.0
@@ -7,7 +7,7 @@ clone git repo into home directory
 
 ssh hhilsberg@ai1.cs.titech.ac.jp
 
-srun --time=00:20:00 --mem=4g --gres=gpu:1 --pty /bin/bash
+srun --time=08:00:00 --mem=16g --gres=gpu:1 --pty /bin/bash
 
 source /opt/conda/etc/profile.d/conda.sh
 

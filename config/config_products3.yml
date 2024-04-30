@@ -1,34 +1,37 @@
 # Data
-batch_id: 3
+batch_id: 5
 data_type: 'network'
 data_dir: '../data'
 dataset_name: 'ogbn-products'
 task_type: 'classification'
-train_type: 'both' # coteaching   baseline   both
 
 # Seed
 seed: 1232
 
 # Graph model
 module: 'sage'
-hidden_size: 256
-num_layers: 3
+hidden_size: 128
+num_layers: 2
 nbr_neighbors: [15,10,5]
 
+# Compare network
+train_type: 'baseline' # coteaching   baseline   both
+compare_loss : 'back' # normal back
+
 # Regularization
-dropout: 0.3
+dropout: 0.5
 
 # Training
 optimizer: 'adam'
 learning_rate: 0.001 #weight_decay: 0.0005
 
-max_epochs: 35
+max_epochs: 20
 batch_size: 1024
 num_workers: 1
 
 # Device
 no_cuda: True
-
+ 
 # Plot
 do_plot: True
 
@@ -39,4 +42,4 @@ noise_type: 'pair' # pair   sym
 # Co-teaching
 ct_tk: 5
 ct_exp: 1
-ct_tau: 1.20
+ct_tau: 1.15

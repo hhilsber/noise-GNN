@@ -13,7 +13,7 @@ from .utils.data_utils import topk_accuracy
 from .utils.utils import initialize_logger
 from .utils.noise import flip_label
 from .models.model import NGNN
-from .utils.losses import CTLoss
+from .utils.losses import CTLoss, backward_correction
 
 #os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 class Pipeline(object):
@@ -29,13 +29,13 @@ class Pipeline(object):
         self.split_idx = self.dataset.get_idx_split()
         self.data = self.dataset[0]
         print('noise type and rate: {} {}'.format(config['noise_type'], config['noise_rate']))
-        self.data.yhn = flip_label(self.data.y, self.dataset.num_classes, config['noise_type'], config['noise_rate'])
+        self.data.yhn, self.noise_mat = flip_label(self.data.y, self.dataset.num_classes, config['noise_type'], config['noise_rate'])
         self.noise_or_not = (self.data.y.squeeze() == self.data.yhn) #.int() # true if same lbl
         
         config['nbr_features'] = self.dataset.num_features #self.dataset.x.shape[-1]
         config['nbr_classes'] = self.dataset.num_classes #dataset.y.max().item() + 1
         config['nbr_nodes'] = self.dataset.x.shape[0]
-        print('ssh test')
+        
         # Config
         self.config = config
 
@@ -137,7 +137,10 @@ class Pipeline(object):
             y = batch.y[:batch.batch_size].squeeze()
             yhn = batch.yhn[:batch.batch_size].squeeze()
             
-            loss = F.cross_entropy(out, yhn)
+            if self.config['compare_loss'] == 'normal':
+                loss = F.cross_entropy(out, yhn)
+            else:
+                loss = backward_correction(out, y, self.noise_mat, self.device, self.config['nbr_classes'])
             
             total_loss += float(loss)
             total_correct += int(out.argmax(dim=-1).eq(y).sum())
