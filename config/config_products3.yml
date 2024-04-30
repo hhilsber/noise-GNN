@@ -1,5 +1,5 @@
 # Data
-batch_id: 5
+batch_id: 3
 data_type: 'network'
 data_dir: '../data'
 dataset_name: 'ogbn-products'
@@ -19,7 +19,7 @@ train_type: 'baseline' # coteaching   baseline   both
 compare_loss : 'back' # normal back
 
 # Regularization
-dropout: 0.5
+dropout: 0.4
 
 # Training
 optimizer: 'adam'

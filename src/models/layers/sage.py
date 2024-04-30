@@ -10,6 +10,7 @@ class SAGE(torch.nn.Module):
         """
         self.num_layers = num_layers
         self.dropout = dropout
+        
         self.convs = torch.nn.ModuleList()
         self.convs.append(SAGEConv(in_channels, hidden_channels))
         for _ in range(num_layers - 2):
