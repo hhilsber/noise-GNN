@@ -1,5 +1,5 @@
 # Data
-batch_id: 1
+batch_id: 2
 data_type: 'network'
 data_dir: '../data'
 dataset_name: 'ogbn-products'
@@ -11,8 +11,8 @@ seed: 1232
 
 # Graph model
 module: 'sage'
-hidden_size: 256
-num_layers: 3
+hidden_size: 128
+num_layers: 2
 nbr_neighbors: [15,10,5]
 
 # Regularization
@@ -22,7 +22,7 @@ dropout: 0.3
 optimizer: 'adam'
 learning_rate: 0.001 #weight_decay: 0.0005
 
-max_epochs: 35
+max_epochs: 30
 batch_size: 1024
 num_workers: 1
 
@@ -37,6 +37,6 @@ noise_rate: 0.45
 noise_type: 'pair' # pair   sym
 
 # Co-teaching
-ct_tk: 5
+ct_tk: 10
 ct_exp: 1
 ct_tau: 1.15
