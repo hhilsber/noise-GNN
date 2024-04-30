@@ -55,7 +55,7 @@ class CTLoss(nn.Module):
         loss_2_update = F.cross_entropy(y_2[ind_1_update], y_noise[ind_1_update])
 
         #return torch.sum(loss_1_update)/num_remember, torch.sum(loss_2_update)/num_remember, pure_ratio_1, pure_ratio_2
-        return loss_1_update, loss_2_update, pure_ratio_1, pure_ratio_2, 0, 0, 0, 0
+        return loss_1_update, loss_2_update, pure_ratio_1, pure_ratio_2, _, _, _, _,
 
 class CNCLULossSoft(nn.Module):
     """
@@ -63,16 +63,16 @@ class CNCLULossSoft(nn.Module):
     https://github.com/xiaoboxia/CNLCU/blob/main/loss.py
     """
     def __init__(self, device):
-        super(CTLoss, self).__init__()
+        super(CNCLULossSoft, self).__init__()
         self.device = device
 
-    def loss_ours_soft(self, y_1, y_2, y_noise, forget_rate, ind, noise_or_not, epoch, before_loss_1, before_loss_2, sn_1, sn_2, co_lambda):
+    def forward(self, y_1, y_2, y_noise, forget_rate, ind, noise_or_not, epoch, before_loss_1, before_loss_2, sn_1, sn_2, co_lambda):
         # before_loss: the mean of soft_losses with size: batch_size * 1
         # co_lambda: sigma^2
         # sn_1, sn_2: selection number 
-        before_loss_1, before_loss_2 = torch.from_numpy(before_loss_1).cuda().float(), torch.from_numpy(before_loss_2).cuda().float()
+        before_loss_1, before_loss_2 = torch.from_numpy(before_loss_1).float().to(self.device), torch.from_numpy(before_loss_2).cuda().float()
         
-        s = torch.tensor(epoch + 1).float() # as the epoch starts from 0
+        s = torch.tensor(epoch + 1).float().to(self.device) # as the epoch starts from 0
         co_lambda = torch.tensor(co_lambda).float()
         
         loss_1 = F.cross_entropy(y_1, y_noise, reduction='none')
@@ -81,9 +81,9 @@ class CNCLULossSoft(nn.Module):
 
         loss_1_mean = (before_loss_1 * s + loss_1) / (s + 1)
         confidence_bound_1 = co_lambda * (s + (co_lambda * torch.log(2 * s)) / (s * s)) / ((sn_1 + 1) - co_lambda)
-        soft_criterion_1 = F.relu(loss_1_mean.float() - confidence_bound_1.cuda().float())
+        soft_criterion_1 = F.relu(loss_1_mean.float() - confidence_bound_1.to(self.device).float())
             
-        ind_1_sorted = np.argsort(soft_criterion_1.cpu().data).cuda()
+        ind_1_sorted = np.argsort(soft_criterion_1.to(self.device).data)
         soft_criterion_1_sorted = soft_criterion_1[ind_1_sorted]
         
     
@@ -94,8 +94,8 @@ class CNCLULossSoft(nn.Module):
         loss_2_mean = (before_loss_2 * s + loss_2) / (s + 1)
         confidence_bound_2 = co_lambda * (s + (co_lambda * torch.log(2 * s)) / (s * s)) / ((sn_2 + 1) - co_lambda)
         soft_criterion_2 = F.relu(loss_2_mean.float() - confidence_bound_2.cuda().float())
+
         ind_2_sorted = np.argsort(soft_criterion_2.cpu().data).cuda() 
-        
         soft_criterion_2_sorted = soft_criterion_2[ind_2_sorted]
                                         
                                         
