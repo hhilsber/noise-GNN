@@ -25,7 +25,7 @@ dropout: 0.5
 optimizer: 'adam'
 learning_rate: 0.001 #weight_decay: 0.0005
 
-max_epochs: 2
+max_epochs: 20
 batch_size: 1024
 num_workers: 1
 
@@ -43,7 +43,7 @@ noise_type: 'pair' # pair   sym
 algo_type: 'cn_soft' # ct cn_soft cn_hard
 cn_time: 3
 cn_lambda: 0.0001
-cn_lambda_decay: 1
-tk: 1
+cn_lambda_decay: 8
+tk: 5
 ct_exp: 1
 tau: 1.0
