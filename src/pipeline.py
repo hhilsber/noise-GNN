@@ -13,7 +13,7 @@ from .utils.data_utils import topk_accuracy
 from .utils.utils import initialize_logger
 from .utils.noise import flip_label
 from .models.model import NGNN
-from .utils.losses import CTLoss, backward_correction, CNCLULossSoft
+from .utils.losses import *
 
 #os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 class Pipeline(object):
@@ -51,6 +51,10 @@ class Pipeline(object):
                 self.criterion = CNCLULossSoft(self.device)
                 self.rate_schedule = np.ones(self.config['max_epochs'])*self.config['noise_rate']*self.config['tau']
                 self.rate_schedule[:self.config['tk']] = np.linspace(0, self.config['noise_rate'], self.config['tk'])
+            elif self.config['algo_type'] == 'cn_hard':
+                self.criterion = CNCLULossHard(self.device)
+                self.rate_schedule = np.ones(self.config['max_epochs'])*self.config['noise_rate']*self.config['tau']
+                self.rate_schedule[:self.config['tk']] = np.linspace(0, self.config['noise_rate'], self.config['tk'])
 
             # Drop rate schedule for co-teaching
             self.co_lambda = np.zeros(self.config['max_epochs'])
@@ -64,7 +68,7 @@ class Pipeline(object):
         
         # Logger and data loader
         date = dt.datetime.date(dt.datetime.now())
-        self.output_name = 'dt{}{}_id{}_{}_{}_algo_{}_noise_{}{}_lay{}_hid{}_lr{}_epo{}_bs{}_drop{}_ctck{}_ctexp{}_cttau{}_neigh{}{}{}'.format(date.month,date.day,self.config['batch_id'],self.config['train_type'],self.config['module'],self.config['algo_type'],self.config['noise_type'],self.config['noise_rate'],self.config['num_layers'],self.config['hidden_size'],self.config['learning_rate'],self.config['max_epochs'],self.config['batch_size'],self.config['dropout'],self.config['tk'],self.config['ct_exp'],self.config['tau'],self.config['nbr_neighbors'][0],self.config['nbr_neighbors'][1],self.config['nbr_neighbors'][2])
+        self.output_name = 'dt{}{}_id{}_{}_{}_{}_algo_{}_noise_{}{}_lay{}_hid{}_lr{}_epo{}_bs{}_drop{}_ctck{}_ctexp{}_cttau{}_neigh{}{}{}'.format(date.month,date.day,self.config['batch_id'],self.config['train_type'],self.config['algo_type'],self.config['module'],self.config['algo_type'],self.config['noise_type'],self.config['noise_rate'],self.config['num_layers'],self.config['hidden_size'],self.config['learning_rate'],self.config['max_epochs'],self.config['batch_size'],self.config['dropout'],self.config['tk'],self.config['ct_exp'],self.config['tau'],self.config['nbr_neighbors'][0],self.config['nbr_neighbors'][1],self.config['nbr_neighbors'][2])
         self.logger = initialize_logger(self.config, self.output_name)
 
         self.train_loader = NeighborLoader(
@@ -115,11 +119,14 @@ class Pipeline(object):
             yhn = batch.yhn[:batch.batch_size].squeeze()
             
             startp, stopp = int(i * batch.batch_size), int((i+1) * batch.batch_size)
-            loss_1, loss_2, pure_ratio_1, pure_ratio_2, ind_1_update, ind_2_update, loss_1_mean, loss_2_mean = self.criterion(out1, out2, yhn, self.rate_schedule[epoch], batch.n_id, self.noise_or_not, epoch, before_loss_1[startp:stopp], before_loss_2[startp:stopp], sn_1[startp:stopp], sn_2[startp:stopp], self.co_lambda[epoch])
+            print(batch.n_id.shape)
+            print(batch.n_id[:10])
+            ttt = sn_1[batch.n_id]
+            #sn_1[startp:stopp]
+            loss_1, loss_2, pure_ratio_1, pure_ratio_2, ind_1_update, ind_2_update, loss_1_mean, loss_2_mean = self.criterion(out1, out2, yhn, self.rate_schedule[epoch], batch.n_id, self.noise_or_not, epoch, before_loss_1[startp:stopp], before_loss_2[startp:stopp], sn_1[startp:stopp], sn_2[startp:stopp], self.co_lambda[epoch], 2.)
 
             before_loss_1_list += list(np.array(loss_1_mean.detach().cpu()))
             before_loss_2_list += list(np.array(loss_2_mean.detach().cpu()))
-            
             ind_1_update_list += list(np.array(ind_1_update + i * batch.batch_size))
             ind_2_update_list += list(np.array(ind_2_update + i * batch.batch_size))
             
@@ -254,6 +261,14 @@ class Pipeline(object):
                     all_zero_array_2[np.array(ind_2_update_list)] = 1
                     sn_1 += torch.from_numpy(all_zero_array_1)
                     sn_2 += torch.from_numpy(all_zero_array_2)
+                if self.config['algo_type'] == 'cn_hard':
+                    before_loss_1_numpy = np.zeros((len(train_dataset), 1))
+                    before_loss_2_numpy = np.zeros((len(train_dataset), 1))
+                    num = before_loss_1_.shape[0]
+                    before_loss_1_numpy[:num], before_loss_2_numpy[:num] = before_loss_1_[:, np.newaxis], before_loss_2_[:, np.newaxis]
+                    
+                    before_loss_1 = np.concatenate((before_loss_1, before_loss_1_numpy), axis=1)
+                    before_loss_2 = np.concatenate((before_loss_2, before_loss_2_numpy), axis=1)
 
                 val_acc_1, val_acc_2 = self.evaluate_ct(self.valid_loader, self.model1.network.to(self.device), self.model2.network.to(self.device))
                 val_acc_1_hist.append(val_acc_1)
