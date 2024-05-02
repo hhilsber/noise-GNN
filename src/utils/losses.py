@@ -77,23 +77,22 @@ class CNCLULossSoft(nn.Module):
         
         loss_1 = F.cross_entropy(y_1, y_noise, reduction='none')
         loss_1 = torch.log(1+loss_1+loss_1*loss_1/2)
-
-        loss_1_mean = (before_loss_1 * s + loss_1) / (s + 1)
+        
+        loss_1_mean = (before_loss_1.squeeze() * s + loss_1) / (s + 1)
         confidence_bound_1 = co_lambda * (s + (co_lambda * torch.log(2 * s)) / (s * s)) / ((sn_1 + 1) - co_lambda)
         soft_criterion_1 = F.relu(loss_1_mean.float() - confidence_bound_1.to(self.device).float())
         ind_1_sorted = np.argsort(soft_criterion_1.to(self.device).data)
         soft_criterion_1_sorted = soft_criterion_1[ind_1_sorted]
-        
     
         loss_2 = F.cross_entropy(y_2, y_noise, reduction='none')
         loss_2 = torch.log(1+loss_2+loss_2*loss_2/2)
         
-        loss_2_mean = (before_loss_2 * s + loss_2) / (s + 1)
+        loss_2_mean = (before_loss_2.squeeze() * s + loss_2) / (s + 1)
         confidence_bound_2 = co_lambda * (s + (co_lambda * torch.log(2 * s)) / (s * s)) / ((sn_2 + 1) - co_lambda)
         soft_criterion_2 = F.relu(loss_2_mean.float() - confidence_bound_2.to(self.device).float())
         ind_2_sorted = np.argsort(soft_criterion_2.to(self.device).data)
         soft_criterion_2_sorted = soft_criterion_2[ind_2_sorted]
-                                        
+        
         remember_rate = 1 - forget_rate
         num_remember = int(remember_rate * len(soft_criterion_1_sorted))
         
