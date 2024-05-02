@@ -1,5 +1,5 @@
 # Data
-batch_id: 3
+batch_id: 6
 data_type: 'network'
 data_dir: '../data'
 dataset_name: 'ogbn-products'
@@ -25,7 +25,7 @@ dropout: 0.5
 optimizer: 'adam'
 learning_rate: 0.001 #weight_decay: 0.0005
 
-max_epochs: 12
+max_epochs: 10
 batch_size: 1024
 num_workers: 1
 

@@ -236,8 +236,8 @@ class Pipeline(object):
 
             for epoch in range(self.config['max_epochs']):
                 if epoch % self.config['cn_time'] == 0:
-                    before_loss_1 = 0.0 * np.ones((len(self.split_idx['train'])))
-                    before_loss_2 = 0.0 * np.ones((len(self.split_idx['train'])))
+                    before_loss_1 = 0.0 * np.ones((len(self.split_idx['train']), 1))
+                    before_loss_2 = 0.0 * np.ones((len(self.split_idx['train']), 1))
                     sn_1 = torch.from_numpy(np.ones((len(self.split_idx['train']))))
                     sn_2 = torch.from_numpy(np.ones((len(self.split_idx['train']))))
                 train_loss_1, train_loss_2, train_acc_1, train_acc_2, pure_ratio_1_list, pure_ratio_2_list, before_loss_1_list, before_loss_2_list, ind_1_update_list, ind_2_update_list = self.train_ct(self.train_loader, epoch, self.model1.network.to(self.device), self.model1.optimizer, self.model2.network.to(self.device), self.model2.optimizer, before_loss_1, before_loss_2, sn_1, sn_2)
@@ -258,13 +258,13 @@ class Pipeline(object):
                     sn_1 += torch.from_numpy(all_zero_array_1)
                     sn_2 += torch.from_numpy(all_zero_array_2)
                 if self.config['algo_type'] == 'cn_hard':
-                    before_loss_1_numpy = np.zeros((len(train_dataset), 1))
-                    before_loss_2_numpy = np.zeros((len(train_dataset), 1))
-                    num = before_loss_1_.shape[0]
-                    before_loss_1_numpy[:num], before_loss_2_numpy[:num] = before_loss_1_[:, np.newaxis], before_loss_2_[:, np.newaxis]
+                    before_loss_1_numpy = np.zeros((len(self.split_idx['train']), 1))
+                    before_loss_2_numpy = np.zeros((len(self.split_idx['train']), 1))
+                    num = before_loss_1.shape[0]
+                    before_loss_1_numpy[:num], before_loss_2_numpy[:num] = before_loss_1[:, np.newaxis], before_loss_2[:, np.newaxis]
                     
-                    before_loss_1 = np.concatenate((before_loss_1, before_loss_1_numpy), axis=1)
-                    before_loss_2 = np.concatenate((before_loss_2, before_loss_2_numpy), axis=1)
+                    before_loss_1 = np.concatenate((np.expand_dims(before_loss_1, axis=1), before_loss_1_numpy), axis=1)
+                    before_loss_2 = np.concatenate((np.expand_dims(before_loss_2, axis=1), before_loss_2_numpy), axis=1)
 
                 val_acc_1, val_acc_2 = self.evaluate_ct(self.valid_loader, self.model1.network.to(self.device), self.model2.network.to(self.device))
                 val_acc_1_hist.append(val_acc_1)
