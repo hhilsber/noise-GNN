@@ -1,5 +1,5 @@
 # Data
-batch_id: 2
+batch_id: 3
 data_type: 'network'
 data_dir: '../data'
 dataset_name: 'ogbn-products'
@@ -25,7 +25,7 @@ dropout: 0.5
 optimizer: 'adam'
 learning_rate: 0.001 #weight_decay: 0.0005
 
-max_epochs: 2
+max_epochs: 12
 batch_size: 1024
 num_workers: 1
 
@@ -36,14 +36,14 @@ no_cuda: True
 do_plot: True
 
 # Noise
-noise_rate: 0.45
+noise_rate: 0.35
 noise_type: 'pair' # pair   sym
 
 # Algo Co-teaching or CNCLU
-algo_type: 'cn_hard' # ct cn_soft cn_hard
+algo_type: 'cn_soft' # ct cn_soft cn_hard
 cn_time: 3
 cn_lambda: 0.0001
-cn_lambda_decay: 1
-tk: 1
+cn_lambda_decay: 5
+tk: 3
 ct_exp: 1
 tau: 1.0

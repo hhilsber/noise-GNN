@@ -86,7 +86,7 @@ class CNCLULossSoft(nn.Module):
         
     
         loss_2 = F.cross_entropy(y_2, y_noise, reduction='none')
-        loss_2 = torch.log(1+loss_1+loss_1*loss_1/2)
+        loss_2 = torch.log(1+loss_2+loss_2*loss_2/2)
         
         loss_2_mean = (before_loss_2 * s + loss_2) / (s + 1)
         confidence_bound_2 = co_lambda * (s + (co_lambda * torch.log(2 * s)) / (s * s)) / ((sn_2 + 1) - co_lambda)
@@ -144,7 +144,7 @@ class CNCLULossHard(nn.Module):
             t_o = np.array(t_o).reshape((dim_1, 1))
         else:
             t_o = np.zeros((dim_1, 1))
-        loss = torch.from_numpy(loss).cuda().float()
+        loss = torch.from_numpy(loss).float().to(self.device)
         return loss, t_o
 
     def forward(self, y_1, y_2, y_noise, forget_rate, ind, noise_or_not, epoch, before_loss_1, before_loss_2, sn_1, sn_2, co_lambda, loss_bound):
@@ -156,9 +156,9 @@ class CNCLULossHard(nn.Module):
         co_lambda = torch.tensor(co_lambda).float()
         loss_bound = torch.tensor(loss_bound).float()
         loss_1 = F.cross_entropy(y_1, y_noise, reduction='none')
-    
+        
         before_and_loss_1 = torch.cat((torch.from_numpy(before_loss_1).unsqueeze(1).to(self.device).float(), loss_1.unsqueeze(1).float()), 1)
-
+        
         before_and_loss_1_hard, t_o_1 = self.hard_process(before_and_loss_1)
         loss_1_mean = torch.mean(before_and_loss_1_hard, dim=1)
         confidence_bound_1_list = []
@@ -166,11 +166,11 @@ class CNCLULossHard(nn.Module):
             confidence_bound_1 = 2 * torch.sqrt(2 * co_lambda) * loss_bound * (s + 1.414 * torch.tensor(t_o_1[i]).double()) * torch.sqrt(torch.log(4*s)/sn_1[i]) / ((s - torch.tensor(t_o_1[i]).double()) * torch.sqrt(s))
             confidence_bound_1_list.append(confidence_bound_1)
             
-        confidence_bound_1_numpy = torch.from_numpy(np.array(confidence_bound_1_list)).float().cuda()
+        confidence_bound_1_numpy = torch.from_numpy(np.array(confidence_bound_1_list)).float().to(self.device)
         
         hard_criterion_1 = F.relu(loss_1_mean - confidence_bound_1_numpy)
         
-        ind_1_sorted = np.argsort(hard_criterion_1.cpu().data).cuda()
+        ind_1_sorted = np.argsort(hard_criterion_1.cpu().data).to(self.device)
         hard_criterion_1_sorted = hard_criterion_1[ind_1_sorted]
         
     
@@ -185,13 +185,15 @@ class CNCLULossHard(nn.Module):
             confidence_bound_2 = 2 * torch.sqrt(2 * co_lambda) * loss_bound * (s + 1.414 * torch.tensor(t_o_2[i]).double()) * torch.sqrt(torch.log(4*s)/sn_2[i]) / ((s - torch.tensor(t_o_2[i]).double()) * torch.sqrt(s))
             confidence_bound_2_list.append(confidence_bound_2)
             
-        confidence_bound_2_numpy = torch.from_numpy(np.array(confidence_bound_2_list)).float().cuda()
-        
+        confidence_bound_2_numpy = torch.from_numpy(np.array(confidence_bound_2_list)).float().to(self.device)
+        print('g')
         hard_criterion_2 = F.relu(loss_2_mean - confidence_bound_2_numpy)
-        
-        ind_2_sorted = np.argsort(hard_criterion_2.cpu().data).cuda()
+        print('w')
+        ind_2_sorted = np.argsort(hard_criterion_2.cpu().data).to(self.device)
+        print('x1')
         hard_criterion_2_sorted = hard_criterion_2[ind_2_sorted]
-                                        
+        print('x')
+        print('c {}'.format(ind_2_sorted.shape))                       
                                         
         remember_rate = 1 - forget_rate
         num_remember = int(remember_rate * len(hard_criterion_1_sorted))
@@ -199,16 +201,16 @@ class CNCLULossHard(nn.Module):
         # index for updates
         ind_1_update = ind_1_sorted[:num_remember].cpu().numpy()
         ind_2_update = ind_2_sorted[:num_remember].cpu().numpy()
-        
+        print('j')
         if len(ind_1_update) == 0:
             ind_1_update = ind_1_sorted.cpu().numpy()
             ind_2_update = ind_2_sorted.cpu().numpy()
             num_remember = ind_1_update.shape[0]
         
-
+        print('l')
         pure_ratio_1 = torch.sum(noise_or_not[ind[ind_1_sorted.cpu()[:num_remember]]])/float(num_remember)
         pure_ratio_2 = torch.sum(noise_or_not[ind[ind_2_sorted.cpu()[:num_remember]]])/float(num_remember)
-        
+        print('p')
         print(ind_1_update.shape, ind_2_update.shape)
         loss_1_update = F.cross_entropy(y_1[ind_2_update], y_noise[ind_2_update])
         loss_2_update = F.cross_entropy(y_2[ind_1_update], y_noise[ind_1_update])
