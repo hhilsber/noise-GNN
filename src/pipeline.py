@@ -117,7 +117,6 @@ class Pipeline(object):
             optimizer2.zero_grad()
             loss_2.backward()
             optimizer2.step()
-            print('ok')
         train_loss_1 = total_loss_1 / len(train_loader)
         train_loss_2 = total_loss_2 / len(train_loader)
         train_acc_1 = total_correct_1 / self.split_idx['train'].size(0)

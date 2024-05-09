@@ -41,6 +41,6 @@ noise_type: 'pair' # pair   sym
 
 # Algo Co-teaching or CNCLU
 algo_type: 'codi' # ct codi
-ct_tk: 1
+ct_tk: 5
 ct_exp: 1
 ct_tau: 1.0
