@@ -45,20 +45,10 @@ class Pipeline(object):
             self.model2 = NGNN(config)
             if self.config['algo_type'] == 'ct':
                 self.criterion = CTLoss(self.device)
-                self.rate_schedule = np.ones(self.config['max_epochs'])*self.config['noise_rate']*self.config['tau']
-                self.rate_schedule[:self.config['tk']] = np.linspace(0, self.config['noise_rate']**self.config['ct_exp'], self.config['tk'])
-            elif self.config['algo_type'] == 'cn_soft':
-                self.criterion = CNCLULossSoft(self.device)
-                self.rate_schedule = np.ones(self.config['max_epochs'])*self.config['noise_rate']*self.config['tau']
-                self.rate_schedule[:self.config['tk']] = np.linspace(0, self.config['noise_rate'], self.config['tk'])
-            elif self.config['algo_type'] == 'cn_hard':
-                self.criterion = CNCLULossHard(self.device)
-                self.rate_schedule = np.ones(self.config['max_epochs'])*self.config['noise_rate']*self.config['tau']
-                self.rate_schedule[:self.config['tk']] = np.linspace(0, self.config['noise_rate'], self.config['tk'])
-
-            # Drop rate schedule for co-teaching
-            self.co_lambda = np.zeros(self.config['max_epochs'])
-            self.co_lambda[:self.config['cn_lambda_decay']] = self.config['cn_lambda'] * np.linspace(1, 0, self.config['cn_lambda_decay'])
+            elif self.config['algo_type'] == 'codi':
+                self.criterion = CoDiLoss(self.device)
+            self.rate_schedule = np.ones(self.config['max_epochs'])*self.config['noise_rate']*self.config['ct_tau']
+            self.rate_schedule[:self.config['ct_tk']] = np.linspace(0, self.config['noise_rate']**self.config['ct_exp'], self.config['ct_tk'])
 
         if self.config['train_type'] in ['baseline','both']:
             self.model_c = NGNN(config)
@@ -68,7 +58,7 @@ class Pipeline(object):
         
         # Logger and data loader
         date = dt.datetime.date(dt.datetime.now())
-        self.output_name = 'dt{}{}_id{}_{}_{}_{}_algo_{}_noise_{}{}_lay{}_hid{}_lr{}_epo{}_bs{}_drop{}_tk{}_cntime{}_cnlambda{}_cnldec{}_neigh{}{}{}'.format(date.month,date.day,self.config['batch_id'],self.config['train_type'],self.config['algo_type'],self.config['module'],self.config['algo_type'],self.config['noise_type'],self.config['noise_rate'],self.config['num_layers'],self.config['hidden_size'],self.config['learning_rate'],self.config['max_epochs'],self.config['batch_size'],self.config['dropout'],self.config['tk'],self.config['cn_time'],self.config['cn_lambda'],self.config['cn_lambda_decay'],self.config['nbr_neighbors'][0],self.config['nbr_neighbors'][1],self.config['nbr_neighbors'][2])
+        self.output_name = 'dt{}{}_id{}_{}_{}_{}_algo_{}_noise_{}{}_lay{}_hid{}_lr{}_epo{}_bs{}_drop{}_tk{}_neigh{}{}{}'.format(date.month,date.day,self.config['batch_id'],self.config['train_type'],self.config['algo_type'],self.config['module'],self.config['compare_loss'],self.config['noise_type'],self.config['noise_rate'],self.config['num_layers'],self.config['hidden_size'],self.config['learning_rate'],self.config['max_epochs'],self.config['batch_size'],self.config['dropout'],self.config['ct_tk'],self.config['ct_tau'],self.config['nbr_neighbors'][0],self.config['nbr_neighbors'][1],self.config['nbr_neighbors'][2])
         self.logger = initialize_logger(self.config, self.output_name)
 
         self.train_loader = NeighborLoader(
@@ -89,7 +79,7 @@ class Pipeline(object):
             persistent_workers=True
         )
 
-    def train_ct(self, train_loader, epoch, model1, optimizer1, model2, optimizer2, before_loss_1, before_loss_2, sn_1, sn_2):
+    def train_ct(self, train_loader, epoch, model1, optimizer1, model2, optimizer2):
         if not((epoch+1)%5) or ((epoch+1)==1):
             print('   Train epoch {}/{}'.format(epoch+1, self.config['max_epochs']))
         model1.train()
@@ -104,12 +94,6 @@ class Pipeline(object):
         total_ratio_1=0
         total_ratio_2=0
 
-        before_loss_1_list=[]
-        before_loss_2_list=[]
-
-        ind_1_update_list=[]
-        ind_2_update_list=[]
-
         for i,batch in enumerate(train_loader):
             batch = batch.to(self.device)
             # Only consider predictions and labels of seed nodes
@@ -118,16 +102,7 @@ class Pipeline(object):
             y = batch.y[:batch.batch_size].squeeze()
             yhn = batch.yhn[:batch.batch_size].squeeze()
             
-            startp, stopp = int(i * batch.batch_size), int((i+1) * batch.batch_size)
-            #loss_1, loss_2, pure_ratio_1, pure_ratio_2, ind_1_update, ind_2_update, loss_1_mean, loss_2_mean = self.criterion(out1, out2, yhn, self.rate_schedule[epoch], batch.n_id, self.noise_or_not, epoch, before_loss_1[startp:stopp], before_loss_2[startp:stopp], sn_1[startp:stopp], sn_2[startp:stopp], self.co_lambda[epoch], 2.)
-            loss_1, loss_2, pure_ratio_1, pure_ratio_2, ind_1_update, ind_2_update, loss_1_mean, loss_2_mean = self.criterion(out1, out2, yhn, self.rate_schedule[epoch], batch.n_id, self.noise_or_not, epoch, before_loss_1[startp:stopp], before_loss_2[startp:stopp], sn_1[batch.n_id[:batch.batch_size]], sn_2[batch.n_id[:batch.batch_size]], self.co_lambda[epoch], 2.)
-
-            before_loss_1_list += list(np.array(loss_1_mean.detach().cpu()))
-            before_loss_2_list += list(np.array(loss_2_mean.detach().cpu()))
-            #ind_1_update_list += list(np.array(ind_1_update + i * batch.batch_size))
-            #ind_2_update_list += list(np.array(ind_2_update + i * batch.batch_size))
-            ind_1_update_list += list(np.array(ind_1_update))
-            ind_2_update_list += list(np.array(ind_2_update))
+            loss_1, loss_2, pure_ratio_1, pure_ratio_2 = self.criterion(out1, out2, yhn, self.rate_schedule[epoch], batch.n_id, self.noise_or_not)
             
             total_loss_1 += float(loss_1)
             total_loss_2 += float(loss_2)
@@ -142,6 +117,7 @@ class Pipeline(object):
             optimizer2.zero_grad()
             loss_2.backward()
             optimizer2.step()
+            print('ok')
         train_loss_1 = total_loss_1 / len(train_loader)
         train_loss_2 = total_loss_2 / len(train_loader)
         train_acc_1 = total_correct_1 / self.split_idx['train'].size(0)
@@ -149,7 +125,7 @@ class Pipeline(object):
         pure_ratio_1_list = total_ratio_1 / len(train_loader)
         pure_ratio_2_list = total_ratio_2 / len(train_loader)
         
-        return train_loss_1, train_loss_2, train_acc_1, train_acc_2, pure_ratio_1_list, pure_ratio_2_list, before_loss_1_list, before_loss_2_list, ind_1_update_list, ind_2_update_list
+        return train_loss_1, train_loss_2, train_acc_1, train_acc_2, pure_ratio_1_list, pure_ratio_2_list
     
     def train(self, train_loader, epoch, model, optimizer):
         if not((epoch+1)%5) or ((epoch+1)==1):
@@ -238,14 +214,7 @@ class Pipeline(object):
             
 
             for epoch in range(self.config['max_epochs']):
-                if epoch % self.config['cn_time'] == 0:
-                    before_loss_1 = 0.0 * np.ones((len(self.split_idx['train']), 1))
-                    before_loss_2 = 0.0 * np.ones((len(self.split_idx['train']), 1))
-                    #sn_1 = torch.from_numpy(np.ones((len(self.split_idx['train']))))
-                    #sn_2 = torch.from_numpy(np.ones((len(self.split_idx['train']))))
-                    sn_1 = torch.from_numpy(np.ones((self.dataset.x.shape[0])))
-                    sn_2 = torch.from_numpy(np.ones((self.dataset.x.shape[0])))
-                train_loss_1, train_loss_2, train_acc_1, train_acc_2, pure_ratio_1_list, pure_ratio_2_list, before_loss_1_list, before_loss_2_list, ind_1_update_list, ind_2_update_list = self.train_ct(self.train_loader, epoch, self.model1.network.to(self.device), self.model1.optimizer, self.model2.network.to(self.device), self.model2.optimizer, before_loss_1, before_loss_2, sn_1, sn_2)
+                train_loss_1, train_loss_2, train_acc_1, train_acc_2, pure_ratio_1_list, pure_ratio_2_list = self.train_ct(self.train_loader, epoch, self.model1.network.to(self.device), self.model1.optimizer, self.model2.network.to(self.device), self.model2.optimizer)
                 
                 train_loss_1_hist.append(train_loss_1)
                 train_loss_2_hist.append(train_loss_2)
@@ -253,30 +222,6 @@ class Pipeline(object):
                 train_acc_2_hist.append(train_acc_2)
                 pure_ratio_1_hist.append(pure_ratio_1_list)
                 pure_ratio_2_hist.append(pure_ratio_2_list)
-
-                # save the selection history
-                if self.config['algo_type'] in ['cn_soft','cn_hard']:
-                    before_loss_1, before_loss_2 = np.array(before_loss_1_list).astype(float), np.array(before_loss_2_list).astype(float)
-                    """
-                    all_zero_array_1, all_zero_array_2 = np.zeros((len(self.split_idx['train']))), np.zeros((len(self.split_idx['train'])))
-                    all_zero_array_1[np.array(ind_1_update_list)] = 1
-                    all_zero_array_2[np.array(ind_2_update_list)] = 1
-                    sn_1 += torch.from_numpy(all_zero_array_1)
-                    sn_2 += torch.from_numpy(all_zero_array_2)
-                    """
-                    all_zero_array_1, all_zero_array_2 = np.zeros((self.dataset.x.shape[0])), np.zeros((self.dataset.x.shape[0]))
-                    all_zero_array_1[np.array(ind_1_update_list)] = 1
-                    all_zero_array_2[np.array(ind_2_update_list)] = 1
-                    sn_1 += torch.from_numpy(all_zero_array_1)
-                    sn_2 += torch.from_numpy(all_zero_array_2)
-                if self.config['algo_type'] == 'cn_hard':
-                    before_loss_1_numpy = np.zeros((len(self.split_idx['train']), 1))
-                    before_loss_2_numpy = np.zeros((len(self.split_idx['train']), 1))
-                    num = before_loss_1.shape[0]
-                    before_loss_1_numpy[:num], before_loss_2_numpy[:num] = before_loss_1[:, np.newaxis], before_loss_2[:, np.newaxis]
-                    
-                    before_loss_1 = np.concatenate((np.expand_dims(before_loss_1, axis=1), before_loss_1_numpy), axis=1)
-                    before_loss_2 = np.concatenate((np.expand_dims(before_loss_2, axis=1), before_loss_2_numpy), axis=1)
 
                 val_acc_1, val_acc_2 = self.evaluate_ct(self.valid_loader, self.model1.network.to(self.device), self.model2.network.to(self.device))
                 val_acc_1_hist.append(val_acc_1)
