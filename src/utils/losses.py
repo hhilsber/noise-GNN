@@ -79,6 +79,7 @@ class CNCLULossSoft(nn.Module):
         loss_1 = torch.log(1+loss_1+loss_1*loss_1/2)
         
         loss_1_mean = (before_loss_1.squeeze() * s + loss_1) / (s + 1)
+        
         confidence_bound_1 = co_lambda * (s + (co_lambda * torch.log(2 * s)) / (s * s)) / ((sn_1 + 1) - co_lambda)
         soft_criterion_1 = F.relu(loss_1_mean.float() - confidence_bound_1.to(self.device).float())
         ind_1_sorted = np.argsort(soft_criterion_1.to(self.device).data)
@@ -109,9 +110,12 @@ class CNCLULossSoft(nn.Module):
         pure_ratio_1 = torch.sum(noise_or_not[ind[ind_1_sorted.cpu()[:num_remember]]])/float(num_remember)
         pure_ratio_2 = torch.sum(noise_or_not[ind[ind_2_sorted.cpu()[:num_remember]]])/float(num_remember)
         
-    
         loss_1_update = F.cross_entropy(y_1[ind_2_update], y_noise[ind_2_update])
         loss_2_update = F.cross_entropy(y_2[ind_1_update], y_noise[ind_1_update])
+
+        # True index, not batch index, for sn1 sn2
+        ind_1_update = ind[ind_1_sorted[:num_remember]]
+        ind_2_update = ind[ind_2_sorted[:num_remember]]
 
         return torch.sum(loss_1_update)/num_remember, torch.sum(loss_2_update)/num_remember, pure_ratio_1, pure_ratio_2, ind_1_update, ind_2_update, loss_1_mean, loss_2_mean
 

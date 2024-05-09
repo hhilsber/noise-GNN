@@ -119,12 +119,15 @@ class Pipeline(object):
             yhn = batch.yhn[:batch.batch_size].squeeze()
             
             startp, stopp = int(i * batch.batch_size), int((i+1) * batch.batch_size)
-            loss_1, loss_2, pure_ratio_1, pure_ratio_2, ind_1_update, ind_2_update, loss_1_mean, loss_2_mean = self.criterion(out1, out2, yhn, self.rate_schedule[epoch], batch.n_id, self.noise_or_not, epoch, before_loss_1[startp:stopp], before_loss_2[startp:stopp], sn_1[startp:stopp], sn_2[startp:stopp], self.co_lambda[epoch], 2.)
+            #loss_1, loss_2, pure_ratio_1, pure_ratio_2, ind_1_update, ind_2_update, loss_1_mean, loss_2_mean = self.criterion(out1, out2, yhn, self.rate_schedule[epoch], batch.n_id, self.noise_or_not, epoch, before_loss_1[startp:stopp], before_loss_2[startp:stopp], sn_1[startp:stopp], sn_2[startp:stopp], self.co_lambda[epoch], 2.)
+            loss_1, loss_2, pure_ratio_1, pure_ratio_2, ind_1_update, ind_2_update, loss_1_mean, loss_2_mean = self.criterion(out1, out2, yhn, self.rate_schedule[epoch], batch.n_id, self.noise_or_not, epoch, before_loss_1[startp:stopp], before_loss_2[startp:stopp], sn_1[batch.n_id[:batch.batch_size]], sn_2[batch.n_id[:batch.batch_size]], self.co_lambda[epoch], 2.)
 
             before_loss_1_list += list(np.array(loss_1_mean.detach().cpu()))
             before_loss_2_list += list(np.array(loss_2_mean.detach().cpu()))
-            ind_1_update_list += list(np.array(ind_1_update + i * batch.batch_size))
-            ind_2_update_list += list(np.array(ind_2_update + i * batch.batch_size))
+            #ind_1_update_list += list(np.array(ind_1_update + i * batch.batch_size))
+            #ind_2_update_list += list(np.array(ind_2_update + i * batch.batch_size))
+            ind_1_update_list += list(np.array(ind_1_update))
+            ind_2_update_list += list(np.array(ind_2_update))
             
             total_loss_1 += float(loss_1)
             total_loss_2 += float(loss_2)
@@ -238,8 +241,10 @@ class Pipeline(object):
                 if epoch % self.config['cn_time'] == 0:
                     before_loss_1 = 0.0 * np.ones((len(self.split_idx['train']), 1))
                     before_loss_2 = 0.0 * np.ones((len(self.split_idx['train']), 1))
-                    sn_1 = torch.from_numpy(np.ones((len(self.split_idx['train']))))
-                    sn_2 = torch.from_numpy(np.ones((len(self.split_idx['train']))))
+                    #sn_1 = torch.from_numpy(np.ones((len(self.split_idx['train']))))
+                    #sn_2 = torch.from_numpy(np.ones((len(self.split_idx['train']))))
+                    sn_1 = torch.from_numpy(np.ones((self.dataset.x.shape[0])))
+                    sn_2 = torch.from_numpy(np.ones((self.dataset.x.shape[0])))
                 train_loss_1, train_loss_2, train_acc_1, train_acc_2, pure_ratio_1_list, pure_ratio_2_list, before_loss_1_list, before_loss_2_list, ind_1_update_list, ind_2_update_list = self.train_ct(self.train_loader, epoch, self.model1.network.to(self.device), self.model1.optimizer, self.model2.network.to(self.device), self.model2.optimizer, before_loss_1, before_loss_2, sn_1, sn_2)
                 
                 train_loss_1_hist.append(train_loss_1)
@@ -252,7 +257,14 @@ class Pipeline(object):
                 # save the selection history
                 if self.config['algo_type'] in ['cn_soft','cn_hard']:
                     before_loss_1, before_loss_2 = np.array(before_loss_1_list).astype(float), np.array(before_loss_2_list).astype(float)
+                    """
                     all_zero_array_1, all_zero_array_2 = np.zeros((len(self.split_idx['train']))), np.zeros((len(self.split_idx['train'])))
+                    all_zero_array_1[np.array(ind_1_update_list)] = 1
+                    all_zero_array_2[np.array(ind_2_update_list)] = 1
+                    sn_1 += torch.from_numpy(all_zero_array_1)
+                    sn_2 += torch.from_numpy(all_zero_array_2)
+                    """
+                    all_zero_array_1, all_zero_array_2 = np.zeros((self.dataset.x.shape[0])), np.zeros((self.dataset.x.shape[0]))
                     all_zero_array_1[np.array(ind_1_update_list)] = 1
                     all_zero_array_2[np.array(ind_2_update_list)] = 1
                     sn_1 += torch.from_numpy(all_zero_array_1)
