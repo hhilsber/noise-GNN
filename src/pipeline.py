@@ -46,7 +46,7 @@ class Pipeline(object):
             if self.config['algo_type'] == 'ct':
                 self.criterion = CTLoss(self.device)
             elif self.config['algo_type'] == 'codi':
-                self.criterion = CoDiLoss(self.device)
+                self.criterion = CoDiLoss(self.device, self.config['co_lambda'])
             self.rate_schedule = np.ones(self.config['max_epochs'])*self.config['noise_rate']*self.config['ct_tau']
             self.rate_schedule[:self.config['ct_tk']] = np.linspace(0, self.config['noise_rate']**self.config['ct_exp'], self.config['ct_tk'])
 
@@ -58,7 +58,7 @@ class Pipeline(object):
         
         # Logger and data loader
         date = dt.datetime.date(dt.datetime.now())
-        self.output_name = 'dt{}{}_id{}_{}_{}_{}_algo_{}_noise_{}{}_lay{}_hid{}_lr{}_epo{}_bs{}_drop{}_tk{}_neigh{}{}{}'.format(date.month,date.day,self.config['batch_id'],self.config['train_type'],self.config['algo_type'],self.config['module'],self.config['compare_loss'],self.config['noise_type'],self.config['noise_rate'],self.config['num_layers'],self.config['hidden_size'],self.config['learning_rate'],self.config['max_epochs'],self.config['batch_size'],self.config['dropout'],self.config['ct_tk'],self.config['ct_tau'],self.config['nbr_neighbors'][0],self.config['nbr_neighbors'][1],self.config['nbr_neighbors'][2])
+        self.output_name = 'dt{}{}_id{}_{}_{}_{}_algo_{}_noise_{}{}_lay{}_hid{}_lr{}_epo{}_bs{}_drop{}_tk{}_colambda{}_neigh{}{}{}'.format(date.month,date.day,self.config['batch_id'],self.config['train_type'],self.config['algo_type'],self.config['module'],self.config['compare_loss'],self.config['noise_type'],self.config['noise_rate'],self.config['num_layers'],self.config['hidden_size'],self.config['learning_rate'],self.config['max_epochs'],self.config['batch_size'],self.config['dropout'],self.config['ct_tk'],self.config['co_lambda'],self.config['nbr_neighbors'][0],self.config['nbr_neighbors'][1],self.config['nbr_neighbors'][2])
         self.logger = initialize_logger(self.config, self.output_name)
 
         self.train_loader = NeighborLoader(
@@ -110,10 +110,17 @@ class Pipeline(object):
             total_correct_2 += int(out2.argmax(dim=-1).eq(y).sum())
             total_ratio_1 += (100*pure_ratio_1)
             total_ratio_2 += (100*pure_ratio_2)
-
+            """
+            optimizer1.zero_grad()
+            optimizer2.zero_grad()
+            loss_1.backward(retain_graph=True)
+            loss_2.backward(retain_graph=True)
+            optimizer1.step()
+            optimizer2.step()"""
             optimizer1.zero_grad()
             loss_1.backward()
             optimizer1.step()
+
             optimizer2.zero_grad()
             loss_2.backward()
             optimizer2.step()

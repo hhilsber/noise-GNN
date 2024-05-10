@@ -61,9 +61,10 @@ class CoDiLoss(nn.Module):
     CoDis loss
     https://github.com/tmllab/2023_ICCV_CoDis/blob/main/loss.py
     """
-    def __init__(self, device):
+    def __init__(self, device, co_lambda=0.1):
         super(CoDiLoss, self).__init__()
         self.device = device
+        self.co_lambda = co_lambda
     
     def kl_loss_compute(self, pred, soft_targets, reduce=True):
 
@@ -89,15 +90,17 @@ class CoDiLoss(nn.Module):
         else:
             return torch.sum(js, 1)
 
-    def forward(self, y_1, y_2, y_noise, forget_rate, ind, noise_or_not, co_lambda=0.1):
+    def forward(self, y_1, y_2, y_noise, forget_rate, ind, noise_or_not):
         js_loss = self.js_loss_compute(y_1, y_2, reduce=False)
         js_loss_1 = js_loss.detach()
         js_loss_2 = js_loss.detach()
-        loss_1 = F.cross_entropy(y_1, y_noise, reduction='none') - co_lambda * js_loss_1
+        loss_1 = F.cross_entropy(y_1, y_noise, reduction='none') - self.co_lambda * js_loss_1
+        #loss_1 = F.cross_entropy(y_1, y_noise, reduction='none') - self.co_lambda * self.js_loss_compute(y_1, y_2, reduce=False)
         ind_1_sorted = np.argsort(loss_1.data)
         loss_1_sorted = loss_1[ind_1_sorted]
 
-        loss_2 = F.cross_entropy(y_2, y_noise, reduction='none') - co_lambda * js_loss_2
+        loss_2 = F.cross_entropy(y_2, y_noise, reduction='none') - self.co_lambda * js_loss_2
+        #loss_2 = F.cross_entropy(y_2, y_noise, reduction='none') - self.co_lambda * self.js_loss_compute(y_1, y_2, reduce=False)
         ind_2_sorted = np.argsort(loss_2.data)
         loss_2_sorted = loss_2[ind_2_sorted]
 
