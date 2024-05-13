@@ -1,4 +1,6 @@
 # Data
+batch_id: 9
+batch_spec: 'benchmark on clean data'
 data_type: 'network'
 data_dir: '../data'
 dataset_name: 'ogbn-arxiv'
@@ -8,26 +10,39 @@ task_type: 'classification'
 seed: 1232
 
 # Graph model
-module: 'simple_gcn'
-#module: 'sage'
-hidden_size: 64
-num_layers: 3
+module: 'sage'
+hidden_size: 128
+num_layers: 2
 nbr_neighbors: [15,10,5]
 
+# Compare network
+train_type: 'baseline' # nalgo   baseline   both
+compare_loss : 'normal' # normal back
 
 # Regularization
-dropout: 0.3
+dropout: 0.5
 
 # Training
-#optimizer: 'single_adam'
-optimizer: 'adam_sage'
-learning_rate: 0.001
-weight_decay: 0.0005
+optimizer: 'adam'
+learning_rate: 0.001 # weight_decay: 0.0005
 
-max_epochs: 12
+max_epochs: 30
 batch_size: 1024
 num_workers: 1
-eval_type: 'test'
 
 # Device
-no_cuda: False
+no_cuda: True
+ 
+# Plot
+do_plot: True
+
+# Noise
+noise_rate: 0.0
+noise_type: 'rand_pair' # pair   sym
+
+# Algo Co-teaching or CNCLU
+algo_type: 'codi' # ct codi
+ct_tk: 5
+ct_exp: 1
+ct_tau: 1.0
+co_lambda: 0.1

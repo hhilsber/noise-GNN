@@ -15,8 +15,7 @@ from .utils.noise import flip_label
 from .models.model import NGNN
 from .utils.losses import *
 
-#os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
-class Pipeline(object):
+class PipelineA(object):
     """
     Processing pipeline
     """
@@ -28,20 +27,14 @@ class Pipeline(object):
         self.dataset = load_network(config)
         self.split_idx = self.dataset.get_idx_split()
         self.data = self.dataset[0]
-        print('noise type and rate: {} {}'.format(config['noise_type'], config['noise_rate']))
+        self.data.adj_t = self.data.adj_t.to_symmetric()
+
         self.data.yhn, noise_mat = flip_label(self.data.y, self.dataset.num_classes, config['noise_type'], config['noise_rate'])
-        self.noise_or_not = (self.data.y.squeeze() == self.data.yhn) #.int() # true if same lbl
+        self.noise_or_not = (self.data.y.squeeze() == self.data.yhn)
         
-        config['nbr_features'] = self.dataset.num_features #self.dataset.x.shape[-1]
-        config['nbr_classes'] = self.dataset.num_classes #dataset.y.max().item() + 1
+        config['nbr_features'] = self.dataset.num_features
+        config['nbr_classes'] = self.dataset.num_classes
         config['nbr_nodes'] = self.dataset.x.shape[0]
-        
-        #train_noise_idx = self.noise_or_not[self.split_idx['train']]
-        #valid_noise_idx = self.noise_or_not[self.split_idx['valid']]
-        #self.train_wo_noise = self.split_idx['train'][train_noise_idx]
-        #valid_wo_noise = self.split_idx['valid'][valid_noise_idx]
-        #config['train_wo_noise'] = self.train_wo_noise.size(0)
-        #config['train_with_noise'] = self.split_idx['train'].shape[0]
 
         # Config
         self.config = config
@@ -61,7 +54,6 @@ class Pipeline(object):
             self.model_c = NGNN(config)
         self.evaluator = Evaluator(name=config['dataset_name'])
         
-        print('train: {}, valid: {}, test: {}'.format(self.split_idx['train'].shape[0],self.split_idx['valid'].shape[0],self.split_idx['test'].shape[0]))
         
         # Logger and data loader
         date = dt.datetime.date(dt.datetime.now())
@@ -72,7 +64,6 @@ class Pipeline(object):
         self.train_loader = NeighborLoader(
             self.data,
             input_nodes=self.split_idx['train'],
-            #input_nodes=self.train_wo_noise,
             num_neighbors=self.config['nbr_neighbors'],
             batch_size=self.config['batch_size'],
             shuffle=True,
@@ -106,8 +97,8 @@ class Pipeline(object):
         for i,batch in enumerate(train_loader):
             batch = batch.to(self.device)
             # Only consider predictions and labels of seed nodes
-            out1 = model1(batch.x, batch.edge_index)[:batch.batch_size]
-            out2 = model2(batch.x, batch.edge_index)[:batch.batch_size]
+            out1 = model1(batch.x, batch.adj_t)[:batch.batch_size].log_softmax(dim=-1)
+            out2 = model2(batch.x, batch.adj_t)[:batch.batch_size].log_softmax(dim=-1)
             y = batch.y[:batch.batch_size].squeeze()
             yhn = batch.yhn[:batch.batch_size].squeeze()
             
@@ -119,13 +110,7 @@ class Pipeline(object):
             total_correct_2 += int(out2.argmax(dim=-1).eq(y).sum())
             total_ratio_1 += (100*pure_ratio_1)
             total_ratio_2 += (100*pure_ratio_2)
-            """
-            optimizer1.zero_grad()
-            optimizer2.zero_grad()
-            loss_1.backward(retain_graph=True)
-            loss_2.backward(retain_graph=True)
-            optimizer1.step()
-            optimizer2.step()"""
+            
             optimizer1.zero_grad()
             loss_1.backward()
             optimizer1.step()
@@ -145,7 +130,6 @@ class Pipeline(object):
     def train(self, train_loader, epoch, model, optimizer):
         if not((epoch+1)%5) or ((epoch+1)==1):
             print('   Train epoch {}/{}'.format(epoch+1, self.config['max_epochs']))
-            print('     loss = F.cross_entropy(out, y)')
         model.train()
 
         total_loss = 0
@@ -154,13 +138,14 @@ class Pipeline(object):
         for batch in train_loader:
             batch = batch.to(self.device)
             # Only consider predictions and labels of seed nodes
-            out = model(batch.x, batch.edge_index)[:batch.batch_size]
+            out = model(batch.x, batch.edge_index)[:batch.batch_size].log_softmax(dim=-1)
             y = batch.y[:batch.batch_size].squeeze()
             yhn = batch.yhn[:batch.batch_size].squeeze()
             
             if self.config['compare_loss'] == 'normal':
-                loss = F.cross_entropy(out, yhn)
-                #loss = F.cross_entropy(out, y)
+                #loss = F.cross_entropy(out, yhn)
+                loss = F.nll_loss(out, yhn)
+
             else:
                 loss = backward_correction(out, y, self.noise_mat, self.device, self.config['nbr_classes'])
             
@@ -172,7 +157,6 @@ class Pipeline(object):
             optimizer.step()
         train_loss = total_loss / len(train_loader)
         train_acc = total_correct / self.split_idx['train'].size(0)
-        #train_acc = total_correct / self.train_wo_noise.size(0)
         return train_loss, train_acc
 
     def evaluate_ct(self, valid_loader, model1, model2):
@@ -217,8 +201,6 @@ class Pipeline(object):
         if self.config['train_type'] in ['nalgo','both']:
             print('Train nalgo')
             self.logger.info('Train nalgo')
-            #self.model1.network.reset_parameters()
-            #self.model2.network.reset_parameters()
 
             train_loss_1_hist = []
             train_loss_2_hist = []

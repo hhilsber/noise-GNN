@@ -6,12 +6,16 @@ import random
 import numpy as np
 import torch
 import torch.nn as nn
-#from torch.utils.data import TensorDataset, DataLoader
-from src.pipeline import Pipeline
+
+from src.pipeline_prod import PipelineP
+from src.pipeline_arx import PipelineA
 
 ##################################### Main #####################################
 def main(config):
-    model = Pipeline(config)
+    if config['dataset_name'] == 'ogbn-products':
+        model = PipelineP(config)
+    else:
+        model = PipelineA(config)
     model.loop()
 
 
