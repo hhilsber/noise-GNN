@@ -164,7 +164,7 @@ class PipelineP(object):
                 loss = backward_correction(out, y, self.noise_mat, self.device, self.config['nbr_classes'])
             
             total_loss += float(loss)
-            total_correct += int(out.argmax(dim=-1).eq(y).sum())
+            total_correct += int(out.argmax(dim=-1).eq(y).sum()) 
 
             optimizer.zero_grad()
             loss.backward()

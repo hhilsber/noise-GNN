@@ -1,5 +1,5 @@
 # Data
-batch_id: 3
+batch_id: 8
 batch_spec: 'both on noisy'
 
 data_type: 'network'
@@ -27,18 +27,18 @@ dropout: 0.5
 optimizer: 'adam'
 learning_rate: 0.001 # weight_decay: 0.0005
 
-max_epochs: 35
+max_epochs: 30
 batch_size: 1024
 num_workers: 1
 
 # Device
-no_cuda: True
+cuda: True
  
 # Plot
 do_plot: True
 
 # Noise
-noise_rate: 0.4
+noise_rate: 0.25
 noise_type: 'rand_pair' # pair   sym
 
 # Algo Co-teaching or CNCLU

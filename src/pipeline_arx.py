@@ -3,6 +3,7 @@ import torch
 import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
+import torch_geometric.transforms as T
 from torch_geometric.loader import NeighborLoader
 import matplotlib.pyplot as plt
 from ogb.nodeproppred import Evaluator
@@ -27,8 +28,10 @@ class PipelineA(object):
         self.dataset = load_network(config)
         self.split_idx = self.dataset.get_idx_split()
         self.data = self.dataset[0]
-        self.data.adj_t = self.data.adj_t.to_symmetric()
-
+        #print(self.data.adj_t[:10,:10])
+        #self.data.adj_t = self.data.adj_t.to_symmetric()
+        self.data.adj_t = self.data.adj_t.to_sparse_csr()
+        print(type(self.data.adj_t))
         self.data.yhn, noise_mat = flip_label(self.data.y, self.dataset.num_classes, config['noise_type'], config['noise_rate'])
         self.noise_or_not = (self.data.y.squeeze() == self.data.yhn)
         
