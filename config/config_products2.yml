@@ -1,6 +1,7 @@
 # Data
-batch_id: 2
-batch_spec: 'benchmark on subset of clean data'
+batch_id: 5
+batch_spec: 'both on noisy'
+
 data_type: 'network'
 data_dir: '../data'
 dataset_name: 'ogbn-products'
@@ -16,7 +17,7 @@ num_layers: 2
 nbr_neighbors: [15,10,5]
 
 # Compare network
-train_type: 'baseline' # nalgo   baseline   both
+train_type: 'both' # nalgo   baseline   both
 compare_loss : 'normal' # normal back
 
 # Regularization
@@ -37,11 +38,11 @@ no_cuda: True
 do_plot: True
 
 # Noise
-noise_rate: 0.4
+noise_rate: 0.2
 noise_type: 'rand_pair' # pair   sym
 
 # Algo Co-teaching or CNCLU
-algo_type: 'codi' # ct codi
+algo_type: 'ct' # ct codi
 ct_tk: 5
 ct_exp: 1
 ct_tau: 1.0

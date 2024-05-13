@@ -36,6 +36,13 @@ class Pipeline(object):
         config['nbr_classes'] = self.dataset.num_classes #dataset.y.max().item() + 1
         config['nbr_nodes'] = self.dataset.x.shape[0]
         
+        #train_noise_idx = self.noise_or_not[self.split_idx['train']]
+        #valid_noise_idx = self.noise_or_not[self.split_idx['valid']]
+        #self.train_wo_noise = self.split_idx['train'][train_noise_idx]
+        #valid_wo_noise = self.split_idx['valid'][valid_noise_idx]
+        #config['train_wo_noise'] = self.train_wo_noise.size(0)
+        #config['train_with_noise'] = self.split_idx['train'].shape[0]
+
         # Config
         self.config = config
 
@@ -62,14 +69,10 @@ class Pipeline(object):
         self.logger = initialize_logger(self.config, self.output_name)
         np.save('../out_nmat/' + self.output_name + '.npy', noise_mat)
 
-        train_noise_idx = self.noise_or_not[self.split_idx['train']]
-        valid_noise_idx = self.noise_or_not[self.split_idx['valid']]
-        train_wo_noise = self.split_idx['train'][train_noise_idx]
-        valid_wo_noise = self.split_idx['valid'][valid_noise_idx]
-
         self.train_loader = NeighborLoader(
             self.data,
             input_nodes=self.split_idx['train'],
+            #input_nodes=self.train_wo_noise,
             num_neighbors=self.config['nbr_neighbors'],
             batch_size=self.config['batch_size'],
             shuffle=True,
@@ -142,6 +145,7 @@ class Pipeline(object):
     def train(self, train_loader, epoch, model, optimizer):
         if not((epoch+1)%5) or ((epoch+1)==1):
             print('   Train epoch {}/{}'.format(epoch+1, self.config['max_epochs']))
+            print('     loss = F.cross_entropy(out, y)')
         model.train()
 
         total_loss = 0
@@ -155,8 +159,8 @@ class Pipeline(object):
             yhn = batch.yhn[:batch.batch_size].squeeze()
             
             if self.config['compare_loss'] == 'normal':
-                #loss = F.cross_entropy(out, yhn)
-                loss = F.cross_entropy(out, y)
+                loss = F.cross_entropy(out, yhn)
+                #loss = F.cross_entropy(out, y)
             else:
                 loss = backward_correction(out, y, self.noise_mat, self.device, self.config['nbr_classes'])
             
@@ -168,6 +172,7 @@ class Pipeline(object):
             optimizer.step()
         train_loss = total_loss / len(train_loader)
         train_acc = total_correct / self.split_idx['train'].size(0)
+        #train_acc = total_correct / self.train_wo_noise.size(0)
         return train_loss, train_acc
 
     def evaluate_ct(self, valid_loader, model1, model2):
