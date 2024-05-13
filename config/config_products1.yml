@@ -1,5 +1,5 @@
 # Data
-batch_id: 6
+batch_id: 1
 batch_spec: 'both on noisy'
 
 data_type: 'network'
@@ -21,13 +21,13 @@ train_type: 'both' # nalgo   baseline   both
 compare_loss : 'normal' # normal back
 
 # Regularization
-dropout: 0.5
+dropout: 0.3
 
 # Training
 optimizer: 'adam'
 learning_rate: 0.001 # weight_decay: 0.0005
 
-max_epochs: 30
+max_epochs: 20
 batch_size: 1024
 num_workers: 1
 

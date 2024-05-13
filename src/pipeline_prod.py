@@ -71,7 +71,6 @@ class PipelineP(object):
         self.train_loader = NeighborLoader(
             self.data,
             input_nodes=self.split_idx['train'],
-            #input_nodes=self.train_wo_noise,
             num_neighbors=self.config['nbr_neighbors'],
             batch_size=self.config['batch_size'],
             shuffle=True,
@@ -102,7 +101,7 @@ class PipelineP(object):
         total_ratio_1=0
         total_ratio_2=0
 
-        for i,batch in enumerate(train_loader):
+        for batch in train_loader:
             batch = batch.to(self.device)
             # Only consider predictions and labels of seed nodes
             out1 = model1(batch.x, batch.edge_index)[:batch.batch_size]
@@ -122,9 +121,11 @@ class PipelineP(object):
             optimizer1.zero_grad()
             loss_1.backward()
             optimizer1.step()
+
             optimizer2.zero_grad()
             loss_2.backward()
             optimizer2.step()
+
         train_loss_1 = total_loss_1 / len(train_loader)
         train_loss_2 = total_loss_2 / len(train_loader)
         train_acc_1 = total_correct_1 / self.split_idx['train'].size(0)
@@ -137,7 +138,7 @@ class PipelineP(object):
     def train(self, train_loader, epoch, model, optimizer):
         if not((epoch+1)%5) or ((epoch+1)==1):
             print('   Train epoch {}/{}'.format(epoch+1, self.config['max_epochs']))
-            print('     loss = F.cross_entropy(out, y)')
+            #print('     loss = F.cross_entropy(out, y)')
         model.train()
 
         total_loss = 0
@@ -154,7 +155,7 @@ class PipelineP(object):
                 loss = F.cross_entropy(out, yhn)
                 #loss = F.cross_entropy(out, y)
             else:
-                loss = backward_correction(out, y, self.noise_mat, self.device, self.config['nbr_classes'])
+                #loss = backward_correction(out, yhn, self.noise_mat, self.device, self.config['nbr_classes'])
             
             total_loss += float(loss)
             total_correct += int(out.argmax(dim=-1).eq(y).sum()) 
@@ -225,7 +226,8 @@ class PipelineP(object):
 
             for epoch in range(self.config['max_epochs']):
                 train_loss_1, train_loss_2, train_acc_1, train_acc_2, pure_ratio_1_list, pure_ratio_2_list = self.train_ct(self.train_loader, epoch, self.model1.network.to(self.device), self.model1.optimizer, self.model2.network.to(self.device), self.model2.optimizer)
-                
+                print('train loss {:.3f} --- {:.3f}'.format(train_loss_1,train_loss_2))
+
                 train_loss_1_hist.append(train_loss_1)
                 train_loss_2_hist.append(train_loss_2)
                 train_acc_1_hist.append(train_acc_1)
