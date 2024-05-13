@@ -48,6 +48,8 @@ def flip_label(labels, nbr_classes, noise_type='sym', prob=0.3):
         for i in range(nbr_classes):
             mat[random_perm[0,i],random_perm[1,i]] = prob
         noise_mat += mat
+    else:
+        print('wrong noise type')
         
     noisy_labels = np.copy(labels.numpy())
     for i in range(labels.shape[0]):
