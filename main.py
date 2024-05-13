@@ -49,7 +49,7 @@ if __name__ == '__main__':
 
     # Set device
     is_cuda = torch.cuda.is_available()
-    if not config['no_cuda'] and is_cuda:
+    if config['cuda'] and is_cuda:
         device = torch.device('cuda')
     else:
         device = torch.device('cpu')

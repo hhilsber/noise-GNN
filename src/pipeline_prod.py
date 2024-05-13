@@ -118,17 +118,10 @@ class PipelineP(object):
             total_correct_2 += int(out2.argmax(dim=-1).eq(y).sum())
             total_ratio_1 += (100*pure_ratio_1)
             total_ratio_2 += (100*pure_ratio_2)
-            """
-            optimizer1.zero_grad()
-            optimizer2.zero_grad()
-            loss_1.backward(retain_graph=True)
-            loss_2.backward(retain_graph=True)
-            optimizer1.step()
-            optimizer2.step()"""
+            
             optimizer1.zero_grad()
             loss_1.backward()
             optimizer1.step()
-
             optimizer2.zero_grad()
             loss_2.backward()
             optimizer2.step()
