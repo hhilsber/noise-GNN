@@ -29,7 +29,7 @@ class Pipeline(object):
         self.split_idx = self.dataset.get_idx_split()
         self.data = self.dataset[0]
         print('noise type and rate: {} {}'.format(config['noise_type'], config['noise_rate']))
-        self.data.yhn = flip_label(self.data.y, self.dataset.num_classes, config['noise_type'], config['noise_rate'])
+        self.data.yhn, _ = flip_label(self.data.y, self.dataset.num_classes, config['noise_type'], config['noise_rate'])
         self.noise_or_not = (self.data.y.squeeze() == self.data.yhn) #.int() # true if same lbl
         
         config['nbr_features'] = self.dataset.num_features #self.dataset.x.shape[-1]

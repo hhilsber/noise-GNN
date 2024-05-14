@@ -10,33 +10,33 @@ train_type: 'both' # coteaching   baseline   both
 seed: 1232
 
 # Graph model
-module: 'gcn'
+module: 'sage'
 hidden_size: 128
 num_layers: 2
 nbr_neighbors: [15,10,5]
 
 # Regularization
-dropout: 0.3
+dropout: 0.5
 
 # Training
 optimizer: 'adam'
 learning_rate: 0.001 #weight_decay: 0.0005
 
-max_epochs: 30
+max_epochs: 20
 batch_size: 1024
 num_workers: 1
 
 # Device
-no_cuda: True
+no_cuda: False
 
 # Plot
 do_plot: True
 
 # Noise
-noise_rate: 0.45
-noise_type: 'pair' # pair   sym
+noise_rate: 0.35
+noise_type: 'rand_pair' # pair   sym
 
 # Co-teaching
 ct_tk: 5
 ct_exp: 1
-ct_tau: 1
+ct_tau: 1.0

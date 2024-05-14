@@ -9,18 +9,56 @@ def flip_label(labels, nbr_classes, noise_type='sym', prob=0.3):
     prob: probability to flip to another class
     """
     if noise_type == 'sym':
-        P = np.diag(np.array([1-prob] * nbr_classes), k=0) + (np.ones((nbr_classes,nbr_classes)) - np.diag(np.ones(nbr_classes), k=0)) * (prob/(nbr_classes-1))
+        noise_mat = np.diag(np.array([1-prob] * nbr_classes), k=0) + (np.ones((nbr_classes,nbr_classes)) - np.diag(np.ones(nbr_classes), k=0)) * (prob/(nbr_classes-1))
+    elif noise_type == 'next_pair':
+        noise_mat = np.diag(np.array([1-prob] * nbr_classes), k=0) + np.diag(np.array([prob] * (nbr_classes-1)), k=1) + np.diag(np.array([prob]), k=-(nbr_classes-1))
+    elif noise_type == 'rand_pair':
+        perm1 = np.random.permutation(nbr_classes)
+        perm2 = np.random.permutation(nbr_classes)
+        numbers = np.arange(nbr_classes)
+        
+        row1 = numbers[perm1]
+        row2 = numbers[perm2]
+        random_perm = np.vstack((row1, row2))
 
-    elif noise_type == 'pair':
-        P = np.diag(np.array([1-prob] * nbr_classes), k=0) + np.diag(np.array([prob] * (nbr_classes-1)), k=1) + np.diag(np.array([prob]), k=-(nbr_classes-1))
+        noise_mat = np.diag(np.array([1-prob] * nbr_classes), k=0)
+        mat = np.zeros((nbr_classes,nbr_classes))
+        for i in range(nbr_classes):
+            mat[random_perm[0,i],random_perm[1,i]] = prob
+        noise_mat += mat
+    elif noise_type == 'aim_pair':
+        existing_array = np.array([[0, 1, 2], [3, 4, 5]])
+        m = existing_array.shape[1]
+        perm1 = np.random.permutation(nbr_classes - m)
+        perm2 = np.random.permutation(nbr_classes - m)
+        
+        numbers = np.arange(nbr_classes)
+        numbers1 = np.setdiff1d(numbers, existing_array[0,:])
+        numbers2 = np.setdiff1d(numbers, existing_array[1,:])
+        
+        if (len(numbers1) == 0):
+            return np.array([])
 
+        row1 = numbers1[perm1]
+        row2 = numbers2[perm2]
+        random_perm = np.concatenate((np.vstack((row1, row2)), existing_array), axis=1)
+
+        noise_mat = np.diag(np.array([1-prob] * nbr_classes), k=0)
+        mat = np.zeros((nbr_classes,nbr_classes))
+        for i in range(nbr_classes):
+            mat[random_perm[0,i],random_perm[1,i]] = prob
+        noise_mat += mat
+    else:
+        print('wrong noise type')
+        
     noisy_labels = np.copy(labels.numpy())
     for i in range(labels.shape[0]):
         lbl = labels[i].item()
-        flipped = np.random.multinomial(1, P[lbl,:], 1)[0]
+        flipped = np.random.multinomial(1, noise_mat[lbl,:], 1)[0]
         noisy_labels[i] = np.where(flipped == 1)[0]
     noisy_labels = torch.from_numpy(noisy_labels).squeeze()
-    return noisy_labels.squeeze()
+
+    return noisy_labels.squeeze(), noise_mat
 
 def add_edge_noise(adjacency, prob=0.4):
     """

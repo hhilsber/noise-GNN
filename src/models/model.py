@@ -30,7 +30,8 @@ class NGNN(object):
             self.network = SAGE(in_channels=self.config['nbr_features'],
                                     hidden_channels=self.config['hidden_size'],
                                     out_channels=self.config['nbr_classes'],
-                                    num_layers=self.config['num_layers'])
+                                    num_layers=self.config['num_layers'],
+                                    dropout=self.config['dropout'])
 
 
     def init_optimizer(self):
