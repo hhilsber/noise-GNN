@@ -1,5 +1,5 @@
 # Data
-batch_id: 3
+batch_id: 9
 data_type: 'network'
 data_dir: '../data'
 dataset_name: 'ogbn-products'
@@ -22,7 +22,7 @@ dropout: 0.5
 optimizer: 'adam'
 learning_rate: 0.001 #weight_decay: 0.0005
 
-max_epochs: 20
+max_epochs: 6
 batch_size: 1024
 num_workers: 1
 
@@ -34,7 +34,7 @@ do_plot: True
 
 # Noise
 noise_rate: 0.45
-noise_type: 'pair' # pair   sym
+noise_type: 'rand_pair' # pair   sym
 
 # Co-teaching
 ct_tk: 5
