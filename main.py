@@ -12,12 +12,12 @@ from src.pipeline_arx import PipelineA
 
 ##################################### Main #####################################
 def main(config):
-    if config['dataset_name'] == 'ogbn-products':
-        model = PipelineP(config)
-    if config['dataset_name'] in ['cn_soft', 'cn_hard']:
-        model = PipelineSH(config)
+    if config['algo_type'] == 'ct':
+        model = PipelineCO(config)
+    elif config['algo_type'] == 'contrast':
+        model = PipelineCT(config)
     else:
-        model = PipelineA(config)
+        print('wrong algo type')
     model.loop()
 
 
