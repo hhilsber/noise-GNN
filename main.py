@@ -7,8 +7,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from src.pipeline_prod import PipelineP
-from src.pipeline_arx import PipelineA
+from src.pipeline import PipelineCO
+from src.pipeline_contrast import PipelineCT
 
 ##################################### Main #####################################
 def main(config):

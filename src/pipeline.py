@@ -15,7 +15,7 @@ from .utils.noise import flip_label
 from .models.model import NGNN
 from .utils.losses import *
 
-class PipelineP(object):
+class PipelineCO(object):
     """
     Processing pipeline
     """
