@@ -14,7 +14,7 @@ from src.pipeline_contrast import PipelineCT
 def main(config):
     if config['algo_type'] == 'ct':
         model = PipelineCO(config)
-    elif config['algo_type'] == 'contrast':
+    elif config['algo_type'] == 'contrastive':
         model = PipelineCT(config)
     else:
         print('wrong algo type')

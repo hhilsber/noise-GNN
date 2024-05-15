@@ -9,7 +9,7 @@ from ogb.nodeproppred import Evaluator
 import datetime as dt
 
 from .utils.load_utils import load_network
-from .utils.data_utils import topk_accuracy
+from .utils.data_utils import Jensen_Shannon
 from .utils.utils import initialize_logger
 from .utils.noise import flip_label
 from .models.model import NGNN
@@ -27,12 +27,11 @@ class PipelineCT(object):
         self.dataset = load_network(config)
         self.split_idx = self.dataset.get_idx_split()
         self.data = self.dataset[0]
-        print('noise type and rate: {} {}'.format(config['noise_type'], config['noise_rate']))
         self.data.yhn, noise_mat = flip_label(self.data.y, self.dataset.num_classes, config['noise_type'], config['noise_rate'])
         self.noise_or_not = (self.data.y.squeeze() == self.data.yhn) #.int() # true if same lbl
         
-        config['nbr_features'] = self.dataset.num_features #self.dataset.x.shape[-1]
-        config['nbr_classes'] = self.dataset.num_classes #dataset.y.max().item() + 1
+        config['nbr_features'] = self.dataset.num_features
+        config['nbr_classes'] = self.dataset.num_classes
         config['nbr_nodes'] = self.dataset.x.shape[0]
 
         # Config
@@ -45,7 +44,7 @@ class PipelineCT(object):
         
         # Logger and data loader
         date = dt.datetime.date(dt.datetime.now())
-        self.output_name = 'dt{}{}_id{}_{}_{}_{}_noise_{}{}_lay{}_hid{}_lr{}_epo{}_bs{}_drop{}_warm{}'.format(date.month,date.day,self.config['batch_id'],self.config['train_type'],self.config['algo_type'],self.config['module'],self.config['noise_type'],self.config['noise_rate'],self.config['num_layers'],self.config['hidden_size'],self.config['learning_rate'],self.config['max_epochs'],self.config['batch_size'],self.config['dropout'],self.config['warmup'])
+        self.output_name = 'dt{}{}_id{}_{}_{}_{}_noise_{}{}_lay{}_hid{}_lr{}_epo{}_bs{}_drop{}_warmup{}'.format(date.month,date.day,self.config['batch_id'],self.config['train_type'],self.config['algo_type'],self.config['module'],self.config['noise_type'],self.config['noise_rate'],self.config['num_layers'],self.config['hidden_size'],self.config['learning_rate'],self.config['max_epochs'],self.config['batch_size'],self.config['dropout'],self.config['warmup'])
         self.logger = initialize_logger(self.config, self.output_name)
         np.save('../out_nmat/' + self.output_name + '.npy', noise_mat)
 
@@ -66,6 +65,64 @@ class PipelineCT(object):
             num_workers=self.config['num_workers'],
             persistent_workers=True
         )
+    def warmup(self, epoch, model, optimizer, train_loader):
+        model.train()
 
+        total_loss = 0
+        total_correct = 0
+
+        for batch in train_loader:
+            batch = batch.to(self.device)
+            # Only consider predictions and labels of seed nodes
+            out = model(batch.x, batch.edge_index)[:batch.batch_size]
+            y = batch.y[:batch.batch_size].squeeze()
+            yhn = batch.yhn[:batch.batch_size].squeeze()
+            loss = F.cross_entropy(out, yhn)
+
+            total_loss += float(loss)
+            total_correct += int(out.argmax(dim=-1).eq(y).sum())
+
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+        train_loss = total_loss / len(train_loader)
+        train_acc = total_correct / self.split_idx['train'].size(0)
+        self.logger.info('   Warmup epoch {}/{} --- loss: {:.4f} acc: {:.4f}'.format(epoch+1,self.config['max_epochs'],train_loss,train_acc))
+        
+    def jsd(self, model1, model2, train_loader):
+        JS_dist = Jensen_Shannon()
+        num_samples = self.split_idx['train'].size(0)
+        JSD   = torch.zeros(num_samples)
+
+        for batch_idx, batch in enumerate(train_loader):
+            batch = batch.to(self.device)
+            with torch.no_grad():
+                out1 = torch.nn.Softmax(dim=1)(model1(batch.x, batch.edge_index)[:batch.batch_size])
+                out2 = torch.nn.Softmax(dim=1)(model2(batch.x, batch.edge_index)[:batch.batch_size])
+                yhn = batch.yhn[:batch.batch_size].squeeze()
+
+            ## Get the Prediction
+            out = (out1 + out2)/2
+            dist = JS_dist(out, F.one_hot(yhn, num_classes = self.config['nbr_classes']))
+            JSD[int(batch_idx*batch.batch_size):int((batch_idx+1)*batch.batch_size)] = dist
+        return JSD
+    
     def loop(self):
         print('loop')
+        
+        self.logger.info('Warmup 1')
+        for epoch in range(self.config['warmup']):
+            self.warmup(epoch, self.model1.network.to(self.device), self.model1.optimizer, self.train_loader)
+        self.logger.info('Warmup 2')
+        for epoch in range(self.config['warmup']):
+            self.warmup(epoch, self.model2.network.to(self.device), self.model2.optimizer, self.train_loader)
+        
+        self.logger.info('JSD')
+        prob = self.jsd(self.model1.network.to(self.device), self.model2.network.to(self.device), self.train_loader)
+        threshold = torch.mean(prob)
+        if threshold.item() > self.config['du']:
+            threshold = threshold - (threshold-torch.min(prob))/self.config['tau']
+        SR = torch.sum(prob < threshold).item()/self.split_idx['train'].size(0)
+        print(threshold)
+        print(SR)
+        self.logger.info('Done')

@@ -1,6 +1,5 @@
 # Data
 batch_id: 9
-batch_spec: 'contrast'
 data_type: 'network'
 data_dir: '../data'
 dataset_name: 'ogbn-products'
@@ -17,7 +16,7 @@ dropout: 0.5
 nbr_neighbors: [15,10,5]
 
 # Compare network
-train_type: 'contrast' # nalgo   baseline   both
+train_type: 'contrastive'
 
 # Training
 optimizer: 'adam'
@@ -35,9 +34,11 @@ cuda: True
 do_plot: True
 
 # Noise
-noise_rate: 0.3
+noise_rate: 0.4
 noise_type: 'next_pair'
 
 # Algo Co-teaching or CNCLU
-algo_type: 'contrast' # ct codi
-warmup: 5
+algo_type: 'contrastive' # ct codi
+warmup: 0
+du: 0.7
+tau: 5
