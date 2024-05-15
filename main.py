@@ -14,6 +14,8 @@ from src.pipeline_arx import PipelineA
 def main(config):
     if config['dataset_name'] == 'ogbn-products':
         model = PipelineP(config)
+    if config['dataset_name'] in ['cn_soft', 'cn_hard']:
+        model = PipelineSH(config)
     else:
         model = PipelineA(config)
     model.loop()

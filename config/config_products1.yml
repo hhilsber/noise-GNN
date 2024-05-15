@@ -1,6 +1,6 @@
 # Data
 batch_id: 1
-batch_spec: 'both on noisy'
+#batch_spec: 'both on noisy'
 
 data_type: 'network'
 data_dir: '../data'
@@ -17,17 +17,17 @@ num_layers: 2
 nbr_neighbors: [15,10,5]
 
 # Compare network
-train_type: 'both' # nalgo   baseline   both
+train_type: 'nalgo' # nalgo   baseline   both
 compare_loss : 'normal' # normal back
 
 # Regularization
-dropout: 0.3
+dropout: 0.5
 
 # Training
 optimizer: 'adam'
 learning_rate: 0.001 # weight_decay: 0.0005
 
-max_epochs: 20
+max_epochs: 25
 batch_size: 1024
 num_workers: 1
 
@@ -42,8 +42,12 @@ noise_rate: 0.45
 noise_type: 'next_pair' # pair   sym
 
 # Algo Co-teaching or CNCLU
-algo_type: 'ct' # ct codi
+algo_type: 'cn_soft' # ct codi cn_soft cn_hard
 ct_tk: 5
 ct_exp: 1
 ct_tau: 1.0
 co_lambda: 0.1
+
+cn_time: 5
+cn_lambda: 0.0001
+cn_lambda_decay: 9
