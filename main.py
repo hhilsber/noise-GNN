@@ -9,12 +9,13 @@ import torch.nn as nn
 
 from src.pipeline_prod import PipelineP
 from src.pipeline_arx import PipelineA
+from src.pipeline_sh import PipelineSH
 
 ##################################### Main #####################################
 def main(config):
-    if config['dataset_name'] == 'ogbn-products':
+    if (config['dataset_name'] == 'ogbn-products') and config['algo_type'] in ['ct', 'codi']:
         model = PipelineP(config)
-    if config['dataset_name'] in ['cn_soft', 'cn_hard']:
+    elif (config['dataset_name'] == 'ogbn-products') and config['algo_type'] in ['cn_soft', 'cn_hard']:
         model = PipelineSH(config)
     else:
         model = PipelineA(config)

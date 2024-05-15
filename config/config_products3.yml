@@ -1,6 +1,6 @@
 # Data
-batch_id: 8
-batch_spec: 'both on noisy'
+batch_id: 3
+#batch_spec: 'both on noisy'
 
 data_type: 'network'
 data_dir: '../data'
@@ -38,12 +38,12 @@ cuda: True
 do_plot: True
 
 # Noise
-noise_rate: 0.25
-noise_type: 'rand_pair' # pair   sym
+noise_rate: 0.45
+noise_type: 'next_pair' # pair   sym
 
 # Algo Co-teaching or CNCLU
-algo_type: 'ct' # ct codi
+algo_type: 'codi' # ct codi
 ct_tk: 5
 ct_exp: 1
 ct_tau: 1.0
-co_lambda: 0.1
+co_lambda: 0.15

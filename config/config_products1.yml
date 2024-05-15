@@ -48,6 +48,6 @@ ct_exp: 1
 ct_tau: 1.0
 co_lambda: 0.1
 
-cn_time: 5
+cn_time: 7
 cn_lambda: 0.0001
-cn_lambda_decay: 9
+cn_lambda_decay: 13
