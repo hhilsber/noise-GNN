@@ -49,7 +49,7 @@ class PipelineCO(object):
         if self.config['train_type'] in ['nalgo','both']:
             self.model1 = NGNN(config)
             self.model2 = NGNN(config)
-            if self.config['algo_type'] == 'ct':
+            if self.config['algo_type'] == 'coteaching':
                 self.criterion = CTLoss(self.device)
             elif self.config['algo_type'] == 'codi':
                 self.criterion = CoDiLoss(self.device, self.config['co_lambda'])

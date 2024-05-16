@@ -29,16 +29,13 @@ num_workers: 1
 
 # Device
 cuda: True
- 
-# Plot
-do_plot: True
 
 # Noise
 noise_rate: 0.4
 noise_type: 'next_pair'
 
-# Algo Co-teaching or CNCLU
-algo_type: 'contrastive' # ct codi
-warmup: 0
+# Algo
+algo_type: 'contrastive'
+warmup: 3
 du: 0.7
 tau: 5
