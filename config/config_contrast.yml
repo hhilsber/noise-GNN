@@ -9,7 +9,7 @@ task_type: 'classification'
 seed: 1232
 
 # Graph model
-module: 'sage'
+module: 'sageFC'
 hidden_size: 128
 num_layers: 2
 dropout: 0.5
@@ -36,6 +36,6 @@ noise_type: 'next_pair'
 
 # Algo
 algo_type: 'contrastive'
-warmup: 3
+warmup: 0
 du: 0.7
 tau: 5

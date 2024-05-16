@@ -3,6 +3,7 @@ import torch.optim as optim
 
 from .layers.convolution import SimpleGCN
 from .layers.sage import SAGE
+from .layers.sageFC import SAGEFC
 
 
 class NGNN(object):
@@ -28,6 +29,13 @@ class NGNN(object):
                                 dropout=self.config['dropout'])
         elif self.config['module'] == 'sage':
             self.network = SAGE(in_channels=self.config['nbr_features'],
+                                    hidden_channels=self.config['hidden_size'],
+                                    out_channels=self.config['nbr_classes'],
+                                    num_layers=self.config['num_layers'],
+                                    dropout=self.config['dropout'])
+        elif self.config['module'] == 'sageFC':
+            print('sage fc')
+            self.network = SAGEFC(in_channels=self.config['nbr_features'],
                                     hidden_channels=self.config['hidden_size'],
                                     out_channels=self.config['nbr_classes'],
                                     num_layers=self.config['num_layers'],

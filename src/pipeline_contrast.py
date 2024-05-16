@@ -29,7 +29,7 @@ class PipelineCT(object):
         self.data = self.dataset[0]
         self.data.yhn, noise_mat = flip_label(self.data.y, self.dataset.num_classes, config['noise_type'], config['noise_rate'])
         self.noise_or_not = (self.data.y.squeeze() == self.data.yhn) #.int() # true if same lbl
-        
+        print(self.dataset.edge_index.shape)
         config['nbr_features'] = self.dataset.num_features
         config['nbr_classes'] = self.dataset.num_classes
         config['nbr_nodes'] = self.dataset.x.shape[0]
@@ -74,7 +74,8 @@ class PipelineCT(object):
         for batch in train_loader:
             batch = batch.to(self.device)
             # Only consider predictions and labels of seed nodes
-            out = model(batch.x, batch.edge_index)[:batch.batch_size]
+            out = model(batch.x, batch.edge_index)[0][:batch.batch_size]
+            #out = out[:batch.batch_size]
             y = batch.y[:batch.batch_size].squeeze()
             yhn = batch.yhn[:batch.batch_size].squeeze()
             loss = F.cross_entropy(out, yhn)
@@ -98,8 +99,8 @@ class PipelineCT(object):
         for batch_idx, batch in enumerate(train_loader):
             batch = batch.to(self.device)
             with torch.no_grad():
-                out1 = torch.nn.Softmax(dim=1)(model1(batch.x, batch.edge_index)[:batch.batch_size])
-                out2 = torch.nn.Softmax(dim=1)(model2(batch.x, batch.edge_index)[:batch.batch_size])
+                out1 = torch.nn.Softmax(dim=1)(model1(batch.x, batch.edge_index)[0][:batch.batch_size])
+                out2 = torch.nn.Softmax(dim=1)(model2(batch.x, batch.edge_index)[0][:batch.batch_size])
                 yhn = batch.yhn[:batch.batch_size].squeeze()
 
             ## Get the Prediction
