@@ -9,7 +9,7 @@ from ogb.nodeproppred import Evaluator
 import datetime as dt
 
 from .utils.load_utils import load_network
-from .utils.data_utils import Jensen_Shannon
+from .utils.data_utils import Jensen_Shannon, augment_features, augment_adj
 from .utils.utils import initialize_logger
 from .utils.noise import flip_label
 from .models.model import NGNN
@@ -29,7 +29,7 @@ class PipelineCT(object):
         self.data = self.dataset[0]
         self.data.yhn, noise_mat = flip_label(self.data.y, self.dataset.num_classes, config['noise_type'], config['noise_rate'])
         self.noise_or_not = (self.data.y.squeeze() == self.data.yhn) #.int() # true if same lbl
-        print(self.dataset.edge_index.shape)
+        
         config['nbr_features'] = self.dataset.num_features
         config['nbr_classes'] = self.dataset.num_classes
         config['nbr_nodes'] = self.dataset.x.shape[0]
@@ -48,6 +48,11 @@ class PipelineCT(object):
         self.logger = initialize_logger(self.config, self.output_name)
         np.save('../out_nmat/' + self.output_name + '.npy', noise_mat)
 
+        n = config['nbr_nodes']
+        row_indices = np.repeat(np.arange(n), n)
+        col_indices = np.tile(np.arange(n), n)
+        ones_sparse_matrix = sp.csr_matrix((np.ones(n * n), (row_indices, col_indices)), shape=(n, n))
+        print('ok')
         self.train_loader = NeighborLoader(
             self.data,
             input_nodes=self.split_idx['train'],

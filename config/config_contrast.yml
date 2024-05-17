@@ -1,5 +1,5 @@
 # Data
-batch_id: 9
+batch_id: 1
 data_type: 'network'
 data_dir: '../data'
 dataset_name: 'ogbn-products'
@@ -31,7 +31,7 @@ num_workers: 1
 cuda: True
 
 # Noise
-noise_rate: 0.4
+noise_rate: 0.3
 noise_type: 'next_pair'
 
 # Algo
