@@ -13,7 +13,7 @@ def to_scipy_sparse_matrix(edge_index, num_nodes):
     shape = (num_nodes, num_nodes)
     return sp.coo_matrix((data, (row, col)), shape=shape)
 
-def augment_edges(edge_index, nbr_nodes, p=0.2):
+def augment_edges(edge_index, nbr_nodes, p=0.35):
     nbr_edges_init, nbr_edges = int(edge_index.shape[1] * 0.5), int(edge_index.shape[1] * 0.5)
     nbr_delete_init, nbr_delete = int(p * nbr_edges), int(p * nbr_edges)
     nbr_keep_init = nbr_edges - nbr_delete
