@@ -9,7 +9,7 @@ from ogb.nodeproppred import Evaluator
 import datetime as dt
 
 from .utils.load_utils import load_network
-from .utils.data_utils import Jensen_Shannon, augment_features, augment_adj
+from .utils.data_utils import Jensen_Shannon, augment_features, augment_edges
 from .utils.utils import initialize_logger
 from .utils.noise import flip_label
 from .models.model import NGNN
@@ -48,10 +48,9 @@ class PipelineCT(object):
         self.logger = initialize_logger(self.config, self.output_name)
         np.save('../out_nmat/' + self.output_name + '.npy', noise_mat)
 
-        n = config['nbr_nodes']
-        row_indices = np.repeat(np.arange(n), n)
-        col_indices = np.tile(np.arange(n), n)
-        ones_sparse_matrix = sp.csr_matrix((np.ones(n * n), (row_indices, col_indices)), shape=(n, n))
+        print(self.data.edge_index.shape)
+        new_edge_delete = augment_edges(self.data.edge_index, config['nbr_nodes'])
+        print(new_edge_delete.shape)
         print('ok')
         self.train_loader = NeighborLoader(
             self.data,
