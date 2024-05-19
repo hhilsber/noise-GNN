@@ -49,8 +49,11 @@ class PipelineCT(object):
         np.save('../out_nmat/' + self.output_name + '.npy', noise_mat)
 
         print(self.data.edge_index.shape)
-        new_edge_delete = augment_edges(self.data.edge_index, config['nbr_nodes'])
-        print(new_edge_delete.shape)
+        
+        print(torch.sum(self.data.edge_index[0] == self.data.edge_index[1]).item())
+
+        #new_edge_delete = augment_edges(self.data.edge_index, config['nbr_nodes'])
+        #print(new_edge_delete.shape)
         print('ok')
         self.train_loader = NeighborLoader(
             self.data,
