@@ -9,7 +9,7 @@ from ogb.nodeproppred import Evaluator
 import datetime as dt
 
 from .utils.load_utils import load_network
-from .utils.data_utils import Jensen_Shannon, augment_features, augment_edges
+from .utils.data_utils import Jensen_Shannon, augment_edges
 from .utils.utils import initialize_logger
 from .utils.noise import flip_label
 from .models.model import NGNN
@@ -49,11 +49,8 @@ class PipelineCT(object):
         np.save('../out_nmat/' + self.output_name + '.npy', noise_mat)
 
         print(self.data.edge_index.shape)
-        
-        print(torch.sum(self.data.edge_index[0] == self.data.edge_index[1]).item())
-
-        #new_edge_delete = augment_edges(self.data.edge_index, config['nbr_nodes'])
-        #print(new_edge_delete.shape)
+        final_edge = augment_edges(self.data.edge_index, config['nbr_nodes'])
+        print(final_edge.shape)
         print('ok')
         self.train_loader = NeighborLoader(
             self.data,
