@@ -101,7 +101,7 @@ class PipelineCT(object):
             y = batch.y[:batch.batch_size].squeeze()
             yhn = batch.yhn[:batch.batch_size].squeeze()
             
-            loss_1, loss_2, pure_ratio_1, pure_ratio_2, _, _ = self.criterion(out1, out2, yhn, self.rate_schedule[epoch], batch.n_id, self.noise_or_not)
+            loss_1, loss_2, pure_ratio_1, pure_ratio_2, _, _, _, _ = self.criterion(out1, out2, yhn, self.rate_schedule[epoch], batch.n_id, self.noise_or_not)
             
             total_loss_1 += float(loss_1)
             total_loss_2 += float(loss_2)
@@ -128,8 +128,10 @@ class PipelineCT(object):
 
     def split(self, epoch, model1, model2, train_loader):
         # Pred
-        indexes_1 = torch.tensor([])
-        indexes_2 = torch.tensor([])
+        clean_1 = torch.tensor([])
+        clean_2 = torch.tensor([])
+        noisy_1 = torch.tensor([])
+        noisy_2 = torch.tensor([])
         for batch_idx, batch in enumerate(train_loader):
             batch = batch.to(self.device)
             with torch.no_grad():
@@ -137,31 +139,35 @@ class PipelineCT(object):
                 out2 = torch.nn.Softmax(dim=1)(model2(batch.x, batch.edge_index)[0][:batch.batch_size])
                 yhn = batch.yhn[:batch.batch_size].squeeze()
 
-                _, _, pure_ratio_1, pure_ratio_2, ind_1, ind_2 = self.criterion(out1, out2, yhn, self.rate_schedule[epoch], batch.n_id, self.noise_or_not)
+                _, _, _, _, ind_clean_1, ind_clean_2, ind_noisy_1, ind_noisy_2 = self.criterion(out1, out2, yhn, self.rate_schedule[epoch], batch.n_id, self.noise_or_not)
             
-            indexes_1 = torch.cat((indexes_1, ind_1), dim=0)
-            indexes_2 = torch.cat((indexes_2, ind_2), dim=0)
-        return indexes_1.long(), indexes_2.long()
+            clean_1 = torch.cat((clean_1, ind_clean_1), dim=0)
+            clean_2 = torch.cat((clean_2, ind_clean_2), dim=0)
+            noisy_1 = torch.cat((noisy_1, ind_noisy_1), dim=0)
+            noisy_2 = torch.cat((noisy_2, ind_noisy_2), dim=0)
+        return clean_1.long(), clean_2.long(), noisy_1.long(), noisy_2.long()
 
     def loop(self):
         print('loop')
         
+        # Warmup
         self.logger.info('Warmup')
         for epoch in range(self.config['warmup']):
             self.warmup(self.train_loader, epoch, self.model1.network.to(self.device), self.model1.optimizer, self.model2.network.to(self.device), self.model2.optimizer)
         
+        # Split data in clean and noisy sets
         self.logger.info('Split epoch {}'.format(epoch))
-        indexes_1, indexes_2 = self.split(epoch, self.model1.network.to(self.device), self.model2.network.to(self.device), self.train_loader)
+        clean_1, clean_2, noisy_1, noisy_2 = self.split(epoch, self.model1.network.to(self.device), self.model2.network.to(self.device), self.train_loader)
 
-        ratio = torch.sum(self.noise_or_not[indexes_1]).item()/self.split_idx['train'].size(0)
+        # Check stats
+        clean_ratio1 = torch.sum(self.noise_or_not[clean_1]).item()/self.split_idx['train'].size(0)
+        clean_ratio2 = torch.sum(self.noise_or_not[clean_2]).item()/self.split_idx['train'].size(0)
+        self.logger.info('clean ratio1 {:.4f}'.format(clean_ratio1))
+        self.logger.info('clean ratio1 {:.4f}'.format(clean_ratio2))
+        noisy_ratio1 = torch.sum(self.noise_or_not[noisy_1]).item()/self.split_idx['train'].size(0)
+        noisy_ratio2 = torch.sum(self.noise_or_not[noisy_2]).item()/self.split_idx['train'].size(0)
+        self.logger.info('noisy ratio1 {:.4f}'.format(noisy_ratio1))
+        self.logger.info('noisy ratio2 {:.4f}'.format(noisy_ratio2))
 
-        s_ratio1 = torch.sum(self.noise_or_not[indexes_1]).item()/self.split_idx['train'].size(0)
-        s_ratio2 = torch.sum(self.noise_or_not[indexes_2]).item()/self.split_idx['train'].size(0)
-        self.logger.info('r {:.4f}'.format(ratio))
-        self.logger.info('s1 {:.4f}'.format(s_ratio1))
-        self.logger.info('s2 {:.4f}'.format(s_ratio2))
-
-        self.logger.info('length 1 {} / {}'.format(indexes_1.shape[0], self.split_idx['train'].size(0)))
-        self.logger.info('length 2 {} / {}'.format(indexes_2.shape[0], self.split_idx['train'].size(0)))
 
         self.logger.info('Done')

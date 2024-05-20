@@ -31,12 +31,12 @@ num_workers: 1
 cuda: True
 
 # Noise
-noise_rate: 0.3
+noise_rate: 0.4
 noise_type: 'next_pair'
 
 # Algo
 algo_type: 'contrastive'
-warmup: 8
+warmup: 10
 #du: 0.7
 #tau: 5
 ct_tk: 5

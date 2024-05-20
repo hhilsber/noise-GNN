@@ -29,14 +29,16 @@ class CTLoss(nn.Module):
 
         ind_1_update=ind_1_sorted[:num_remember]
         ind_2_update=ind_2_sorted[:num_remember]
-        true_ind_update_1 = ind.cpu()[ind_1_sorted[:num_remember]]
-        true_ind_update_2 = ind.cpu()[ind_2_sorted[:num_remember]]
+        ind_clean_1 = ind.cpu()[ind_1_sorted[:num_remember]]
+        ind_clean_2 = ind.cpu()[ind_2_sorted[:num_remember]]
+        ind_noisy_1 = ind.cpu()[ind_1_sorted[num_remember:]]
+        ind_noisy_2 = ind.cpu()[ind_2_sorted[num_remember:]]
         # exchange
         loss_1_update = F.cross_entropy(y_1[ind_2_update], y_noise[ind_2_update])
         loss_2_update = F.cross_entropy(y_2[ind_1_update], y_noise[ind_1_update])
 
         #return torch.sum(loss_1_update)/num_remember, torch.sum(loss_2_update)/num_remember, pure_ratio_1, pure_ratio_2
-        return loss_1_update, loss_2_update, pure_ratio_1, pure_ratio_2, true_ind_update_1, true_ind_update_2
+        return loss_1_update, loss_2_update, pure_ratio_1, pure_ratio_2, ind_clean_1, ind_clean_2, ind_noisy_1, ind_noisy_2
 
 class CoDiLoss(nn.Module):
     """
