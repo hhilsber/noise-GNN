@@ -39,3 +39,8 @@ algo_type: 'contrastive'
 warmup: 0
 du: 0.7
 tau: 5
+
+# Augmentation
+augment: True
+edge_prob: 0.1
+feat_prob : 0.1
