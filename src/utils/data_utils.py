@@ -159,37 +159,3 @@ def augment_features(features, noise_ratio, device='cpu'):
         features_shuffled[i, indices] = selected_elements[torch.randperm(selected_elements.shape[0])]
     return features_shuffled.to(device)
     
-
-def augment_adj_old(edge_index, nbr_nodes, noise_ratio=0.2, device='cpu'):
-    """
-    Augment edges
-    """
-    nbr_edges =  edge_index.shape[1]
-    nbr_edge_add_del = int(noise_ratio * (nbr_edges // 2))
-    ind_delete = torch.randperm(nbr_edges // 2)[:nbr_edge_add_del] * 2
-    
-    mask = torch.ones(nbr_edges, dtype=torch.bool)
-    mask[ind_delete] = False
-    mask[ind_delete + 1] = False
-    delete_edges = edge_index[:, mask]
-    
-    # add
-    add_edges = set()
-    existing_edges = set(map(tuple, edge_index.t().tolist()))
-    
-    while len(add_edges) < nbr_edge_add_del:
-        a, b = torch.randint(0, nbr_nodes, (2,)).tolist()
-        new_edge = (a, b)
-        reverse_edge = (b, a)
-        if new_edge not in existing_edges and new_edge not in add_edges:
-            add_edges.add(new_edge)
-            
-    add_edges_tensor = torch.tensor(list(add_edges)).t()
-    reverse_edges_tensor = add_edges_tensor.flip(0)
-    
-    interleaved_new_edges = torch.empty((2, 2 * nbr_edge_add_del), dtype=add_edges_tensor.dtype)
-    interleaved_new_edges[:, 0::2] = add_edges_tensor
-    interleaved_new_edges[:, 1::2] = reverse_edges_tensor
-
-    perturbed_edge = torch.cat((delete_edges, interleaved_new_edges), dim=1)
-    return perturbed_edge

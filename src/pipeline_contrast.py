@@ -48,9 +48,8 @@ class PipelineCT(object):
         self.logger = initialize_logger(self.config, self.output_name)
         np.save('../out_nmat/' + self.output_name + '.npy', noise_mat)
 
-        print(self.data.edge_index.shape)
-        final_edge = augment_edges_neg(self.data.edge_index, config['nbr_nodes'])
-        print(final_edge.shape)
+        print(self.data.x.shape)
+        #final_edge = augment_edges_neg(self.data.edge_index, config['nbr_nodes'])
         print('ok')
         self.train_loader = NeighborLoader(
             self.data,
