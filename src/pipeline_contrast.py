@@ -9,7 +9,8 @@ from ogb.nodeproppred import Evaluator
 import datetime as dt
 
 from .utils.load_utils import load_network
-from .utils.data_utils import Jensen_Shannon, augment_edges_pos, augment_edges_neg, shuffle_pos, shuffle_neg
+from .utils.data_utils import Jensen_Shannon
+from .utils.augmentation import augment_edges_pos, augment_edges_neg, shuffle_pos, shuffle_neg
 from .utils.utils import initialize_logger
 from .utils.noise import flip_label
 from .models.model import NGNN
@@ -96,7 +97,7 @@ class PipelineCT(object):
         train_loss = total_loss / len(train_loader)
         train_acc = total_correct / self.split_idx['train'].size(0)
         self.logger.info('   Warmup epoch {}/{} --- loss: {:.4f} acc: {:.4f}'.format(epoch+1,self.config['warmup'],train_loss,train_acc))
-        
+
     def jsd(self, model1, model2, train_loader):
         JS_dist = Jensen_Shannon()
         num_samples = self.split_idx['train'].size(0)
@@ -146,9 +147,11 @@ class PipelineCT(object):
         #self.logger.info('Warmup ratio2 {:.4f}'.format(ratio2))
 
         ratio = torch.sum(self.noise_or_not[index]).item()/self.split_idx['train'].size(0)
-        s_ratio = torch.sum(self.noise_or_not[index] & (bool_tensor)).item()/self.split_idx['train'].size(0)
+        s_ratio1 = torch.sum(self.noise_or_not[index] & (bool_tensor)).item()/self.split_idx['train'].size(0)
+        s_ratio2 = torch.sum(self.noise_or_not[index] & (~bool_tensor)).item()/self.split_idx['train'].size(0)
         self.logger.info('r {:.4f}'.format(ratio))
-        self.logger.info('s {:.4f}'.format(s_ratio))
+        self.logger.info('s1 {:.4f}'.format(s_ratio1))
+        self.logger.info('s2 {:.4f}'.format(s_ratio2))
 
         pos_index = self.noise_or_not[index] & bool_tensor
         neg_index = ~(self.noise_or_not[index] & bool_tensor)
