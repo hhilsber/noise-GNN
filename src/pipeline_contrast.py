@@ -145,12 +145,11 @@ class PipelineCT(object):
 
     def loop(self):
         print('loop')
-        """
+        
         self.logger.info('Warmup')
         for epoch in range(self.config['warmup']):
             self.warmup(self.train_loader, epoch, self.model1.network.to(self.device), self.model1.optimizer, self.model2.network.to(self.device), self.model2.optimizer)
-        """
-        epoch = 0
+        
         self.logger.info('Split epoch {}'.format(epoch))
         indexes_1, indexes_2 = self.split(epoch, self.model1.network.to(self.device), self.model2.network.to(self.device), self.train_loader)
 
