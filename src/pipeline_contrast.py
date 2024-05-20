@@ -61,8 +61,12 @@ class PipelineCT(object):
             features_shuffled_pos = shuffle_pos(self.data.x, config['device'], config['feat_prob'])
             features_shuffled_neg = shuffle_neg(self.data.x, config['device'])
         print('ok')
+    
+    def warmup(self, model1, optimizer1, model2, optimizer2):
+        model1.train()
+        model2.train()
 
-        self.train_loader = NeighborLoader(
+        train_loader = NeighborLoader(
             self.data,
             input_nodes=self.split_idx['train'],
             num_neighbors=self.config['nbr_neighbors'],
@@ -71,62 +75,42 @@ class PipelineCT(object):
             num_workers=self.config['num_workers'],
             persistent_workers=True
         )
-        self.valid_loader = NeighborLoader(
-            self.data,
-            input_nodes=self.split_idx['valid'],
-            num_neighbors=self.config['nbr_neighbors'],
-            batch_size=self.config['batch_size'],
-            num_workers=self.config['num_workers'],
-            persistent_workers=True
-        )
-    
-    def warmup(self, train_loader, epoch, model1, optimizer1, model2, optimizer2):
-        model1.train()
-        model2.train()
 
-        pure_ratio_1_list=[]
-        pure_ratio_2_list=[]
-        total_loss_1=0
-        total_loss_2=0
-        total_correct_1=0
-        total_correct_2=0
-        total_ratio_1=0
-        total_ratio_2=0
-
-        for batch in train_loader:
-            batch = batch.to(self.device)
-            # Only consider predictions and labels of seed nodes
-            out1 = model1(batch.x, batch.edge_index)[0][:batch.batch_size]
-            out2 = model2(batch.x, batch.edge_index)[0][:batch.batch_size]
-            y = batch.y[:batch.batch_size].squeeze()
-            yhn = batch.yhn[:batch.batch_size].squeeze()
+        for epoch in range(self.config['warmup']):
+            total_loss_1=0
+            total_loss_2=0
+            total_correct_1=0
+            total_correct_2=0
+            for batch in train_loader:
+                batch = batch.to(self.device)
+                # Only consider predictions and labels of seed nodes
+                out1 = model1(batch.x, batch.edge_index)[0][:batch.batch_size]
+                out2 = model2(batch.x, batch.edge_index)[0][:batch.batch_size]
+                y = batch.y[:batch.batch_size].squeeze()
+                yhn = batch.yhn[:batch.batch_size].squeeze()
+                
+                loss_1, loss_2, pure_ratio_1, pure_ratio_2, _, _, _, _ = self.criterion(out1, out2, yhn, self.rate_schedule[epoch], batch.n_id, self.noise_or_not)
+                
+                total_loss_1 += float(loss_1)
+                total_loss_2 += float(loss_2)
+                total_correct_1 += int(out1.argmax(dim=-1).eq(y).sum())
+                total_correct_2 += int(out2.argmax(dim=-1).eq(y).sum())
+                
+                optimizer1.zero_grad()
+                loss_1.backward()
+                optimizer1.step()
+                optimizer2.zero_grad()
+                loss_2.backward()
+                optimizer2.step()
             
-            loss_1, loss_2, pure_ratio_1, pure_ratio_2, _, _, _, _ = self.criterion(out1, out2, yhn, self.rate_schedule[epoch], batch.n_id, self.noise_or_not)
-            
-            total_loss_1 += float(loss_1)
-            total_loss_2 += float(loss_2)
-            total_correct_1 += int(out1.argmax(dim=-1).eq(y).sum())
-            total_correct_2 += int(out2.argmax(dim=-1).eq(y).sum())
-            total_ratio_1 += (100*pure_ratio_1)
-            total_ratio_2 += (100*pure_ratio_2)
-            
-            optimizer1.zero_grad()
-            loss_1.backward()
-            optimizer1.step()
-            optimizer2.zero_grad()
-            loss_2.backward()
-            optimizer2.step()
+            train_loss_1 = total_loss_1 / len(train_loader)
+            train_loss_2 = total_loss_2 / len(train_loader)
+            train_acc_1 = total_correct_1 / self.split_idx['train'].size(0)
+            train_acc_2 = total_correct_2 / self.split_idx['train'].size(0)
+            self.logger.info('   Warmup epoch {}/{} --- loss1: {:.3f} loss2: {:.3f} acc1: {:.3f} acc2: {:.3f}'.format(epoch+1,self.config['warmup'],train_loss_1,train_loss_2,train_acc_1,train_acc_2))
+        return epoch, train_loader
 
-        train_loss_1 = total_loss_1 / len(train_loader)
-        train_loss_2 = total_loss_2 / len(train_loader)
-        train_acc_1 = total_correct_1 / self.split_idx['train'].size(0)
-        train_acc_2 = total_correct_2 / self.split_idx['train'].size(0)
-        pure_ratio_1_list = total_ratio_1 / len(train_loader)
-        pure_ratio_2_list = total_ratio_2 / len(train_loader)
-        self.logger.info('   Warmup epoch {}/{} --- loss1: {:.3f} loss2: {:.3f} acc1: {:.3f} acc2: {:.3f}'.format(epoch+1,self.config['warmup'],train_loss_1,train_loss_2,train_acc_1,train_acc_2))
-        #return train_loss_1, train_loss_2, train_acc_1, train_acc_2, pure_ratio_1_list, pure_ratio_2_list
-
-    def split(self, epoch, model1, model2, train_loader):
+    def split(self, epoch, train_loader, model1, model2):
         # Pred
         clean_1 = torch.tensor([])
         clean_2 = torch.tensor([])
@@ -147,17 +131,37 @@ class PipelineCT(object):
             noisy_2 = torch.cat((noisy_2, ind_noisy_2), dim=0)
         return clean_1.long(), clean_2.long(), noisy_1.long(), noisy_2.long()
 
+    def create_loaders(self, clean_index, noisy_index):
+        clean_loader = NeighborLoader(
+            self.data,
+            input_nodes=clean_index,
+            num_neighbors=self.config['nbr_neighbors'],
+            batch_size=self.config['batch_size'],
+            shuffle=True,
+            num_workers=self.config['num_workers'],
+            persistent_workers=True
+        )
+        noisy_loader = NeighborLoader(
+            self.data,
+            input_nodes=noisy_index,
+            num_neighbors=self.config['nbr_neighbors'],
+            batch_size=self.config['batch_size'],
+            shuffle=True,
+            num_workers=self.config['num_workers'],
+            persistent_workers=True
+        )
+        return clean_loader, noisy_loader
+
     def loop(self):
         print('loop')
         
         # Warmup
         self.logger.info('Warmup')
-        for epoch in range(self.config['warmup']):
-            self.warmup(self.train_loader, epoch, self.model1.network.to(self.device), self.model1.optimizer, self.model2.network.to(self.device), self.model2.optimizer)
+        epoch, train_loader = self.warmup(self.model1.network.to(self.device), self.model1.optimizer, self.model2.network.to(self.device), self.model2.optimizer)
         
         # Split data in clean and noisy sets
         self.logger.info('Split epoch {}'.format(epoch))
-        clean_1, clean_2, noisy_1, noisy_2 = self.split(epoch, self.model1.network.to(self.device), self.model2.network.to(self.device), self.train_loader)
+        clean_1, clean_2, noisy_1, noisy_2 = self.split(epoch, train_loader, self.model1.network.to(self.device), self.model2.network.to(self.device))
 
         # Check stats
         clean_ratio1 = torch.sum(self.noise_or_not[clean_1]).item()/self.split_idx['train'].size(0)
@@ -169,5 +173,9 @@ class PipelineCT(object):
         self.logger.info('noisy ratio1 {:.4f}'.format(noisy_ratio1))
         self.logger.info('noisy ratio2 {:.4f}'.format(noisy_ratio2))
 
+        self.logger.info('nbr clean samples {}, noisy samples {}, sum {} == {} total train?'.format(clean_1.shape[0], noisy_1.shape[0], (clean_1.shape[0]+noisy_1.shape[0]), self.split_idx['train'].size(0)))
+
+        # Create clean and noisy loaders
+        train_loader, noisy_loader = self.create_loaders(clean_1, noisy_1)
 
         self.logger.info('Done')
