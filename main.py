@@ -18,7 +18,7 @@ def main(config):
         model = PipelineCT(config)
     else:
         print('wrong algo type')
-    model.loop()
+    #model.loop()
 
 
 ##################################### Fcts #####################################

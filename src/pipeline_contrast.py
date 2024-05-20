@@ -44,9 +44,10 @@ class PipelineCT(object):
         self.evaluator = Evaluator(name=config['dataset_name'])
         # Coteaching param
         self.criterion = CTLoss(self.device)
-        self.rate_schedule = np.ones(self.config['warmup'])*self.config['noise_rate']*self.config['ct_tau']
+        self.rate_schedule = np.ones(self.config['max_epochs'])
         self.rate_schedule[:self.config['ct_tk']] = np.linspace(0, self.config['noise_rate'], self.config['ct_tk'])
-        print('rate_schedule: {}'.format(self.rate_schedule))
+        self.rate_schedule[self.config['ct_tk']:self.config['warmup']] = self.rate_schedule[self.config['ct_tk']:self.config['warmup']]*self.config['noise_rate']*self.config['ct_tau']
+        #print('rate_schedule: {}'.format(self.rate_schedule))
 
         # Logger and data loader
         date = dt.datetime.date(dt.datetime.now())
@@ -152,6 +153,12 @@ class PipelineCT(object):
         )
         return clean_loader, noisy_loader
 
+    def train(self, epoch, model1, optimizer1, model2, optimizer2, train_loader, noisy_loader):
+        # Train
+        if not((epoch+1)%3) or ((epoch+1)==self.config['max_epochs']):
+            self.logger.info('   Train epoch {}/{} --- acc t1: {:.4f} t2: {:.4f} v1: {:.4f} v2: {:.4f}'.format(epoch+1,self.config['max_epochs'],train_acc_1,train_acc_2,val_acc_1,val_acc_2))
+    
+    
     def loop(self):
         print('loop')
         
@@ -164,18 +171,22 @@ class PipelineCT(object):
         clean_1, clean_2, noisy_1, noisy_2 = self.split(epoch, train_loader, self.model1.network.to(self.device), self.model2.network.to(self.device))
 
         # Check stats
-        clean_ratio1 = torch.sum(self.noise_or_not[clean_1]).item()/self.split_idx['train'].size(0)
-        clean_ratio2 = torch.sum(self.noise_or_not[clean_2]).item()/self.split_idx['train'].size(0)
-        self.logger.info('clean ratio1 {:.4f}'.format(clean_ratio1))
-        self.logger.info('clean ratio1 {:.4f}'.format(clean_ratio2))
-        noisy_ratio1 = torch.sum(self.noise_or_not[noisy_1]).item()/self.split_idx['train'].size(0)
-        noisy_ratio2 = torch.sum(self.noise_or_not[noisy_2]).item()/self.split_idx['train'].size(0)
-        self.logger.info('noisy ratio1 {:.4f}'.format(noisy_ratio1))
-        self.logger.info('noisy ratio2 {:.4f}'.format(noisy_ratio2))
-
+        clean_ratio1 = torch.sum(self.noise_or_not[clean_1]).item()/clean_1.shape[0]
+        clean_ratio2 = torch.sum(self.noise_or_not[clean_2]).item()/clean_2.shape[0]
+        clean_ratio1_tot = torch.sum(self.noise_or_not[clean_1]).item()/self.split_idx['train'].size(0)
+        clean_ratio2_tot = torch.sum(self.noise_or_not[clean_2]).item()/self.split_idx['train'].size(0)
+        self.logger.info('clean ratio1 {:.3f}, clean ratio1 tot {:.3f}'.format(clean_ratio1, clean_ratio1_tot))
+        self.logger.info('clean ratio1 {:.3f}, clean ratio2 tot {:.3f}'.format(clean_ratio2, clean_ratio2_tot))
+        noisy_ratio1 = torch.sum(self.noise_or_not[noisy_1]).item()/noisy_1.shape[0]
+        noisy_ratio2 = torch.sum(self.noise_or_not[noisy_2]).item()/noisy_2.shape[0]
+        noisy_ratio1_tot = torch.sum(self.noise_or_not[noisy_1]).item()/self.split_idx['train'].size(0)
+        noisy_ratio2_tot = torch.sum(self.noise_or_not[noisy_2]).item()/self.split_idx['train'].size(0)
+        self.logger.info('noisy ratio1 {:.3f}, noisy ratio1 tot {:.3f}'.format(noisy_ratio1, noisy_ratio1_tot))
+        self.logger.info('noisy ratio1 {:.3f}, noisy ratio2 tot {:.3f}'.format(noisy_ratio2, noisy_ratio2_tot))
         self.logger.info('nbr clean samples {}, noisy samples {}, sum {} == {} total train?'.format(clean_1.shape[0], noisy_1.shape[0], (clean_1.shape[0]+noisy_1.shape[0]), self.split_idx['train'].size(0)))
 
         # Create clean and noisy loaders
         train_loader, noisy_loader = self.create_loaders(clean_1, noisy_1)
-
+        for epoch in range(self.config['warmup'],self.config['max_epochs']):
+            self.train(self.model1.network.to(self.device), self.model1.optimizer, self.model2.network.to(self.device), self.model2.optimizer, train_loader, noisy_loader)
         self.logger.info('Done')
