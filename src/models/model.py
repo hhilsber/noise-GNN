@@ -34,7 +34,6 @@ class NGNN(object):
                                     num_layers=self.config['num_layers'],
                                     dropout=self.config['dropout'])
         elif self.config['module'] == 'sageFC':
-            print('sage fc')
             self.network = SAGEFC(in_channels=self.config['nbr_features'],
                                     hidden_channels=self.config['hidden_size'],
                                     out_channels=self.config['nbr_classes'],

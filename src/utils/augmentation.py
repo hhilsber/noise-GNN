@@ -75,7 +75,7 @@ def augment_edges_pos(edge_index, nbr_nodes, prob=0.1):
 
     edge_sp = to_scipy_sparse_matrix(edge_index, nbr_nodes)
     small_sp = to_scipy_sparse_matrix(small_edge, nbr_nodes)
-    big_edge = torch.tensor([[0],[0]])
+    big_edge = torch.tensor([[],[]])
     while (true_nbr_add != nbr_del_add_init):
         #print('nbr_edges_init {}, true_nbr_add {}, nbr_del_add_init {}'.format(nbr_edges_init, true_nbr_add, nbr_del_add_init))
         # Generate edges to add

@@ -1,6 +1,6 @@
 import numpy as np
 import torch
-
+import torch.nn as nn
 
 def kl_divergence(p, q):
     return (p * ((p+1e-10) / (q+1e-10)).log()).sum(dim=1)

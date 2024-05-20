@@ -42,10 +42,15 @@ class PipelineCT(object):
         self.model1 = NGNN(config)
         self.model2 = NGNN(config)
         self.evaluator = Evaluator(name=config['dataset_name'])
-        
+        # Coteaching param
+        self.criterion = CTLoss(self.device)
+        self.rate_schedule = np.ones(self.config['warmup'])*self.config['noise_rate']*self.config['ct_tau']
+        self.rate_schedule[:self.config['ct_tk']] = np.linspace(0, self.config['noise_rate'], self.config['ct_tk'])
+        print('rate_schedule: {}'.format(self.rate_schedule))
+
         # Logger and data loader
         date = dt.datetime.date(dt.datetime.now())
-        self.output_name = 'dt{}{}_id{}_{}_{}_{}_noise_{}{}_lay{}_hid{}_lr{}_bs{}_drop{}_epo{}_warmup{}_du{}_tau{}'.format(date.month,date.day,self.config['batch_id'],self.config['train_type'],self.config['algo_type'],self.config['module'],self.config['noise_type'],self.config['noise_rate'],self.config['num_layers'],self.config['hidden_size'],self.config['learning_rate'],self.config['batch_size'],self.config['dropout'],self.config['max_epochs'],self.config['warmup'],self.config['du'],self.config['tau'])
+        self.output_name = 'dt{}{}_id{}_{}_{}_{}_noise_{}{}_lay{}_hid{}_lr{}_bs{}_drop{}_epo{}_warmup{}_cttk{}_cttau{}'.format(date.month,date.day,self.config['batch_id'],self.config['train_type'],self.config['algo_type'],self.config['module'],self.config['noise_type'],self.config['noise_rate'],self.config['num_layers'],self.config['hidden_size'],self.config['learning_rate'],self.config['batch_size'],self.config['dropout'],self.config['max_epochs'],self.config['warmup'],self.config['ct_tk'],self.config['ct_tau'])
         self.logger = initialize_logger(self.config, self.output_name)
         np.save('../out_nmat/' + self.output_name + '.npy', noise_mat)
 
@@ -56,6 +61,7 @@ class PipelineCT(object):
             features_shuffled_pos = shuffle_pos(self.data.x, config['device'], config['feat_prob'])
             features_shuffled_neg = shuffle_neg(self.data.x, config['device'])
         print('ok')
+
         self.train_loader = NeighborLoader(
             self.data,
             input_nodes=self.split_idx['train'],
@@ -73,37 +79,57 @@ class PipelineCT(object):
             num_workers=self.config['num_workers'],
             persistent_workers=True
         )
-    def warmup(self, epoch, model, optimizer, train_loader):
-        model.train()
+    
+    def warmup(self, train_loader, epoch, model1, optimizer1, model2, optimizer2):
+        model1.train()
+        model2.train()
 
-        total_loss = 0
-        total_correct = 0
+        pure_ratio_1_list=[]
+        pure_ratio_2_list=[]
+        total_loss_1=0
+        total_loss_2=0
+        total_correct_1=0
+        total_correct_2=0
+        total_ratio_1=0
+        total_ratio_2=0
 
         for batch in train_loader:
             batch = batch.to(self.device)
             # Only consider predictions and labels of seed nodes
-            out = model(batch.x, batch.edge_index)[0][:batch.batch_size]
-            #out = out[:batch.batch_size]
+            out1 = model1(batch.x, batch.edge_index)[0][:batch.batch_size]
+            out2 = model2(batch.x, batch.edge_index)[0][:batch.batch_size]
             y = batch.y[:batch.batch_size].squeeze()
             yhn = batch.yhn[:batch.batch_size].squeeze()
-            loss = F.cross_entropy(out, yhn)
+            
+            loss_1, loss_2, pure_ratio_1, pure_ratio_2, _, _ = self.criterion(out1, out2, yhn, self.rate_schedule[epoch], batch.n_id, self.noise_or_not)
+            
+            total_loss_1 += float(loss_1)
+            total_loss_2 += float(loss_2)
+            total_correct_1 += int(out1.argmax(dim=-1).eq(y).sum())
+            total_correct_2 += int(out2.argmax(dim=-1).eq(y).sum())
+            total_ratio_1 += (100*pure_ratio_1)
+            total_ratio_2 += (100*pure_ratio_2)
+            
+            optimizer1.zero_grad()
+            loss_1.backward()
+            optimizer1.step()
+            optimizer2.zero_grad()
+            loss_2.backward()
+            optimizer2.step()
 
-            total_loss += float(loss)
-            total_correct += int(out.argmax(dim=-1).eq(y).sum())
+        train_loss_1 = total_loss_1 / len(train_loader)
+        train_loss_2 = total_loss_2 / len(train_loader)
+        train_acc_1 = total_correct_1 / self.split_idx['train'].size(0)
+        train_acc_2 = total_correct_2 / self.split_idx['train'].size(0)
+        pure_ratio_1_list = total_ratio_1 / len(train_loader)
+        pure_ratio_2_list = total_ratio_2 / len(train_loader)
+        self.logger.info('   Warmup epoch {}/{} --- loss1: {:.3f} loss2: {:.3f} acc1: {:.3f} acc2: {:.3f}'.format(epoch+1,self.config['warmup'],train_loss_1,train_loss_2,train_acc_1,train_acc_2))
+        #return train_loss_1, train_loss_2, train_acc_1, train_acc_2, pure_ratio_1_list, pure_ratio_2_list
 
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-        train_loss = total_loss / len(train_loader)
-        train_acc = total_correct / self.split_idx['train'].size(0)
-        self.logger.info('   Warmup epoch {}/{} --- loss: {:.4f} acc: {:.4f}'.format(epoch+1,self.config['warmup'],train_loss,train_acc))
-
-    def jsd(self, model1, model2, train_loader):
-        JS_dist = Jensen_Shannon()
-        num_samples = self.split_idx['train'].size(0)
-        JSD = torch.zeros(num_samples)
-        index = torch.zeros(num_samples)
-
+    def split(self, epoch, model1, model2, train_loader):
+        # Pred
+        indexes_1 = torch.tensor([])
+        indexes_2 = torch.tensor([])
         for batch_idx, batch in enumerate(train_loader):
             batch = batch.to(self.device)
             with torch.no_grad():
@@ -111,55 +137,32 @@ class PipelineCT(object):
                 out2 = torch.nn.Softmax(dim=1)(model2(batch.x, batch.edge_index)[0][:batch.batch_size])
                 yhn = batch.yhn[:batch.batch_size].squeeze()
 
-            ## Get the Prediction
-            out = (out1 + out2)/2
-            dist = JS_dist(out, F.one_hot(yhn, num_classes = self.config['nbr_classes']))
-            JSD[int(batch_idx*batch.batch_size):int((batch_idx+1)*batch.batch_size)] = dist
-            index[int(batch_idx*batch.batch_size):int((batch_idx+1)*batch.batch_size)] = batch.n_id[:batch.batch_size]
-        return JSD, index.int()
+                _, _, pure_ratio_1, pure_ratio_2, ind_1, ind_2 = self.criterion(out1, out2, yhn, self.rate_schedule[epoch], batch.n_id, self.noise_or_not)
+            
+            indexes_1 = torch.cat((indexes_1, ind_1), dim=0)
+            indexes_2 = torch.cat((indexes_2, ind_2), dim=0)
+        return indexes_1.long(), indexes_2.long()
 
     def loop(self):
         print('loop')
-        
-        self.logger.info('Warmup 1')
+        """
+        self.logger.info('Warmup')
         for epoch in range(self.config['warmup']):
-            self.warmup(epoch, self.model1.network.to(self.device), self.model1.optimizer, self.train_loader)
-        self.logger.info('Warmup 2')
-        for epoch in range(self.config['warmup']):
-            self.warmup(epoch, self.model2.network.to(self.device), self.model2.optimizer, self.train_loader)
-        
-        self.logger.info('JSD')
-        prob, index = self.jsd(self.model1.network.to(self.device), self.model2.network.to(self.device), self.train_loader)
-        
-        threshold = torch.mean(prob)
-        self.logger.info('thresh1 {:.4f}, du {:.4f}'.format(threshold, self.config['du']))
+            self.warmup(self.train_loader, epoch, self.model1.network.to(self.device), self.model1.optimizer, self.model2.network.to(self.device), self.model2.optimizer)
+        """
+        epoch = 0
+        self.logger.info('Split epoch {}'.format(epoch))
+        indexes_1, indexes_2 = self.split(epoch, self.model1.network.to(self.device), self.model2.network.to(self.device), self.train_loader)
 
-        if threshold.item() > self.config['du']:
-            threshold = threshold - (threshold-torch.min(prob))/self.config['tau']
-        self.logger.info('thresh2 {:.4f}, du {:.4f}'.format(threshold, self.config['du']))
-        SR = torch.sum(prob < threshold).item()/self.split_idx['train'].size(0)
-        self.logger.info('SR {:.4f}'.format(SR))
+        ratio = torch.sum(self.noise_or_not[indexes_1]).item()/self.split_idx['train'].size(0)
 
-        bool_tensor = prob < threshold
-        
-        #self.logger.info('q1 {:.4f}'.format(torch.sum(self.noise_or_not[self.split_idx['train']])))
-        #ratio1 = torch.sum(self.noise_or_not[self.split_idx['train']] & ~(bool_tensor)).item()/self.split_idx['train'].size(0)
-        #self.logger.info('Warmup ratio2 {:.4f}'.format(ratio2))
-
-        ratio = torch.sum(self.noise_or_not[index]).item()/self.split_idx['train'].size(0)
-        s_ratio1 = torch.sum(self.noise_or_not[index] & (bool_tensor)).item()/self.split_idx['train'].size(0)
-        s_ratio2 = torch.sum(self.noise_or_not[index] & (~bool_tensor)).item()/self.split_idx['train'].size(0)
+        s_ratio1 = torch.sum(self.noise_or_not[indexes_1]).item()/self.split_idx['train'].size(0)
+        s_ratio2 = torch.sum(self.noise_or_not[indexes_2]).item()/self.split_idx['train'].size(0)
         self.logger.info('r {:.4f}'.format(ratio))
         self.logger.info('s1 {:.4f}'.format(s_ratio1))
         self.logger.info('s2 {:.4f}'.format(s_ratio2))
 
-        pos_index = self.noise_or_not[index] & bool_tensor
-        neg_index = ~(self.noise_or_not[index] & bool_tensor)
-
-        pos_ratio = torch.sum(pos_index).item() / self.split_idx['train'].size(0)
-        neg_ratio = torch.sum(neg_index).item() / self.split_idx['train'].size(0)
-
-        self.logger.info('pos {:.4f}'.format(pos_ratio))
-        self.logger.info('neg {:.4f}'.format(neg_ratio))
+        self.logger.info('length 1 {} / {}'.format(indexes_1.shape[0], self.split_idx['train'].size(0)))
+        self.logger.info('length 2 {} / {}'.format(indexes_2.shape[0], self.split_idx['train'].size(0)))
 
         self.logger.info('Done')

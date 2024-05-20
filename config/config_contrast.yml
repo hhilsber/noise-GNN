@@ -36,9 +36,11 @@ noise_type: 'next_pair'
 
 # Algo
 algo_type: 'contrastive'
-warmup: 3
-du: 0.7
-tau: 5
+warmup: 8
+#du: 0.7
+#tau: 5
+ct_tk: 5
+ct_tau: 1.1
 
 # Augmentation
 augment: False
