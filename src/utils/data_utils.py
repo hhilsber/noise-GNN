@@ -17,7 +17,7 @@ def to_scipy_sparse_matrix_rcd(row, col, data, num_nodes):
     shape = (num_nodes, num_nodes)
     return sp.coo_matrix((data, (row, col)), shape=shape)
 
-def augment_edges(edge_index, nbr_nodes, p=0.2):
+def augment_edges(edge_index, nbr_nodes, p=0.05):
     # Remove diag edges (a,a)
     not_equal_columns = edge_index[0] != edge_index[1]
     edge_index = edge_index[:, not_equal_columns]
@@ -63,7 +63,7 @@ def augment_edges(edge_index, nbr_nodes, p=0.2):
         else:
             big_sp = to_scipy_sparse_matrix(edge_add, nbr_nodes)
 
-        # Make sure we dont add new edges, and also no deleted edges
+        # Make sure we add new edges, and also no deleted edges
         row, col, data = sp.find((edge_sp + small_sp - big_sp) < 0)
         big_edge = torch.stack([torch.tensor(row), torch.tensor(col)], dim=0)
         # Remove diag edges (a,a)
@@ -73,11 +73,47 @@ def augment_edges(edge_index, nbr_nodes, p=0.2):
         # Check if we added enough edges
         true_nbr_add = int(big_edge.shape[1] * 0.5)
         nbr_add = nbr_del_add_init - true_nbr_add
-    
     final_coo = (small_sp + big_sp).tocoo()
     row, col, data = final_coo.row, final_coo.col, final_coo.data
     final_edge = torch.stack([torch.tensor(row), torch.tensor(col)], dim=0)
     return final_edge
+
+def augment_edges_neg(edge_index, nbr_nodes):
+    # Remove diag edges (a,a)
+    not_equal_columns = edge_index[0] != edge_index[1]
+    edge_index = edge_index[:, not_equal_columns]
+
+    nbr_edges_init, nbr_add = int(edge_index.shape[1] * 0.5), int(edge_index.shape[1] * 0.5)
+    true_nbr_add = 0
+    
+    edge_sp = to_scipy_sparse_matrix(edge_index, nbr_nodes)
+    neg_edge = torch.tensor([[0],[0]])
+    while (true_nbr_add != nbr_edges_init):
+        print('nbr_edges_init {}, true_nbr_add {}'.format(nbr_edges_init, true_nbr_add))
+        # Generate edges to add
+        rand_edges = torch.randint(0, nbr_nodes, (2, nbr_add))
+        edge_add = torch.cat((rand_edges,torch.flip(rand_edges, dims=[0])),1)
+        
+        # Convert to coo matrix and add edges
+        if neg_edge.shape[1] >= 2:
+            neg_sp = to_scipy_sparse_matrix(neg_edge, nbr_nodes)
+            add_sp = to_scipy_sparse_matrix(edge_add, nbr_nodes)
+            row, col, data = sp.find((neg_sp + add_sp) == 1)
+            neg_sp = to_scipy_sparse_matrix_rcd(row, col, data, nbr_nodes)
+        else:
+            neg_sp = to_scipy_sparse_matrix(edge_add, nbr_nodes)
+
+        # Make sure we add edges different from original graph
+        row, col, data = sp.find((edge_sp - neg_sp) < 0)
+        neg_edge = torch.stack([torch.tensor(row), torch.tensor(col)], dim=0)
+        # Remove diag edges (a,a)
+        not_equal_columns = neg_edge[0] != neg_edge[1]
+        neg_edge = neg_edge[:, not_equal_columns]
+
+        # Check if we added enough edges
+        true_nbr_add = int(neg_edge.shape[1] * 0.5)
+        nbr_add = nbr_edges_init - true_nbr_add
+    return neg_edge
 
 def kl_divergence(p, q):
     return (p * ((p+1e-10) / (q+1e-10)).log()).sum(dim=1)
