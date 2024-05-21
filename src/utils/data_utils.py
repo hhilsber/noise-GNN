@@ -38,17 +38,15 @@ class BCEExeprtLoss(nn.Module):
     """
     def __init__(self, nbr_nodes):
         super(BCEExeprtLoss, self).__init__()
-        self.lbl_pos = torch.ones(nbr_nodes*1)
-        self.lbl_neg = torch.ones(nbr_nodes*1)
+        #self.lbl_pos = torch.ones(nbr_nodes*1)
+        #self.lbl_neg = torch.ones(nbr_nodes*1)
         self.criterion = nn.BCEWithLogitsLoss()
     
     def forward(self, logits_p, logits_n):
         #logits_pos = torch.squeeze(torch.cat((logits_p), dim=0))
         logits_pos = torch.squeeze(logits_p)
         logits_neg = torch.squeeze(logits_n)
-        print(logits_pos.shape)
-        print(self.lbl_pos.shape)
-        loss = self.criterion(logits_pos, self.lbl_pos) + self.criterion(logits_neg, self.lbl_neg)
+        loss = self.criterion(logits_pos, torch.ones_like(logits_pos)) + self.criterion(logits_neg, torch.ones_like(logits_neg))
         return loss
 
 

@@ -77,7 +77,16 @@ class PipelineCT(object):
             num_workers=self.config['num_workers'],
             persistent_workers=True
         )
-        return train_loader
+        valid_loader = NeighborLoader(
+            self.data,
+            input_nodes=self.split_idx['valid'],
+            num_neighbors=self.config['nbr_neighbors'],
+            batch_size=self.config['batch_size'],
+            shuffle=True,
+            num_workers=self.config['num_workers'],
+            persistent_workers=True
+        )
+        return train_loader, valid_loader
     
     def warmup(self, train_loader, model1, optimizer1, model2, optimizer2):
         model1.train()
@@ -138,47 +147,74 @@ class PipelineCT(object):
             noisy_2 = torch.cat((noisy_2, ind_noisy_2), dim=0)
         return clean_1.long(), clean_2.long(), noisy_1.long(), noisy_2.long()
 
-    def train(self, epoch, train_loader, model1, optimizer1, model2, optimizer2):
+    def train(self, epoch, train_loader, model, optimizer):
         # Train
-        model1.train()
+        model.train()
 
-        total_loss=0
-        total_correct=0
+        total_loss_semi = 0
+        total_loss_cont = 0
+        total_loss = 0
+        total_correct = 0
 
         for batch in train_loader:
             batch = batch.to(self.device)
-            clean_set = batch.bool_set[:batch.batch_size].cpu()
-            noisy_set = ~batch.bool_set[:batch.batch_size].cpu()
+            clean_set = batch.bool_set[:batch.batch_size]
+            noisy_set = ~batch.bool_set[:batch.batch_size]
             # Only consider predictions and labels of seed nodes
-            out_semi = model1(batch.x, batch.edge_index)[0][:batch.batch_size].cpu()
-            out_clo = model1(batch.x, batch.edge_index)[1][:batch.batch_size].cpu()
-            out_clp = model1(batch.xp, batch.edge_index)[1][:batch.batch_size].cpu()
-            out_cln = model1(batch.xn, batch.edge_index)[1][:batch.batch_size].cpu()
-            y = batch.y[:batch.batch_size].squeeze().cpu()
-            yhn = batch.yhn[:batch.batch_size].squeeze().cpu()
+            out_semi = model(batch.x, batch.edge_index)[0][:batch.batch_size]
+            out_clo = model(batch.x, batch.edge_index)[1][:batch.batch_size]
+            out_clp = model(batch.xp, batch.edge_index)[1][:batch.batch_size]
+            out_cln = model(batch.xn, batch.edge_index)[1][:batch.batch_size]
+            y = batch.y[:batch.batch_size].squeeze()
+            yhn = batch.yhn[:batch.batch_size].squeeze()
             
             # Semi
             loss_semi = F.cross_entropy(out_semi[clean_set], yhn[clean_set])
             # Contrastive
             logits_p, logits_n = self.discriminator(out_clo, out_clp, out_cln)
             loss_cont = self.cont_criterion(logits_p, logits_n)
+            # Loss
+            _lambda = 0.05
+            loss = loss_semi + _lambda * loss_cont
 
-            optimizer1.zero_grad()
-            loss_semi.backward()
-            optimizer1.step()
+            total_loss_semi += float(loss_semi)
+            total_loss_cont += float(loss_cont)
+            total_loss += float(loss)
+            total_correct += int(out_semi.argmax(dim=-1).eq(y).sum())
 
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+        total_loss_semi = total_loss_semi / len(train_loader)
+        total_loss_cont = total_loss_cont / len(train_loader)
+        total_loss = total_loss / len(train_loader)
+        train_acc = total_correct / self.split_idx['train'].size(0)
         if not((epoch+1)%1) or ((epoch+1)==self.config['max_epochs']):
-            self.logger.info('   Train epoch {}/{} --- loss semi: {:.3f} loss cont: {:.3f}'.format(epoch+1,self.config['max_epochs'],loss_semi, loss_cont))
-        return 0
+            self.logger.info('   Train epoch {}/{} --- loss semi: {:.3f} + {} * loss cont: {:.3f} = loss {:.3f}'.format(epoch+1,self.config['max_epochs'],total_loss_semi, _lambda, total_loss_cont, total_loss))
+        return train_acc
     
+    def evaluate(self, valid_loader, model):
+        model.eval()
+        total_correct = 0
+        
+        for batch in valid_loader:
+            batch = batch.to(self.device)
+            # Only consider predictions and labels of seed nodes
+            out1 = model(batch.x, batch.edge_index)[0][:batch.batch_size]
+            y = batch.y[:batch.batch_size].squeeze()
+
+            total_correct += int(out1.argmax(dim=-1).eq(y).sum())
+        val_acc = total_correct / self.split_idx['valid'].size(0)
+        return val_acc
+
     def loop(self):
         print('loop')
         
         # Warmup
         self.logger.info('Warmup')
-        train_loader = self.create_loaders()
-        #epoch = self.warmup(train_loader, self.model1.network.to(self.device), self.model1.optimizer, self.model2.network.to(self.device), self.model2.optimizer)
-        epoch=1
+        train_loader, _ = self.create_loaders()
+        epoch = self.warmup(train_loader, self.model1.network.to(self.device), self.model1.optimizer, self.model2.network.to(self.device), self.model2.optimizer)
+        #epoch=1
         # Split data in clean and noisy sets
         self.logger.info('Split epoch {}'.format(epoch))
         clean_1, clean_2, noisy_1, noisy_2 = self.split(epoch, train_loader, self.model1.network.to(self.device), self.model2.network.to(self.device))
@@ -202,8 +238,12 @@ class PipelineCT(object):
         bool_set = np.ones_like(self.noise_or_not)
         bool_set[clean_1] = 0 # 1 if clean set, 0 if noisy set
         self.data.bool_set = bool_set
-        train_loader = self.create_loaders()
+        train_loader, valid_loader = self.create_loaders()
 
         for epoch in range(self.config['warmup'],self.config['max_epochs']):
-            self.train(epoch, train_loader, self.model1.network.to(self.device), self.model1.optimizer, self.model2.network.to(self.device), self.model2.optimizer)
+            train_acc = self.train(epoch, train_loader, self.model1.network.to(self.device), self.model1.optimizer)
+            valid_acc = self.evaluate(valid_loader, self.model1.network.to(self.device))
+            if not((epoch+1)%1) or ((epoch+1)==self.config['max_epochs']):
+                self.logger.info('   Train epoch {}/{} --- train acc: {:.3f}   val acc {:.3f}'.format(epoch+1,self.config['max_epochs'],train_acc,valid_acc))
+        
         self.logger.info('Done')
