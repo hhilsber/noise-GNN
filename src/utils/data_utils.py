@@ -36,15 +36,18 @@ class BCEExeprtLoss(nn.Module):
     https://github.com/TaiHasegawa/DEGNN/blob/main/models/degnn_layers.py
     Binary cross-entropy loss for the expert.
     """
-    def __init__(self, n_nodes, device):
+    def __init__(self, nbr_nodes):
         super(BCEExeprtLoss, self).__init__()
-        self.lbl_pos = torch.ones(n_nodes*3).to(device)
-        self.lbl_neg = torch.zeros(n_nodes).to(device)
+        self.lbl_pos = torch.ones(nbr_nodes*1)
+        self.lbl_neg = torch.ones(nbr_nodes*1)
         self.criterion = nn.BCEWithLogitsLoss()
     
-    def forward(self, logits_aa, logits_ta, logits_ata, logits_neg):
-        logits_pos = torch.squeeze(torch.cat((logits_aa, logits_ta, logits_ata), dim=0))
-        logits_neg = torch.squeeze(logits_neg)
+    def forward(self, logits_p, logits_n):
+        #logits_pos = torch.squeeze(torch.cat((logits_p), dim=0))
+        logits_pos = torch.squeeze(logits_p)
+        logits_neg = torch.squeeze(logits_n)
+        print(logits_pos.shape)
+        print(self.lbl_pos.shape)
         loss = self.criterion(logits_pos, self.lbl_pos) + self.criterion(logits_neg, self.lbl_neg)
         return loss
 
@@ -57,9 +60,7 @@ class Discriminator_innerprod(nn.Module):
     def __init__(self):
         super(Discriminator_innerprod, self).__init__()
 
-    def forward(self, H, Haa, Hta, Hata, Hneg):
-        logits_aa = torch.sum(torch.mul(H, Haa), dim=1, keepdim=True)
-        logits_ta = torch.sum(torch.mul(H, Hta), dim=1, keepdim=True)
-        logits_ata = torch.sum(torch.mul(H, Hata), dim=1, keepdim=True)
-        logits_neg = torch.sum(torch.mul(H, Hneg), dim=1, keepdim=True)
-        return logits_aa, logits_ta, logits_ata, logits_neg
+    def forward(self, H, Hp, Hn):
+        logits_p = torch.sum(torch.mul(H, Hp), dim=1, keepdim=True)
+        logits_n = torch.sum(torch.mul(H, Hn), dim=1, keepdim=True)
+        return logits_p, logits_n

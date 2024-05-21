@@ -9,7 +9,7 @@ from ogb.nodeproppred import Evaluator
 import datetime as dt
 
 from .utils.load_utils import load_network
-from .utils.data_utils import Jensen_Shannon
+from .utils.data_utils import Jensen_Shannon, Discriminator_innerprod, BCEExeprtLoss
 from .utils.augmentation import augment_edges_pos, augment_edges_neg, shuffle_pos, shuffle_neg
 from .utils.utils import initialize_logger
 from .utils.noise import flip_label
@@ -48,7 +48,10 @@ class PipelineCT(object):
         self.rate_schedule[:self.config['ct_tk']] = np.linspace(0, self.config['noise_rate'], self.config['ct_tk'])
         self.rate_schedule[self.config['ct_tk']:self.config['warmup']] = self.rate_schedule[self.config['ct_tk']:self.config['warmup']]*self.config['noise_rate']*self.config['ct_tau']
         #print('rate_schedule: {}'.format(self.rate_schedule))
-
+        # Contrastive
+        self.discriminator = Discriminator_innerprod()
+        self.cont_criterion = BCEExeprtLoss(self.config['batch_size']) #, config['device'])
+        
         # Logger and data loader
         date = dt.datetime.date(dt.datetime.now())
         self.output_name = 'dt{}{}_id{}_{}_{}_{}_noise_{}{}_lay{}_hid{}_lr{}_bs{}_drop{}_epo{}_warmup{}_cttk{}_cttau{}'.format(date.month,date.day,self.config['batch_id'],self.config['train_type'],self.config['algo_type'],self.config['module'],self.config['noise_type'],self.config['noise_rate'],self.config['num_layers'],self.config['hidden_size'],self.config['learning_rate'],self.config['batch_size'],self.config['dropout'],self.config['max_epochs'],self.config['warmup'],self.config['ct_tk'],self.config['ct_tau'])
@@ -56,17 +59,15 @@ class PipelineCT(object):
         np.save('../out_nmat/' + self.output_name + '.npy', noise_mat)
 
         # Graph augmentation
-        if config['augment']:
+        if config['augment_edge']:
             edge_pos = augment_edges_pos(self.data.edge_index, config['nbr_nodes'], config['edge_prob'])
             edge_neg = augment_edges_neg(self.data.edge_index, config['nbr_nodes'])
-            features_shuffled_pos = shuffle_pos(self.data.x, config['device'], config['feat_prob'])
-            features_shuffled_neg = shuffle_neg(self.data.x, config['device'])
+        if config['augment_feat']:
+            self.data.xp = shuffle_pos(self.data.x, config['device'], config['feat_prob'])
+            self.data.xn = shuffle_neg(self.data.x, config['device'])
         print('ok')
     
-    def warmup(self, model1, optimizer1, model2, optimizer2):
-        model1.train()
-        model2.train()
-
+    def create_loaders(self):
         train_loader = NeighborLoader(
             self.data,
             input_nodes=self.split_idx['train'],
@@ -76,6 +77,11 @@ class PipelineCT(object):
             num_workers=self.config['num_workers'],
             persistent_workers=True
         )
+        return train_loader
+    
+    def warmup(self, train_loader, model1, optimizer1, model2, optimizer2):
+        model1.train()
+        model2.train()
 
         for epoch in range(self.config['warmup']):
             total_loss_1=0
@@ -109,7 +115,7 @@ class PipelineCT(object):
             train_acc_1 = total_correct_1 / self.split_idx['train'].size(0)
             train_acc_2 = total_correct_2 / self.split_idx['train'].size(0)
             self.logger.info('   Warmup epoch {}/{} --- loss1: {:.3f} loss2: {:.3f} acc1: {:.3f} acc2: {:.3f}'.format(epoch+1,self.config['warmup'],train_loss_1,train_loss_2,train_acc_1,train_acc_2))
-        return epoch, train_loader
+        return epoch
 
     def split(self, epoch, train_loader, model1, model2):
         # Pred
@@ -132,40 +138,47 @@ class PipelineCT(object):
             noisy_2 = torch.cat((noisy_2, ind_noisy_2), dim=0)
         return clean_1.long(), clean_2.long(), noisy_1.long(), noisy_2.long()
 
-    def create_loaders(self, clean_index, noisy_index):
-        clean_loader = NeighborLoader(
-            self.data,
-            input_nodes=clean_index,
-            num_neighbors=self.config['nbr_neighbors'],
-            batch_size=self.config['batch_size'],
-            shuffle=True,
-            num_workers=self.config['num_workers'],
-            persistent_workers=True
-        )
-        noisy_loader = NeighborLoader(
-            self.data,
-            input_nodes=noisy_index,
-            num_neighbors=self.config['nbr_neighbors'],
-            batch_size=self.config['batch_size'],
-            shuffle=True,
-            num_workers=self.config['num_workers'],
-            persistent_workers=True
-        )
-        return clean_loader, noisy_loader
-
-    def train(self, epoch, model1, optimizer1, model2, optimizer2, train_loader, noisy_loader):
+    def train(self, epoch, train_loader, model1, optimizer1, model2, optimizer2):
         # Train
-        if not((epoch+1)%3) or ((epoch+1)==self.config['max_epochs']):
-            self.logger.info('   Train epoch {}/{} --- acc t1: {:.4f} t2: {:.4f} v1: {:.4f} v2: {:.4f}'.format(epoch+1,self.config['max_epochs'],train_acc_1,train_acc_2,val_acc_1,val_acc_2))
-    
+        model1.train()
+
+        total_loss=0
+        total_correct=0
+
+        for batch in train_loader:
+            batch = batch.to(self.device)
+            clean_set = batch.bool_set[:batch.batch_size].cpu()
+            noisy_set = ~batch.bool_set[:batch.batch_size].cpu()
+            # Only consider predictions and labels of seed nodes
+            out_semi = model1(batch.x, batch.edge_index)[0][:batch.batch_size].cpu()
+            out_clo = model1(batch.x, batch.edge_index)[1][:batch.batch_size].cpu()
+            out_clp = model1(batch.xp, batch.edge_index)[1][:batch.batch_size].cpu()
+            out_cln = model1(batch.xn, batch.edge_index)[1][:batch.batch_size].cpu()
+            y = batch.y[:batch.batch_size].squeeze().cpu()
+            yhn = batch.yhn[:batch.batch_size].squeeze().cpu()
+            
+            # Semi
+            loss_semi = F.cross_entropy(out_semi[clean_set], yhn[clean_set])
+            # Contrastive
+            logits_p, logits_n = self.discriminator(out_clo, out_clp, out_cln)
+            loss_cont = self.cont_criterion(logits_p, logits_n)
+
+            optimizer1.zero_grad()
+            loss_semi.backward()
+            optimizer1.step()
+
+        if not((epoch+1)%1) or ((epoch+1)==self.config['max_epochs']):
+            self.logger.info('   Train epoch {}/{} --- loss semi: {:.3f} loss cont: {:.3f}'.format(epoch+1,self.config['max_epochs'],loss_semi, loss_cont))
+        return 0
     
     def loop(self):
         print('loop')
         
         # Warmup
         self.logger.info('Warmup')
-        epoch, train_loader = self.warmup(self.model1.network.to(self.device), self.model1.optimizer, self.model2.network.to(self.device), self.model2.optimizer)
-        
+        train_loader = self.create_loaders()
+        #epoch = self.warmup(train_loader, self.model1.network.to(self.device), self.model1.optimizer, self.model2.network.to(self.device), self.model2.optimizer)
+        epoch=1
         # Split data in clean and noisy sets
         self.logger.info('Split epoch {}'.format(epoch))
         clean_1, clean_2, noisy_1, noisy_2 = self.split(epoch, train_loader, self.model1.network.to(self.device), self.model2.network.to(self.device))
@@ -186,7 +199,11 @@ class PipelineCT(object):
         self.logger.info('nbr clean samples {}, noisy samples {}, sum {} == {} total train?'.format(clean_1.shape[0], noisy_1.shape[0], (clean_1.shape[0]+noisy_1.shape[0]), self.split_idx['train'].size(0)))
 
         # Create clean and noisy loaders
-        train_loader, noisy_loader = self.create_loaders(clean_1, noisy_1)
+        bool_set = np.ones_like(self.noise_or_not)
+        bool_set[clean_1] = 0 # 1 if clean set, 0 if noisy set
+        self.data.bool_set = bool_set
+        train_loader = self.create_loaders()
+
         for epoch in range(self.config['warmup'],self.config['max_epochs']):
-            self.train(self.model1.network.to(self.device), self.model1.optimizer, self.model2.network.to(self.device), self.model2.optimizer, train_loader, noisy_loader)
+            self.train(epoch, train_loader, self.model1.network.to(self.device), self.model1.optimizer, self.model2.network.to(self.device), self.model2.optimizer)
         self.logger.info('Done')

@@ -1,4 +1,5 @@
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 from torch_geometric.nn import SAGEConv
 
@@ -10,6 +11,7 @@ class SAGEFC(torch.nn.Module):
         """
         self.num_layers = num_layers
         self.dropout = dropout
+        self.act = nn.PReLU()
         
         self.convs = torch.nn.ModuleList()
         self.convs.append(SAGEConv(in_channels, hidden_channels))
@@ -25,7 +27,7 @@ class SAGEFC(torch.nn.Module):
         for i, conv in enumerate(self.convs):
             x = conv(x, edge_index)
             if i != self.num_layers - 1:
-                h_out = x
+                h_out = self.act(x)
                 x = x.relu()
                 x = F.dropout(x, p=self.dropout, training=self.training)
         return x, h_out
