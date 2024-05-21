@@ -54,7 +54,7 @@ class PipelineCT(object):
         
         # Logger and data loader
         date = dt.datetime.date(dt.datetime.now())
-        self.output_name = 'dt{}{}_id{}_{}_{}_{}_noise_{}{}_lay{}_hid{}_lr{}_bs{}_drop{}_epo{}_warmup{}_cttk{}_cttau{}'.format(date.month,date.day,self.config['batch_id'],self.config['train_type'],self.config['algo_type'],self.config['module'],self.config['noise_type'],self.config['noise_rate'],self.config['num_layers'],self.config['hidden_size'],self.config['learning_rate'],self.config['batch_size'],self.config['dropout'],self.config['max_epochs'],self.config['warmup'],self.config['ct_tk'],self.config['ct_tau'])
+        self.output_name = 'dt{}{}_id{}_{}_{}_{}_noise_{}{}_lay{}_hid{}_lr{}_bs{}_drop{}_epo{}_warmup{}_lambda{}_cttk{}_cttau{}'.format(date.month,date.day,self.config['batch_id'],self.config['train_type'],self.config['algo_type'],self.config['module'],self.config['noise_type'],self.config['noise_rate'],self.config['num_layers'],self.config['hidden_size'],self.config['learning_rate'],self.config['batch_size'],self.config['dropout'],self.config['max_epochs'],self.config['warmup'],self.config['lambda'],self.config['ct_tk'],self.config['ct_tau'])
         self.logger = initialize_logger(self.config, self.output_name)
         np.save('../out_nmat/' + self.output_name + '.npy', noise_mat)
 
@@ -171,11 +171,10 @@ class PipelineCT(object):
             # Semi
             loss_semi = F.cross_entropy(out_semi[clean_set], yhn[clean_set])
             # Contrastive
-            logits_p, logits_n = self.discriminator(out_clo, out_clp, out_cln)
+            logits_p, logits_n = self.discriminator(out_clo[noisy_set], out_clp[noisy_set], out_cln[noisy_set])
             loss_cont = self.cont_criterion(logits_p, logits_n)
             # Loss
-            _lambda = 0.05
-            loss = loss_semi + _lambda * loss_cont
+            loss = loss_semi + self.config['lambda'] * loss_cont
 
             total_loss_semi += float(loss_semi)
             total_loss_cont += float(loss_cont)
@@ -189,9 +188,7 @@ class PipelineCT(object):
         total_loss_cont = total_loss_cont / len(train_loader)
         total_loss = total_loss / len(train_loader)
         train_acc = total_correct / self.split_idx['train'].size(0)
-        if not((epoch+1)%1) or ((epoch+1)==self.config['max_epochs']):
-            self.logger.info('   Train epoch {}/{} --- loss semi: {:.3f} + {} * loss cont: {:.3f} = loss {:.3f}'.format(epoch+1,self.config['max_epochs'],total_loss_semi, _lambda, total_loss_cont, total_loss))
-        return train_acc
+        return total_loss_semi, total_loss_cont, total_loss, train_acc
     
     def evaluate(self, valid_loader, model):
         model.eval()
@@ -200,10 +197,10 @@ class PipelineCT(object):
         for batch in valid_loader:
             batch = batch.to(self.device)
             # Only consider predictions and labels of seed nodes
-            out1 = model(batch.x, batch.edge_index)[0][:batch.batch_size]
+            out = model(batch.x, batch.edge_index)[0][:batch.batch_size]
             y = batch.y[:batch.batch_size].squeeze()
 
-            total_correct += int(out1.argmax(dim=-1).eq(y).sum())
+            total_correct += int(out.argmax(dim=-1).eq(y).sum())
         val_acc = total_correct / self.split_idx['valid'].size(0)
         return val_acc
 
@@ -216,7 +213,7 @@ class PipelineCT(object):
         epoch = self.warmup(train_loader, self.model1.network.to(self.device), self.model1.optimizer, self.model2.network.to(self.device), self.model2.optimizer)
         #epoch=1
         # Split data in clean and noisy sets
-        self.logger.info('Split epoch {}'.format(epoch))
+        self.logger.info('Split epoch {}'.format(epoch+1))
         clean_1, clean_2, noisy_1, noisy_2 = self.split(epoch, train_loader, self.model1.network.to(self.device), self.model2.network.to(self.device))
 
         # Check stats
@@ -236,14 +233,16 @@ class PipelineCT(object):
 
         # Create clean and noisy loaders
         bool_set = np.ones_like(self.noise_or_not)
-        bool_set[clean_1] = 0 # 1 if clean set, 0 if noisy set
+        bool_set[noisy_1] = 0 # 1 if clean set, 0 if noisy set
         self.data.bool_set = bool_set
         train_loader, valid_loader = self.create_loaders()
 
         for epoch in range(self.config['warmup'],self.config['max_epochs']):
-            train_acc = self.train(epoch, train_loader, self.model1.network.to(self.device), self.model1.optimizer)
+            # Train
+            total_loss_semi, total_loss_cont, total_loss, train_acc = self.train(epoch, train_loader, self.model1.network.to(self.device), self.model1.optimizer)
+            # Eval
             valid_acc = self.evaluate(valid_loader, self.model1.network.to(self.device))
             if not((epoch+1)%1) or ((epoch+1)==self.config['max_epochs']):
-                self.logger.info('   Train epoch {}/{} --- train acc: {:.3f}   val acc {:.3f}'.format(epoch+1,self.config['max_epochs'],train_acc,valid_acc))
-        
+                self.logger.info('   Train epoch {}/{} --- loss semi: {:.3f} loss cont: {:.3f} total loss {:.3f} --- train acc: {:.3f} val acc {:.3f}'.format(epoch+1,self.config['max_epochs'],total_loss_semi, total_loss_cont, total_loss, train_acc, valid_acc))
+            
         self.logger.info('Done')
