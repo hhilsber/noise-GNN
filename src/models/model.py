@@ -10,52 +10,62 @@ class NGNN(object):
     """
     d
     """
-    def __init__(self, config):
-        self.config = config
+    def __init__(self, in_size=100, hidden_size=128, out_size=47, num_layers=2, dropout=0.5, lr=0.001, optimizer='adam', module='sageFC'):
+        #self.config = config
         
         self.criterion = None
         self.score_func = None
         self.metric_name = None
 
+        self.in_size = in_size
+        self.hidden_size = hidden_size
+        self.out_size = out_size
+        self.num_layers = num_layers
+        self.dropout = dropout
+
+        self.lr = lr
+        self.optimizer = optimizer
+        self.module = module
+
         self.init_network()
         self.init_optimizer()
 
     def init_network(self):
-        if self.config['module'] == 'gcn':
-            self.network = SimpleGCN(in_channels=self.config['nbr_features'],
-                                hidden_channels=self.config['hidden_size'],
-                                out_channels=self.config['nbr_classes'],
-                                num_layers=self.config['num_layers'],
-                                dropout=self.config['dropout'])
-        elif self.config['module'] == 'sage':
-            self.network = SAGE(in_channels=self.config['nbr_features'],
-                                    hidden_channels=self.config['hidden_size'],
-                                    out_channels=self.config['nbr_classes'],
-                                    num_layers=self.config['num_layers'],
-                                    dropout=self.config['dropout'])
-        elif self.config['module'] == 'sageFC':
-            self.network = SAGEFC(in_channels=self.config['nbr_features'],
-                                    hidden_channels=self.config['hidden_size'],
-                                    out_channels=self.config['nbr_classes'],
-                                    num_layers=self.config['num_layers'],
-                                    dropout=self.config['dropout'])
+        if self.module == 'gcn':
+            self.network = SimpleGCN(in_size=self.in_size,
+                                hidden_size=self.hidden_size,
+                                out_size=self.out_size,
+                                num_layers=self.num_layers,
+                                dropout=self.dropout)
+        elif self.module == 'sage':
+            self.network = SAGE(in_size=self.in_size,
+                                    hidden_size=self.hidden_size,
+                                    out_size=self.out_size,
+                                    num_layers=self.num_layers,
+                                    dropout=self.dropout)
+        elif self.module == 'sageFC':
+            self.network = SAGEFC(in_size=self.in_size,
+                                    hidden_size=self.hidden_size,
+                                    out_size=self.out_size,
+                                    num_layers=self.num_layers,
+                                    dropout=self.dropout)
 
 
     def init_optimizer(self):
-        if self.config['optimizer'] == 'adam':
+        if self.optimizer == 'adam':
             self.optimizer = torch.optim.Adam(self.network.parameters(),
-                                            lr=self.config['learning_rate'])
-        elif self.config['optimizer'] == 'single_adam':
+                                            lr=self.lr)
+        elif self.optimizer == 'single_adam':
             self.optimizer = torch.optim.Adam(self.network.parameters(),
-                                                lr=self.config['learning_rate'],
-                                                weight_decay=self.config['weight_decay'])
-        elif self.config['optimizer'] == 'double_adam':
+                                                lr=self.lr,
+                                                weight_decay=self.weight_decay)
+        elif self.optimizer == 'double_adam':
             self.optims = MultipleOptimizer(torch.optim.Adam(self.edge_module.parameters(),
-                                                lr=self.config['learning_rate'],
-                                                weight_decay=self.config['weight_decay']),
+                                                lr=self.lr,
+                                                weight_decay=self.weight_decay),
                                             torch.optim.Adam(self.network.parameters(),
-                                                lr=self.config['learning_rate'],
-                                                weight_decay=self.config['weight_decay']))
+                                                lr=self.lr,
+                                                weight_decay=self.weight_decay))
 
 
 class MultipleOptimizer():
