@@ -106,7 +106,7 @@ def augment_edges_pos(edge_index, nbr_nodes, prob=0.1):
     final_coo = (small_sp + big_sp).tocoo()
     row, col, data = final_coo.row, final_coo.col, final_coo.data
     final_edge = torch.stack([torch.tensor(row), torch.tensor(col)], dim=0)
-    return final_edge
+    return final_edge.long()
 
 def augment_edges_neg(edge_index, nbr_nodes):
     # Remove diag edges (a,a)
@@ -144,4 +144,4 @@ def augment_edges_neg(edge_index, nbr_nodes):
         true_nbr_add = int(neg_edge.shape[1] * 0.5)
         nbr_add = nbr_edges_init - true_nbr_add
     print('neg augmentation {} edges, original graph had {}'.format(true_nbr_add, nbr_edges_init))
-    return neg_edge
+    return neg_edge.long()
