@@ -259,25 +259,33 @@ class PipelineCT(object):
         # Warmup
         self.logger.info('Warmup')
         train_loader, _, _, valid_loader = self.create_loaders(self.config['batch_size'])
-        """
+        
         for epoch in range(self.config['warmup']):
             train_loss_1,train_loss_2,train_acc_1,train_acc_2 = self.warmup(epoch, train_loader, self.model1.network.to(self.device), self.model1.optimizer, self.model2.network.to(self.device), self.model2.optimizer)
             val_acc_1, val_acc_2 = self.evaluate_ct(valid_loader, self.model1.network.to(self.device), self.model2.network.to(self.device))
             self.logger.info('   Warmup epoch {}/{} --- loss1: {:.3f} loss2: {:.3f} t1: {:.3f} t2: {:.3f} v1: {:.3f} v2: {:.3f}'.format(epoch+1,self.config['warmup'],train_loss_1,train_loss_2,train_acc_1,train_acc_2,val_acc_1,val_acc_2))
             if (val_acc_1 > best_val):
+                print("saved model, val acc {:.3f}".format(val_acc_1))
                 best_val = val_acc_1
-                torch.save(self.model1.network.cpu().state_dict(), '../out_model/' + self.output_name + '.pth')
-        """
+                torch.save(self.model1.network.cpu().state_dict(), '../out_model/' + self.output_name + '_m1.pth')
+                torch.save(self.model2.network.cpu().state_dict(), '../out_model/' + self.output_name + '_m2.pth')
+        
         # Split data in clean and noisy sets
-        self.model1 = NGNN()
-        self.model1.network.load_state_dict(torch.load('../out_model/dt522_id2_contrastive_contrastive_sageFC_noise_next_pair0.45_lay2_hid128_lr0.001_bs1024_drop0.5_epo3_warmup1_lambda1.0_cttk0_cttau1.1.pth'))
-        epoch=1
+        print("load")
+        self.logger.info('load')
+        self.model1, self.model2 = NGNN(), NGNN()
+        self.model1.network.load_state_dict(torch.load('../out_model/' + self.output_name + '_m1.pth'))
+        self.model2.network.load_state_dict(torch.load('../out_model/' + self.output_name + '_m2.pth'))
+        #self.model1.network.load_state_dict(torch.load('../out_model/dt522_id3_contrastive_contrastive_sageFC_noise_next_pair0.45_lay2_hid128_lr0.001_bs1024_drop0.5_epo4_warmup3_lambda1.0_cttk1_cttau1.1_m1.pth'))
+        #self.model2.network.load_state_dict(torch.load('../out_model/dt522_id3_contrastive_contrastive_sageFC_noise_next_pair0.45_lay2_hid128_lr0.001_bs1024_drop0.5_epo4_warmup3_lambda1.0_cttk1_cttau1.1_m2.pth'))
+        epoch=3
         self.logger.info('Split epoch {}'.format(epoch+1))
         clean_1, clean_2, noisy_1, noisy_2 = self.split(epoch, train_loader, self.model1.network.to(self.device), self.model2.network.to(self.device))
-
+        print(clean_1.shape)
         # Check stats
         clean_ratio1, clean_ratio1_tot = torch.sum(self.noise_or_not[clean_1]).item()/clean_1.shape[0], torch.sum(self.noise_or_not[clean_1]).item()/self.split_idx['train'].size(0)
         noisy_ratio1, noisy_ratio1_tot = torch.sum(self.noise_or_not[noisy_1]).item()/noisy_1.shape[0], torch.sum(self.noise_or_not[noisy_1]).item()/self.split_idx['train'].size(0)
+        
         self.logger.info('clean ratio in clean {:.3f}, clean ratio tot {:.3f}'.format(clean_ratio1, clean_ratio1_tot))
         self.logger.info('clean raion in noisy {:.3f}, clean ratio in noisy tot {:.3f}'.format(noisy_ratio1, noisy_ratio1_tot))
         self.logger.info('nbr clean samples {}, noisy samples {}, sum {} == {} total train?'.format(clean_1.shape[0], noisy_1.shape[0], (clean_1.shape[0]+noisy_1.shape[0]), self.split_idx['train'].size(0)))

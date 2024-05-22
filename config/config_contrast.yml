@@ -1,5 +1,5 @@
 # Data
-batch_id: 2
+batch_id: 4
 data_type: 'network'
 data_dir: '../data'
 dataset_name: 'ogbn-products'
@@ -23,7 +23,7 @@ optimizer: 'adam'
 learning_rate: 0.001
 
 
-max_epochs: 3
+max_epochs: 4
 batch_size: 1024
 num_workers: 1
 
@@ -36,9 +36,9 @@ noise_type: 'next_pair'
 
 # Algo
 algo_type: 'contrastive'
-warmup: 1
+warmup: 3
 lambda: 1.0
-ct_tk: 0
+ct_tk: 1
 ct_tau: 1.1
 
 # Augmentation
