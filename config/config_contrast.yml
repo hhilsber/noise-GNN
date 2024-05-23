@@ -1,5 +1,5 @@
 # Data
-batch_id: 2
+batch_id: 3
 data_type: 'network'
 data_dir: '../data'
 dataset_name: 'ogbn-products'
@@ -23,7 +23,7 @@ optimizer: 'adam'
 learning_rate: 0.001
 
 
-max_epochs: 23
+max_epochs: 25
 batch_size: 1024
 num_workers: 1
 

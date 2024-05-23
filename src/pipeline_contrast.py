@@ -136,7 +136,7 @@ class PipelineCT(object):
 
         for (batch, batch_p, batch_n) in zip(train_loader, pos_loader, neg_loader):
             #if (batch.batch_size != 512) or (batch_p.batch_size != 512) or (batch_n.batch_size != 512):
-            print('bs normal {}, bs pos {}, bs neg {}'.format(batch.batch_size, batch_p.batch_size, batch_n.batch_size))
+            #print('bs normal {}, bs pos {}, bs neg {}'.format(batch.batch_size, batch_p.batch_size, batch_n.batch_size))
             batch, batch_p, batch_n = batch.to(self.device), batch_p.to(self.device), batch_n.to(self.device)
             #clean_set = batch.bool_set[:batch.batch_size]
             #noisy_set = ~batch.bool_set[:batch.batch_size]
@@ -168,7 +168,7 @@ class PipelineCT(object):
         total_loss_semi = total_loss_semi / len(train_loader)
         total_loss_cont = total_loss_cont / len(train_loader)
         total_loss = total_loss / len(train_loader)
-        train_acc = total_correct / self.split_idx['train'].size(0)
+        train_acc = total_correct / self.clean_size
         return total_loss_semi, total_loss_cont, total_loss, train_acc
     
     def evaluate(self, valid_loader, model):
@@ -226,9 +226,18 @@ class PipelineCT(object):
             persistent_workers=True
         )
         if noise:
+            train_loader = NeighborLoader(
+                self.data,
+                input_nodes=clean_idx,
+                num_neighbors=self.config['nbr_neighbors'],
+                batch_size=batch_size,
+                shuffle=True,
+                num_workers=self.config['num_workers'],
+                persistent_workers=True
+            )
             pos_loader = NeighborLoader(
                 Data(x=self.data.x, y=self.data.y, edge_index=self.edge_pos),
-                input_nodes=self.split_idx['train'],
+                input_nodes=clean_idx,
                 num_neighbors=self.config['nbr_neighbors'],
                 batch_size=batch_size,
                 shuffle=True,
@@ -237,7 +246,7 @@ class PipelineCT(object):
             )
             neg_loader = NeighborLoader(
                 Data(x=self.feature_neg, y=self.data.y, edge_index=self.edge_neg),
-                input_nodes=self.split_idx['train'],
+                input_nodes=noise_idx,
                 num_neighbors=self.config['nbr_neighbors'],
                 batch_size=batch_size,
                 shuffle=True,
@@ -282,7 +291,8 @@ class PipelineCT(object):
         # Split data in clean and noisy sets
         self.logger.info('Split epoch {}'.format(epoch+1))
         clean_1, clean_2, noisy_1, noisy_2 = self.split(epoch, train_loader, model1.network.to(self.device), model2.network.to(self.device))
-        
+        self.clean_size = clean_1.shape[0]
+
         # Check stats
         clean_ratio1, clean_ratio1_tot = torch.sum(self.noise_or_not[clean_1]).item()/clean_1.shape[0], torch.sum(self.noise_or_not[clean_1]).item()/self.split_idx['train'].size(0)
         noisy_ratio1, noisy_ratio1_tot = torch.sum(self.noise_or_not[noisy_1]).item()/noisy_1.shape[0], torch.sum(self.noise_or_not[noisy_1]).item()/self.split_idx['train'].size(0)
@@ -292,10 +302,11 @@ class PipelineCT(object):
         self.logger.info('nbr clean samples {}, noisy samples {}, sum {} == {} total train?'.format(clean_1.shape[0], noisy_1.shape[0], (clean_1.shape[0]+noisy_1.shape[0]), self.split_idx['train'].size(0)))
         
         # Create clean and noisy loaders
-        #bool_set = np.ones_like(self.noise_or_not)
-        #bool_set[noisy_1] = 0 # 1 if clean set, 0 if noisy set
-        #self.data.bool_set = bool_set
-        train_loader, pos_loader, neg_loader, valid_loader = self.create_loaders(batch_size=512, noise=True, clean_idx=clean_1, noise_idx=noisy_1)
+        size_difference = clean_1.size(0) - noisy_1.size(0)
+        sampled_indices = torch.randint(0, clean_1.size(0), (size_difference,))
+        noisy_1 = torch.cat((noisy_1, clean_1[sampled_indices]), dim=0)
+
+        train_loader, pos_loader, neg_loader, valid_loader = self.create_loaders(batch_size=1024, noise=True, clean_idx=clean_1, noise_idx=noisy_1)
         self.logger.info('Train')
         print('len train {} pos {} neg {}'.format(len(train_loader), len(pos_loader), len(neg_loader)))
         
