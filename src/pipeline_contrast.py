@@ -320,7 +320,7 @@ class PipelineCT(object):
 
         train_loader, epos_loader, fpos_loader, neg_loader, valid_loader = self.create_loaders(batch_size=512, noise=True, clean_idx=clean_1, noise_idx=noisy_1)
         for g in model1.optimizer.param_groups:
-            g['lr'] = 0.0001
+            g['lr'] = self.config['next_lr']
         self.logger.info('Train')
         print('len train {} epos {} fpos {} neg {}'.format(len(train_loader), len(epos_loader), len(fpos_loader), len(neg_loader)))
         
