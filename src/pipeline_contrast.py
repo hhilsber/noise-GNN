@@ -38,9 +38,6 @@ class PipelineCT(object):
         # Config
         self.config = config
 
-        # Initialize the model
-        self.model1 = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module'])
-        self.model2 = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module'])
         self.evaluator = Evaluator(name=config['dataset_name'])
         # Coteaching param
         self.criterion = CTLoss(self.device)
@@ -254,34 +251,38 @@ class PipelineCT(object):
 
     def loop(self):
         print('loop')
-        
-        best_val = 0.3
-        # Warmup
-        self.logger.info('Warmup')
         train_loader, _, _, valid_loader = self.create_loaders(self.config['batch_size'])
-        
-        for epoch in range(self.config['warmup']):
-            train_loss_1,train_loss_2,train_acc_1,train_acc_2 = self.warmup(epoch, train_loader, self.model1.network.to(self.device), self.model1.optimizer, self.model2.network.to(self.device), self.model2.optimizer)
-            val_acc_1, val_acc_2 = self.evaluate_ct(valid_loader, self.model1.network.to(self.device), self.model2.network.to(self.device))
-            self.logger.info('   Warmup epoch {}/{} --- loss1: {:.3f} loss2: {:.3f} t1: {:.3f} t2: {:.3f} v1: {:.3f} v2: {:.3f}'.format(epoch+1,self.config['warmup'],train_loss_1,train_loss_2,train_acc_1,train_acc_2,val_acc_1,val_acc_2))
-            if (val_acc_1 > best_val):
-                print("saved model, val acc {:.3f}".format(val_acc_1))
-                best_val = val_acc_1
-                torch.save(self.model1.network.cpu().state_dict(), '../out_model/' + self.output_name + '_m1.pth')
-                torch.save(self.model2.network.cpu().state_dict(), '../out_model/' + self.output_name + '_m2.pth')
-        
+
+        if self.config['do_warmup']:
+            # Warmup
+            self.logger.info('Warmup')
+            model1 = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module'])
+            model2 = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module'])
+            best_val = 0.3
+            for epoch in range(self.config['warmup']):
+                train_loss_1,train_loss_2,train_acc_1,train_acc_2 = self.warmup(epoch, train_loader, model1.network.to(self.device), model1.optimizer, model2.network.to(self.device), model2.optimizer)
+                val_acc_1, val_acc_2 = self.evaluate_ct(valid_loader, model1.network.to(self.device), model2.network.to(self.device))
+                self.logger.info('   Warmup epoch {}/{} --- loss1: {:.3f} loss2: {:.3f} t1: {:.3f} t2: {:.3f} v1: {:.3f} v2: {:.3f}'.format(epoch+1,self.config['warmup'],train_loss_1,train_loss_2,train_acc_1,train_acc_2,val_acc_1,val_acc_2))
+                if (val_acc_1 > best_val):
+                    print("saved model, val acc {:.3f}".format(val_acc_1))
+                    self.logger.info('   Saved  model')
+                    best_val = val_acc_1
+                    torch.save(model1.network.state_dict(), '../out_model/' + self.output_name + '_m1.pth')
+                    torch.save(model2.network.state_dict(), '../out_model/' + self.output_name + '_m2.pth')
+        else:
+            epoch = self.config['warmup'] - 1
+            print("load")
+            self.logger.info('Load warmup model')
+            model1, model2 = NGNN(), NGNN()
+            #model1.network.load_state_dict(torch.load('../out_model/' + self.output_name + '_m1.pth'))
+            #model2.network.load_state_dict(torch.load('../out_model/' + self.output_name + '_m2.pth'))
+            model1.network.load_state_dict(torch.load('../out_model/dt523_id1_contrastive_contrastive_sageFC_noise_next_pair0.45_lay2_hid128_lr0.001_bs1024_drop0.5_epo20_warmup15_lambda1.0_cttk5_cttau1.1_m1.pth'))
+            model2.network.load_state_dict(torch.load('../out_model/dt523_id1_contrastive_contrastive_sageFC_noise_next_pair0.45_lay2_hid128_lr0.001_bs1024_drop0.5_epo20_warmup15_lambda1.0_cttk5_cttau1.1_m2.pth'))
+            
         # Split data in clean and noisy sets
-        print("load")
-        self.logger.info('load')
-        self.model1, self.model2 = NGNN(), NGNN()
-        self.model1.network.load_state_dict(torch.load('../out_model/' + self.output_name + '_m1.pth'))
-        self.model2.network.load_state_dict(torch.load('../out_model/' + self.output_name + '_m2.pth'))
-        #self.model1.network.load_state_dict(torch.load('../out_model/dt522_id3_contrastive_contrastive_sageFC_noise_next_pair0.45_lay2_hid128_lr0.001_bs1024_drop0.5_epo4_warmup3_lambda1.0_cttk1_cttau1.1_m1.pth'))
-        #self.model2.network.load_state_dict(torch.load('../out_model/dt522_id3_contrastive_contrastive_sageFC_noise_next_pair0.45_lay2_hid128_lr0.001_bs1024_drop0.5_epo4_warmup3_lambda1.0_cttk1_cttau1.1_m2.pth'))
-        epoch=3
         self.logger.info('Split epoch {}'.format(epoch+1))
-        clean_1, clean_2, noisy_1, noisy_2 = self.split(epoch, train_loader, self.model1.network.to(self.device), self.model2.network.to(self.device))
-        print(clean_1.shape)
+        clean_1, clean_2, noisy_1, noisy_2 = self.split(epoch, train_loader, model1.network.to(self.device), model2.network.to(self.device))
+        
         # Check stats
         clean_ratio1, clean_ratio1_tot = torch.sum(self.noise_or_not[clean_1]).item()/clean_1.shape[0], torch.sum(self.noise_or_not[clean_1]).item()/self.split_idx['train'].size(0)
         noisy_ratio1, noisy_ratio1_tot = torch.sum(self.noise_or_not[noisy_1]).item()/noisy_1.shape[0], torch.sum(self.noise_or_not[noisy_1]).item()/self.split_idx['train'].size(0)
@@ -289,7 +290,7 @@ class PipelineCT(object):
         self.logger.info('clean ratio in clean {:.3f}, clean ratio tot {:.3f}'.format(clean_ratio1, clean_ratio1_tot))
         self.logger.info('clean raion in noisy {:.3f}, clean ratio in noisy tot {:.3f}'.format(noisy_ratio1, noisy_ratio1_tot))
         self.logger.info('nbr clean samples {}, noisy samples {}, sum {} == {} total train?'.format(clean_1.shape[0], noisy_1.shape[0], (clean_1.shape[0]+noisy_1.shape[0]), self.split_idx['train'].size(0)))
-        """
+        
         # Create clean and noisy loaders
         #bool_set = np.ones_like(self.noise_or_not)
         #bool_set[noisy_1] = 0 # 1 if clean set, 0 if noisy set
@@ -300,10 +301,10 @@ class PipelineCT(object):
         
         for epoch in range(self.config['warmup'],self.config['max_epochs']):
             # Train
-            total_loss_semi, total_loss_cont, total_loss, train_acc = self.train(epoch, train_loader, pos_loader, neg_loader, self.model1.network.to(self.device), self.model1.optimizer)
+            total_loss_semi, total_loss_cont, total_loss, train_acc = self.train(epoch, train_loader, pos_loader, neg_loader, model1.network.to(self.device), model1.optimizer)
             # Eval
-            valid_acc = self.evaluate(valid_loader, self.model1.network.to(self.device))
+            valid_acc = self.evaluate(valid_loader, model1.network.to(self.device))
             if not((epoch+1)%1) or ((epoch+1)==self.config['max_epochs']):
                 self.logger.info('   Train epoch {}/{} --- loss semi: {:.3f} loss cont: {:.3f} total loss {:.3f} --- train acc: {:.3f} val acc {:.3f}'.format(epoch+1,self.config['max_epochs'],total_loss_semi, total_loss_cont, total_loss, train_acc, valid_acc))
-        """
+        
         self.logger.info('Done')
