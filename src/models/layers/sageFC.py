@@ -30,7 +30,7 @@ class SAGEFC(torch.nn.Module):
             x = conv(x, edge_index)
             if i != self.num_layers - 1:
                 #h_out = self.act(x)
+                h_out = self.bnl(self.projection_head(x))
                 x = x.relu()
                 x = F.dropout(x, p=self.dropout, training=self.training)
-        h_out = self.bnl(self.projection_head(x))
         return x, h_out
