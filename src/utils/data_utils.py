@@ -59,7 +59,7 @@ class Discriminator_innerprod(nn.Module):
         super(Discriminator_innerprod, self).__init__()
 
     def forward(self, H, Hp1, Hp2, Hn):
-        logits_ep = torch.sum(torch.mul(H, Hp1), dim=1, keepdim=True)
-        logits_fp = torch.sum(torch.mul(H, Hp2), dim=1, keepdim=True)
+        logits_p1 = torch.sum(torch.mul(H, Hp1), dim=1, keepdim=True)
+        logits_p2 = torch.sum(torch.mul(H, Hp2), dim=1, keepdim=True)
         logits_n = torch.sum(torch.mul(H, Hn), dim=1, keepdim=True)
         return logits_p1, logits_p2, logits_n

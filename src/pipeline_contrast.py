@@ -55,6 +55,7 @@ class PipelineCT(object):
         self.logger = initialize_logger(self.config, self.output_name)
         np.save('../out_nmat/' + self.output_name + '.npy', noise_mat)
         
+        """
         # Graph augmentation
         if config['augment_edge']:
             self.edge_pos = augment_edges_pos(self.data.edge_index, config['nbr_nodes'], config['edge_prob'])
@@ -62,6 +63,7 @@ class PipelineCT(object):
         if config['augment_feat']:
             self.feature_pos = shuffle_pos(self.data.x, config['device'], config['feat_prob'])
             self.feature_neg = shuffle_neg(self.data.x, config['device'])
+        """
         print('ok')
         
     
@@ -125,7 +127,7 @@ class PipelineCT(object):
             noisy_2 = torch.cat((noisy_2, ind_noisy_2), dim=0)
         return clean_1.long(), clean_2.long(), noisy_1.long(), noisy_2.long()
 
-    def train(self, epoch, train_loader, pos_loader, neg_loader, model, optimizer):
+    def train(self, epoch, train_loader, noise_loader, model, optimizer):
         # Train
         model.train()
 
@@ -143,10 +145,10 @@ class PipelineCT(object):
             y = batch.y[:batch.batch_size].squeeze()
             yhn = batch.yhn[:batch.batch_size].squeeze()
 
-            edge_small = augment_edges_pos(batch_n.edge_index, batch_n.n_id.shape[0], prob=0.2)
-            edge_big = augment_edges_pos(batch_n.edge_index, batch_n.n_id.shape[0], prob=0.8)
-            feature_small = shuffle_pos(batch_n.x, self.config['device'], prob=0.2)
-            feature_big = shuffle_pos(batch_n.x, self.config['device'], prob=0.8)
+            edge_small = augment_edges_pos(batch_n.edge_index.cpu(), batch_n.n_id.shape[0], prob=0.1).to(self.device)
+            edge_big = augment_edges_pos(batch_n.edge_index.cpu(), batch_n.n_id.shape[0], prob=0.4).to(self.device)
+            feature_small = shuffle_pos(batch_n.x.cpu(), self.config['device'], prob=0.2).to(self.device)
+            feature_big = shuffle_pos(batch_n.x.cpu(), self.config['device'], prob=0.4).to(self.device)
 
             out = model(batch_n.x, batch_n.edge_index)[1][:batch_n.batch_size]
             out_pos1 = model(feature_small, batch_n.edge_index)[1][:batch_n.batch_size]
@@ -306,7 +308,7 @@ class PipelineCT(object):
         for g in model1.optimizer.param_groups:
             g['lr'] = self.config['next_lr']
         self.logger.info('Train')
-        print('len train {} epos {} fpos {} neg {}'.format(len(train_loader), len(epos_loader), len(fpos_loader), len(neg_loader)))
+        print('len train loader {} noise {}'.format(len(train_loader), len(noise_loader)))
         
         for epoch in range(self.config['warmup'],self.config['max_epochs']):
             # Train

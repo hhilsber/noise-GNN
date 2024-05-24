@@ -29,7 +29,7 @@ def shuffle_pos(features, device='cpu', prob=0.1):
         # shuffle selected element
         selected_elements = features_shuffled[i, indices]
         features_shuffled[i, indices] = selected_elements[torch.randperm(selected_elements.shape[0])]
-    print('pos feature shuffled: {}'.format(num_elements_to_shuffle))
+    #print('pos feature shuffled: {}'.format(num_elements_to_shuffle))
     return features_shuffled.to(device)
     
 def shuffle_neg(features, device='cpu'):
@@ -40,7 +40,7 @@ def shuffle_neg(features, device='cpu'):
     features_shuffled = features.clone().detach()
     idx = np.random.permutation(features.shape[0])
     features_shuffled = features_shuffled[idx, :]
-    print('neg feature shuffled')
+    #print('neg feature shuffled')
     return features_shuffled.to(device)
 
 
@@ -71,7 +71,7 @@ def augment_edges_pos(edge_index, nbr_nodes, prob=0.1):
         nbr_edges = int(small_edge.shape[1] * 0.5)
         true_nbr_delete = nbr_edges_init - nbr_edges
         nbr_delete = nbr_del_add_init - true_nbr_delete
-    print('pos augmentation: removed {} edges'.format(nbr_del_add_init))
+    #print('pos augmentation: removed {} edges'.format(nbr_del_add_init))
 
     edge_sp = to_scipy_sparse_matrix(edge_index, nbr_nodes)
     small_sp = to_scipy_sparse_matrix(small_edge, nbr_nodes)
@@ -101,7 +101,7 @@ def augment_edges_pos(edge_index, nbr_nodes, prob=0.1):
         # Check if we added enough edges
         true_nbr_add = int(big_edge.shape[1] * 0.5)
         nbr_add = nbr_del_add_init - true_nbr_add
-    print('pos augmentation: added {} edges'.format(nbr_del_add_init))
+    #print('pos augmentation: added {} edges'.format(nbr_del_add_init))
 
     final_coo = (small_sp + big_sp).tocoo()
     row, col, data = final_coo.row, final_coo.col, final_coo.data
@@ -143,5 +143,5 @@ def augment_edges_neg(edge_index, nbr_nodes):
         # Check if we added enough edges
         true_nbr_add = int(neg_edge.shape[1] * 0.5)
         nbr_add = nbr_edges_init - true_nbr_add
-    print('neg augmentation {} edges, original graph had {}'.format(true_nbr_add, nbr_edges_init))
+    #print('neg augmentation {} edges, original graph had {}'.format(true_nbr_add, nbr_edges_init))
     return neg_edge.long()
