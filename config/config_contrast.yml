@@ -1,5 +1,6 @@
 # Data
-batch_id: 4
+aaa_comment: 'proj head, bs 1024'
+batch_id: 8
 data_dir: '../data'
 dataset_name: 'ogbn-products'
 #task_type: 'classification'
@@ -22,8 +23,7 @@ optimizer: 'adam'
 learning_rate: 0.001
 next_lr: 0.001
 
-
-max_epochs: 25
+max_epochs: 30
 batch_size: 1024
 num_workers: 1
 
@@ -36,14 +36,14 @@ noise_type: 'next_pair'
 
 # Algo
 algo_type: 'contrastive'
-do_warmup: False
+do_warmup: True
 warmup: 15
-lambda: 0.5
+lambda: 1.5
 ct_tk: 5
 ct_tau: 1.1
 
 # Augmentation
-#augment_edge: False
-#augment_feat: False
-#edge_prob: 0.25
-#feat_prob : 0.25
+augment_edge: True
+augment_feat: True
+prob_s: 0.25
+prob_l: 0.8

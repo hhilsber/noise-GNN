@@ -55,15 +55,17 @@ class PipelineCT(object):
         self.logger = initialize_logger(self.config, self.output_name)
         np.save('../out_nmat/' + self.output_name + '.npy', noise_mat)
         
-        """
+        
         # Graph augmentation
         if config['augment_edge']:
-            self.edge_pos = augment_edges_pos(self.data.edge_index, config['nbr_nodes'], config['edge_prob'])
-            self.edge_neg = augment_edges_neg(self.data.edge_index, config['nbr_nodes'])
+            self.edge_s = augment_edges_pos(self.data.edge_index, config['nbr_nodes'], config['prob_s'])
+            self.edge_l = augment_edges_pos(self.data.edge_index, config['nbr_nodes'], config['prob_l'])
+            #self.edge_neg = augment_edges_neg(self.data.edge_index, config['nbr_nodes'])
         if config['augment_feat']:
-            self.feature_pos = shuffle_pos(self.data.x, config['device'], config['feat_prob'])
-            self.feature_neg = shuffle_neg(self.data.x, config['device'])
-        """
+            self.feature_s = shuffle_pos(self.data.x, config['device'], config['prob_s'])
+            self.feature_l = shuffle_pos(self.data.x, config['device'], config['prob_l'])
+            #self.feature_neg = shuffle_neg(self.data.x, config['device'])
+        
         print('ok')
         
     
@@ -127,7 +129,7 @@ class PipelineCT(object):
             noisy_2 = torch.cat((noisy_2, ind_noisy_2), dim=0)
         return clean_1.long(), clean_2.long(), noisy_1.long(), noisy_2.long()
 
-    def train(self, epoch, train_loader, noise_loader, model, optimizer):
+    def train(self, epoch, train_loader, noise_loader, noise_loader_s1, noise_loader_s2, noise_loader_l, model, optimizer):
         # Train
         model.train()
 
@@ -136,8 +138,8 @@ class PipelineCT(object):
         total_loss = 0
         total_correct = 0
 
-        for (batch, batch_n) in zip(train_loader, noise_loader):
-            batch, batch_n = batch.to(self.device), batch_n.to(self.device)
+        for (batch, batch_n, batch_ns1, batch_ns2, batch_nl) in zip(train_loader, noise_loader, noise_loader_s1, noise_loader_s2, noise_loader_l):
+            batch, batch_n, batch_ns1, batch_ns2, batch_nl = batch.to(self.device), batch_n.to(self.device), batch_ns1.to(self.device), batch_ns2.to(self.device), batch_nl.to(self.device)
 
             # Only consider predictions and labels of seed nodes
             out_semi = model(batch.x, batch.edge_index)[0][:batch.batch_size]
@@ -145,21 +147,16 @@ class PipelineCT(object):
             y = batch.y[:batch.batch_size].squeeze()
             yhn = batch.yhn[:batch.batch_size].squeeze()
 
-            edge_small = augment_edges_pos(batch_n.edge_index.cpu(), batch_n.n_id.shape[0], prob=0.1).to(self.device)
-            edge_big = augment_edges_pos(batch_n.edge_index.cpu(), batch_n.n_id.shape[0], prob=0.4).to(self.device)
-            feature_small = shuffle_pos(batch_n.x.cpu(), self.config['device'], prob=0.2).to(self.device)
-            feature_big = shuffle_pos(batch_n.x.cpu(), self.config['device'], prob=0.4).to(self.device)
-
             out = model(batch_n.x, batch_n.edge_index)[1][:batch_n.batch_size]
-            out_pos1 = model(feature_small, batch_n.edge_index)[1][:batch_n.batch_size]
-            out_pos2 = model(batch_n.x, edge_small)[1][:batch_n.batch_size]
-            out_neg = model(feature_big, edge_big)[1][:batch_n.batch_size]
+            out_ns1 = model(batch_ns1.x, batch_ns1.edge_index)[1][:batch_n.batch_size]
+            out_ns2 = model(batch_ns2.x, batch_ns2.edge_index)[1][:batch_n.batch_size]
+            out_nl = model(batch_nl.x, batch_nl.edge_index)[1][:batch_n.batch_size]
             
             
             # Semi
             loss_semi = F.cross_entropy(out_semi, yhn)
             # Contrastive
-            logits_p1, logits_p2, logits_n = self.discriminator(out, out_pos1, out_pos2, out_neg)
+            logits_p1, logits_p2, logits_n = self.discriminator(out, out_ns1, out_ns2, out_nl)
             loss_cont = self.cont_criterion(logits_p1, logits_p2, logits_n)
             # Loss
             loss = loss_semi + self.config['lambda'] * loss_cont
@@ -248,17 +245,51 @@ class PipelineCT(object):
                 input_nodes=noise_idx,
                 num_neighbors=self.config['nbr_neighbors'],
                 batch_size=batch_size,
-                shuffle=True,
+                shuffle=False,
+                replace=True,
+                num_workers=self.config['num_workers'],
+                persistent_workers=True
+            )
+            noise_loader_s1 = NeighborLoader(
+                Data(x=self.data.x, y=self.data.y, edge_index=self.edge_s),
+                input_nodes=noise_idx,
+                num_neighbors=self.config['nbr_neighbors'],
+                batch_size=batch_size,
+                shuffle=False,
+                replace=True,
+                num_workers=self.config['num_workers'],
+                persistent_workers=True
+            )
+            noise_loader_s2 = NeighborLoader(
+                Data(x=self.feature_s, y=self.data.y, edge_index=self.data.edge_index),
+                input_nodes=noise_idx,
+                num_neighbors=self.config['nbr_neighbors'],
+                batch_size=batch_size,
+                shuffle=False,
+                replace=True,
+                num_workers=self.config['num_workers'],
+                persistent_workers=True
+            )
+            noise_loader_l = NeighborLoader(
+                Data(x=self.feature_l, y=self.data.y, edge_index=self.edge_l),
+                input_nodes=noise_idx,
+                num_neighbors=self.config['nbr_neighbors'],
+                batch_size=batch_size,
+                shuffle=False,
+                replace=True,
                 num_workers=self.config['num_workers'],
                 persistent_workers=True
             )
         else:
             noise_loader = None
-        return train_loader, valid_loader, noise_loader
+            noise_loader_s1 = None
+            noise_loader_s2 = None
+            noise_loader_l = None
+        return train_loader, valid_loader, noise_loader, noise_loader_s1, noise_loader_s2, noise_loader_l
 
     def loop(self):
         print('loop')
-        train_loader, valid_loader, _ = self.create_loaders(self.config['batch_size'])
+        train_loader, valid_loader, _, _, _, _ = self.create_loaders(self.config['batch_size'])
 
         if self.config['do_warmup']:
             # Warmup
@@ -304,7 +335,7 @@ class PipelineCT(object):
         sampled_indices = torch.randint(0, clean_1.size(0), (size_difference,))
         noisy_1 = torch.cat((noisy_1, clean_1[sampled_indices]), dim=0)
 
-        train_loader, valid_loader, noise_loader = self.create_loaders(batch_size=512, noise=True, clean_idx=clean_1, noise_idx=noisy_1)
+        train_loader, valid_loader, noise_loader, noise_loader_s1, noise_loader_s2, noise_loader_l = self.create_loaders(batch_size=1024, noise=True, clean_idx=clean_1, noise_idx=noisy_1)
         for g in model1.optimizer.param_groups:
             g['lr'] = self.config['next_lr']
         self.logger.info('Train')
@@ -312,7 +343,7 @@ class PipelineCT(object):
         
         for epoch in range(self.config['warmup'],self.config['max_epochs']):
             # Train
-            total_loss_semi, total_loss_cont, total_loss, train_acc = self.train(epoch, train_loader, noise_loader, model1.network.to(self.device), model1.optimizer)
+            total_loss_semi, total_loss_cont, total_loss, train_acc = self.train(epoch, train_loader, noise_loader, noise_loader_s1, noise_loader_s2, noise_loader_l, model1.network.to(self.device), model1.optimizer)
             # Eval
             valid_acc = self.evaluate(valid_loader, model1.network.to(self.device))
             if not((epoch+1)%1) or ((epoch+1)==self.config['max_epochs']):

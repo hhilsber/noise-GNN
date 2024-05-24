@@ -18,6 +18,8 @@ class SAGEFC(torch.nn.Module):
         for _ in range(num_layers - 2):
             self.convs.append(SAGEConv(hidden_size, hidden_size))
         self.convs.append(SAGEConv(hidden_size, out_size))
+        self.projection_head = nn.Linear(hidden_size, 128)
+        self.bnl = nn.BatchNorm1d(128)
 
     def reset_parameters(self):
         for conv in self.convs:
@@ -27,7 +29,8 @@ class SAGEFC(torch.nn.Module):
         for i, conv in enumerate(self.convs):
             x = conv(x, edge_index)
             if i != self.num_layers - 1:
-                h_out = self.act(x)
+                #h_out = self.act(x)
                 x = x.relu()
                 x = F.dropout(x, p=self.dropout, training=self.training)
+        h_out = self.bnl(self.projection_head(x))
         return x, h_out
