@@ -125,7 +125,7 @@ class PipelineCT(object):
             noisy_2 = torch.cat((noisy_2, ind_noisy_2), dim=0)
         return clean_1.long(), clean_2.long(), noisy_1.long(), noisy_2.long()
 
-    def train(self, epoch, train_loader, epos_loader, fpos_loader, neg_loader, model, optimizer):
+    def train(self, epoch, train_loader, pos_loader, neg_loader, model, optimizer):
         # Train
         model.train()
 
@@ -134,27 +134,31 @@ class PipelineCT(object):
         total_loss = 0
         total_correct = 0
 
-        for (batch, batch_ep, batch_fp, batch_n) in zip(train_loader, epos_loader, fpos_loader, neg_loader):
-            #if (batch.batch_size != 512) or (batch_p.batch_size != 512) or (batch_n.batch_size != 512):
-            #print('bs normal {}, bs pos {}, bs neg {}'.format(batch.batch_size, batch_p.batch_size, batch_n.batch_size))
-            batch, batch_ep, batch_fp, batch_n = batch.to(self.device), batch_ep.to(self.device), batch_fp.to(self.device), batch_n.to(self.device)
-            #clean_set = batch.bool_set[:batch.batch_size]
-            #noisy_set = ~batch.bool_set[:batch.batch_size]
+        for (batch, batch_n) in zip(train_loader, noise_loader):
+            batch, batch_n = batch.to(self.device), batch_n.to(self.device)
 
             # Only consider predictions and labels of seed nodes
             out_semi = model(batch.x, batch.edge_index)[0][:batch.batch_size]
-            out_clo = model(batch.x, batch.edge_index)[1][:batch.batch_size]
-            out_clep = model(batch_ep.x, batch_ep.edge_index)[1][:batch_ep.batch_size]
-            out_clfp = model(batch_fp.x, batch_fp.edge_index)[1][:batch_fp.batch_size]
-            out_cln = model(batch_n.x, batch_n.edge_index)[1][:batch_n.batch_size]
+            #out_clo = model(batch.x, batch.edge_index)[1][:batch.batch_size]
             y = batch.y[:batch.batch_size].squeeze()
             yhn = batch.yhn[:batch.batch_size].squeeze()
+
+            edge_small = augment_edges_pos(batch_n.edge_index, batch_n.n_id.shape[0], prob=0.2)
+            edge_big = augment_edges_pos(batch_n.edge_index, batch_n.n_id.shape[0], prob=0.8)
+            feature_small = shuffle_pos(batch_n.x, self.config['device'], prob=0.2)
+            feature_big = shuffle_pos(batch_n.x, self.config['device'], prob=0.8)
+
+            out = model(batch_n.x, batch_n.edge_index)[1][:batch_n.batch_size]
+            out_pos1 = model(feature_small, batch_n.edge_index)[1][:batch_n.batch_size]
+            out_pos2 = model(batch_n.x, edge_small)[1][:batch_n.batch_size]
+            out_neg = model(feature_big, edge_big)[1][:batch_n.batch_size]
+            
             
             # Semi
             loss_semi = F.cross_entropy(out_semi, yhn)
             # Contrastive
-            logits_ep, logits_fp, logits_n = self.discriminator(out_clo, out_clep, out_clfp, out_cln)
-            loss_cont = self.cont_criterion(logits_ep, logits_fp, logits_n)
+            logits_p1, logits_p2, logits_n = self.discriminator(out, out_pos1, out_pos2, out_neg)
+            loss_cont = self.cont_criterion(logits_p1, logits_p2, logits_n)
             # Loss
             loss = loss_semi + self.config['lambda'] * loss_cont
 
@@ -237,26 +241,8 @@ class PipelineCT(object):
                 num_workers=self.config['num_workers'],
                 persistent_workers=True
             )
-            epos_loader = NeighborLoader(
-                Data(x=self.data.x, y=self.data.y, edge_index=self.edge_pos),
-                input_nodes=noise_idx,
-                num_neighbors=self.config['nbr_neighbors'],
-                batch_size=batch_size,
-                shuffle=True,
-                num_workers=self.config['num_workers'],
-                persistent_workers=True
-            )
-            fpos_loader = NeighborLoader(
-                Data(x=self.feature_pos, y=self.data.y, edge_index=self.edge_pos),
-                input_nodes=noise_idx,
-                num_neighbors=self.config['nbr_neighbors'],
-                batch_size=batch_size,
-                shuffle=True,
-                num_workers=self.config['num_workers'],
-                persistent_workers=True
-            )
-            neg_loader = NeighborLoader(
-                Data(x=self.feature_neg, y=self.data.y, edge_index=self.edge_neg),
+            noise_loader = NeighborLoader(
+                Data(x=self.data.x, y=self.data.y, edge_index=self.data.edge_index),
                 input_nodes=noise_idx,
                 num_neighbors=self.config['nbr_neighbors'],
                 batch_size=batch_size,
@@ -265,14 +251,12 @@ class PipelineCT(object):
                 persistent_workers=True
             )
         else:
-            epos_loader = None
-            fpos_loader = None
-            neg_loader = None
-        return train_loader, epos_loader, fpos_loader, neg_loader, valid_loader
+            noise_loader = None
+        return train_loader, valid_loader, noise_loader
 
     def loop(self):
         print('loop')
-        train_loader, _, _, _, valid_loader = self.create_loaders(self.config['batch_size'])
+        train_loader, valid_loader, _ = self.create_loaders(self.config['batch_size'])
 
         if self.config['do_warmup']:
             # Warmup
@@ -318,7 +302,7 @@ class PipelineCT(object):
         sampled_indices = torch.randint(0, clean_1.size(0), (size_difference,))
         noisy_1 = torch.cat((noisy_1, clean_1[sampled_indices]), dim=0)
 
-        train_loader, epos_loader, fpos_loader, neg_loader, valid_loader = self.create_loaders(batch_size=512, noise=True, clean_idx=clean_1, noise_idx=noisy_1)
+        train_loader, valid_loader, noise_loader = self.create_loaders(batch_size=512, noise=True, clean_idx=clean_1, noise_idx=noisy_1)
         for g in model1.optimizer.param_groups:
             g['lr'] = self.config['next_lr']
         self.logger.info('Train')
@@ -326,7 +310,7 @@ class PipelineCT(object):
         
         for epoch in range(self.config['warmup'],self.config['max_epochs']):
             # Train
-            total_loss_semi, total_loss_cont, total_loss, train_acc = self.train(epoch, train_loader, epos_loader, fpos_loader, neg_loader, model1.network.to(self.device), model1.optimizer)
+            total_loss_semi, total_loss_cont, total_loss, train_acc = self.train(epoch, train_loader, noise_loader, model1.network.to(self.device), model1.optimizer)
             # Eval
             valid_acc = self.evaluate(valid_loader, model1.network.to(self.device))
             if not((epoch+1)%1) or ((epoch+1)==self.config['max_epochs']):

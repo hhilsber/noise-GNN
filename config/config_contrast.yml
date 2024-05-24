@@ -21,7 +21,7 @@ train_type: 'contrastive'
 # Training
 optimizer: 'adam'
 learning_rate: 0.001
-next_lr: 0.0005
+next_lr: 0.001
 
 
 max_epochs: 25
@@ -44,7 +44,7 @@ ct_tk: 5
 ct_tau: 1.1
 
 # Augmentation
-augment_edge: True
-augment_feat: True
+augment_edge: False
+augment_feat: False
 edge_prob: 0.25
 feat_prob : 0.25

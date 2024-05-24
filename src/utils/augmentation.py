@@ -16,13 +16,13 @@ def to_scipy_sparse_matrix_rcd(row, col, data, num_nodes):
     shape = (num_nodes, num_nodes)
     return sp.coo_matrix((data, (row, col)), shape=shape)
 
-def shuffle_pos(features, device='cpu', noise_ratio=0.1):
+def shuffle_pos(features, device='cpu', prob=0.1):
     """
     https://github.com/TaiHasegawa/DEGNN/blob/main/models/DEGNN.py
     Augment node features for the positive graph by shuffling elements in the node feature matrix in each row.
     """
     features_shuffled = features.clone().detach()
-    num_elements_to_shuffle = int(features_shuffled.shape[1] * noise_ratio)
+    num_elements_to_shuffle = int(features_shuffled.shape[1] * prob)
     for i in range(features_shuffled.shape[0]):
         # get indices to be shuffled
         indices = torch.randperm(features_shuffled.shape[1])[:num_elements_to_shuffle]
