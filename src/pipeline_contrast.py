@@ -151,8 +151,7 @@ class PipelineCT(object):
             out_ns1 = model(batch_ns1.x, batch_ns1.edge_index)[1][:batch_n.batch_size]
             out_ns2 = model(batch_ns2.x, batch_ns2.edge_index)[1][:batch_n.batch_size]
             out_nl = model(batch_nl.x, batch_nl.edge_index)[1][:batch_n.batch_size]
-            
-            
+             
             # Semi
             loss_semi = F.cross_entropy(out_semi, yhn)
             # Contrastive

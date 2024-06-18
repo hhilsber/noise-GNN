@@ -38,12 +38,12 @@ noise_type: 'next_pair'
 algo_type: 'contrastive'
 do_warmup: True
 warmup: 15
-lambda: 1.5
+lambda: 2
 ct_tk: 5
 ct_tau: 1.1
 
 # Augmentation
 augment_edge: True
 augment_feat: True
-prob_s: 0.25
-prob_l: 0.8
+prob_s: 0.2
+prob_l: 0.7
