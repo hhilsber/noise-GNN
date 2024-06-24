@@ -47,8 +47,10 @@ class PipelineCO(object):
 
         # Initialize the model
         if self.config['train_type'] in ['nalgo','both']:
-            self.model1 = NGNN(config)
-            self.model2 = NGNN(config)
+            #self.model1 = NGNN(config)
+            #self.model2 = NGNN(config)
+            self.model1 = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module'])
+            self.model2 = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module'])
             if self.config['algo_type'] == 'coteaching':
                 self.criterion = CTLoss(self.device)
             elif self.config['algo_type'] == 'codi':
@@ -57,7 +59,7 @@ class PipelineCO(object):
             self.rate_schedule[:self.config['ct_tk']] = np.linspace(0, self.config['noise_rate']**self.config['ct_exp'], self.config['ct_tk'])
 
         if self.config['train_type'] in ['baseline','both']:
-            self.model_c = NGNN(config)
+            self.model_c = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module'])
         self.evaluator = Evaluator(name=config['dataset_name'])
         
         print('train: {}, valid: {}, test: {}'.format(self.split_idx['train'].shape[0],self.split_idx['valid'].shape[0],self.split_idx['test'].shape[0]))
@@ -109,7 +111,7 @@ class PipelineCO(object):
             y = batch.y[:batch.batch_size].squeeze()
             yhn = batch.yhn[:batch.batch_size].squeeze()
             
-            loss_1, loss_2, pure_ratio_1, pure_ratio_2 = self.criterion(out1, out2, yhn, self.rate_schedule[epoch], batch.n_id, self.noise_or_not)
+            loss_1, loss_2, pure_ratio_1, pure_ratio_2, _, _, _, _ = self.criterion(out1, out2, yhn, self.rate_schedule[epoch], batch.n_id, self.noise_or_not)
             
             total_loss_1 += float(loss_1)
             total_loss_2 += float(loss_2)

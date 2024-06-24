@@ -1,6 +1,6 @@
 # Data
-aaa_comment: 'proj head, bs 1024'
-batch_id: 8
+aaa_comment: 'shuffle_neg for features'
+batch_id: 3
 data_dir: '../data'
 dataset_name: 'ogbn-products'
 #task_type: 'classification'
@@ -36,14 +36,14 @@ noise_type: 'next_pair'
 
 # Algo
 algo_type: 'contrastive'
-do_warmup: True
+do_warmup: False
 warmup: 15
 lambda: 2
 ct_tk: 5
 ct_tau: 1.1
 
 # Augmentation
-augment_edge: True
+augment_edge: True #False #
 augment_feat: True
-prob_s: 0.2
-prob_l: 0.7
+prob_s: 0.25
+prob_l: 0.5

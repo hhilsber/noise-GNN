@@ -63,7 +63,8 @@ class PipelineCT(object):
             #self.edge_neg = augment_edges_neg(self.data.edge_index, config['nbr_nodes'])
         if config['augment_feat']:
             self.feature_s = shuffle_pos(self.data.x, config['device'], config['prob_s'])
-            self.feature_l = shuffle_pos(self.data.x, config['device'], config['prob_l'])
+            #self.feature_l = shuffle_pos(self.data.x, config['device'], config['prob_l'])
+            self.feature_l = shuffle_neg(self.data.x, config['device'])
             #self.feature_neg = shuffle_neg(self.data.x, config['device'])
         
         print('ok')
@@ -288,7 +289,7 @@ class PipelineCT(object):
 
     def loop(self):
         print('loop')
-        train_loader, valid_loader, _, _, _, _ = self.create_loaders(self.config['batch_size'])
+        train_loader, valid_loader, _, _, _, _ = self.create_loaders(batch_size=self.config['batch_size'])
 
         if self.config['do_warmup']:
             # Warmup
@@ -313,8 +314,10 @@ class PipelineCT(object):
             model1, model2 = NGNN(), NGNN()
             #model1.network.load_state_dict(torch.load('../out_model/' + self.output_name + '_m1.pth'))
             #model2.network.load_state_dict(torch.load('../out_model/' + self.output_name + '_m2.pth'))
-            model1.network.load_state_dict(torch.load('../out_model/dt523_id1_contrastive_contrastive_sageFC_noise_next_pair0.45_lay2_hid128_lr0.001_bs1024_drop0.5_epo20_warmup15_lambda1.0_cttk5_cttau1.1_m1.pth'))
-            model2.network.load_state_dict(torch.load('../out_model/dt523_id1_contrastive_contrastive_sageFC_noise_next_pair0.45_lay2_hid128_lr0.001_bs1024_drop0.5_epo20_warmup15_lambda1.0_cttk5_cttau1.1_m2.pth'))
+            #model1.network.load_state_dict(torch.load('../out_model/dt523_id1_contrastive_contrastive_sageFC_noise_next_pair0.45_lay2_hid128_lr0.001_bs1024_drop0.5_epo20_warmup15_lambda1.0_cttk5_cttau1.1_m1.pth'))
+            #model2.network.load_state_dict(torch.load('../out_model/dt523_id1_contrastive_contrastive_sageFC_noise_next_pair0.45_lay2_hid128_lr0.001_bs1024_drop0.5_epo20_warmup15_lambda1.0_cttk5_cttau1.1_m2.pth'))
+            model1.network.load_state_dict(torch.load('../out_model/dt618_id2_contrastive_contrastive_sageFC_noise_next_pair0.45_lay2_hid128_lr0.001_bs1024_drop0.5_epo30_warmup15_lambda2_cttk5_cttau1.1_m1.pth'))
+            model2.network.load_state_dict(torch.load('../out_model/dt618_id2_contrastive_contrastive_sageFC_noise_next_pair0.45_lay2_hid128_lr0.001_bs1024_drop0.5_epo30_warmup15_lambda2_cttk5_cttau1.1_m2.pth'))
         
         # Split data in clean and noisy sets
         self.logger.info('Split epoch {}'.format(epoch+1))
