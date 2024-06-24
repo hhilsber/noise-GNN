@@ -305,8 +305,8 @@ class PipelineCT(object):
                     print("saved model, val acc {:.3f}".format(val_acc_1))
                     self.logger.info('   Saved  model')
                     best_val = val_acc_1
-                    torch.save(model1.network.state_dict(), '../out_model/' + self.output_name + '_m1.pth')
-                    torch.save(model2.network.state_dict(), '../out_model/' + self.output_name + '_m2.pth')
+                    torch.save(model1.network.state_dict(), '../out_model/' + self.config['algo_type'] + self.output_name + '_m1.pth')
+                    torch.save(model2.network.state_dict(), '../out_model/' + self.config['algo_type'] + self.output_name + '_m2.pth')
         else:
             epoch = self.config['warmup'] - 1
             print("load")
