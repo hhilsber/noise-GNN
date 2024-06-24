@@ -89,12 +89,13 @@ class PipelineCO(object):
         )
         self.test_loader = NeighborLoader(
             self.data,
-            input_nodes=self.split_idx['test'],
+            input_nodes=self.split_idx['test'][:int(len(self.split_idx['test'])/30)],
             num_neighbors=self.config['nbr_neighbors'],
             batch_size=self.config['batch_size'],
             num_workers=self.config['num_workers'],
             persistent_workers=True
         )
+        print(len(self.test_loader))
         self.subgraph_loader = NeighborLoader(
             self.data,
             input_nodes=None,
@@ -309,8 +310,8 @@ class PipelineCO(object):
             print('load')
             self.logger.info('Load warmup model')
             self.model1, self.model2 = NGNN(), NGNN()
-            self.model1.network.load_state_dict(torch.load('../out_model/coteaching/dt624_id1_both_coteaching_sage_algo_normal_noise_next_pair0.45_lay2_hid128_lr0.001_epo3_bs1024_drop0.5_tk2_colambda0.1_neigh15105_m1.pth'))
-            self.model2.network.load_state_dict(torch.load('../out_model/coteaching/dt624_id1_both_coteaching_sage_algo_normal_noise_next_pair0.45_lay2_hid128_lr0.001_epo3_bs1024_drop0.5_tk2_colambda0.1_neigh15105_m2.pth'))
+            self.model1.network.load_state_dict(torch.load('../out_model/coteaching/dt624_id2_both_coteaching_sage_algo_normal_noise_next_pair0.45_lay2_hid128_lr0.001_epo25_bs1024_drop0.5_tk5_colambda0.1_neigh15105_m1.pth'))
+            self.model2.network.load_state_dict(torch.load('../out_model/coteaching/dt624_id2_both_coteaching_sage_algo_normal_noise_next_pair0.45_lay2_hid128_lr0.001_epo25_bs1024_drop0.5_tk5_colambda0.1_neigh15105_m2.pth'))
         
         print('Testing')
         self.logger.info('Test')
