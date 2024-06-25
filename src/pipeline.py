@@ -66,7 +66,7 @@ class PipelineCO(object):
         
         # Logger and data loader
         date = dt.datetime.date(dt.datetime.now())
-        self.output_name = 'dt{}{}_id{}_{}_{}_{}_algo_{}_noise_{}{}_lay{}_hid{}_lr{}_epo{}_bs{}_drop{}_tk{}_colambda{}_neigh{}{}{}'.format(date.month,date.day,self.config['batch_id'],self.config['train_type'],self.config['algo_type'],self.config['module'],self.config['compare_loss'],self.config['noise_type'],self.config['noise_rate'],self.config['num_layers'],self.config['hidden_size'],self.config['learning_rate'],self.config['max_epochs'],self.config['batch_size'],self.config['dropout'],self.config['ct_tk'],self.config['co_lambda'],self.config['nbr_neighbors'][0],self.config['nbr_neighbors'][1],self.config['nbr_neighbors'][2])
+        self.output_name = 'dt{}{}_{}_id{}_{}_{}_{}_algo_{}_noise_{}{}_lay{}_hid{}_lr{}_epo{}_bs{}_drop{}_tk{}_colambda{}_neigh{}{}{}'.format(date.month,date.day,self.config['dataset_name'],self.config['batch_id'],self.config['train_type'],self.config['algo_type'],self.config['module'],self.config['compare_loss'],self.config['noise_type'],self.config['noise_rate'],self.config['num_layers'],self.config['hidden_size'],self.config['learning_rate'],self.config['max_epochs'],self.config['batch_size'],self.config['dropout'],self.config['ct_tk'],self.config['co_lambda'],self.config['nbr_neighbors'][0],self.config['nbr_neighbors'][1],self.config['nbr_neighbors'][2])
         self.logger = initialize_logger(self.config, self.output_name)
         np.save('../out_nmat/' + self.output_name + '.npy', noise_mat)
 
@@ -87,11 +87,11 @@ class PipelineCO(object):
             num_workers=self.config['num_workers'],
             persistent_workers=True
         )
-        self.test_size = int(len(self.split_idx['test'])/5)
+        self.test_size = int(len(self.split_idx['test'])/4)
         self.test_loader = NeighborLoader(
             self.data,
             input_nodes=self.split_idx['test'][:self.test_size],
-            num_neighbors=self.config['nbr_neighbors'],
+            num_neighbors=[-1],
             batch_size=self.config['batch_size'],
             num_workers=self.config['num_workers'],
             persistent_workers=True
@@ -209,28 +209,25 @@ class PipelineCO(object):
         val_acc_2 = total_correct_2 / self.split_idx['valid'].size(0)
         return val_acc_1, val_acc_2
     
-    def test_ct(self, model, data, split_idx):
-        model.eval()
+    def test_ct(self, test_loader, model1, model2):
+        model1.eval()
+        model2.eval()
 
-        out = model.inference(data.x, self.subgraph_loader, self.device)
+        total_correct_1 = 0
+        total_correct_2 = 0
 
-        y_true = data.y.cpu()
-        y_pred = out.argmax(dim=-1, keepdim=True)
+        for batch in test_loader:
+            batch = batch.to(self.device)
+            # Only consider predictions and labels of seed nodes
+            out1 = model1(batch.x, batch.edge_index)[:batch.batch_size]
+            #out2 = model2(batch.x, batch.edge_index)[:batch.batch_size]
+            y = batch.y[:batch.batch_size].squeeze()
 
-        train_acc = evaluator.eval({
-            'y_true': y_true[split_idx['train']],
-            'y_pred': y_pred[split_idx['train']],
-        })['acc']
-        val_acc = evaluator.eval({
-            'y_true': y_true[split_idx['valid']],
-            'y_pred': y_pred[split_idx['valid']],
-        })['acc']
-        test_acc = evaluator.eval({
-            'y_true': y_true[split_idx['test']],
-            'y_pred': y_pred[split_idx['test']],
-        })['acc']
-
-        return train_acc, val_acc, test_acc
+            total_correct_1 += int(out1.argmax(dim=-1).eq(y).sum())
+            #total_correct_2 += int(out2.argmax(dim=-1).eq(y).sum())
+        test_acc_1 = total_correct_1 / self.test_size
+        #test_acc_2 = total_correct_2 / self.split_idx['test'].size(0)
+        return test_acc_1, 0. #, test_acc_2
     
     def evaluate(self, valid_loader, model):
         model.eval()
@@ -296,8 +293,11 @@ class PipelineCO(object):
                     val_acc_1, val_acc_2 = self.evaluate_ct(self.valid_loader, self.model1.network.to(self.device), self.model2.network.to(self.device))
                     val_acc_1_hist.append(val_acc_1)
                     val_acc_2_hist.append(val_acc_2)
-                    self.logger.info('   Train epoch {}/{} --- acc t1: {:.4f} t2: {:.4f} v1: {:.4f} v2: {:.4f}'.format(epoch+1,self.config['max_epochs'],train_acc_1,train_acc_2,val_acc_1,val_acc_2))
-
+                    if (epoch < 5):
+                        self.logger.info('   Train epoch {}/{} --- acc t1: {:.3f} t2: {:.3f} v1: {:.3f} v2: {:.3f}'.format(epoch+1,self.config['max_epochs'],train_acc_1,train_acc_2,val_acc_1,val_acc_2))
+                    else:
+                        test_acc_1, test_acc_2 = self.test_ct(self.test_loader, self.model1.network.to(self.device), self.model2.network.to(self.device))
+                        self.logger.info('   Train epoch {}/{} --- acc t1: {:.3f} t2: {:.3f} v1: {:.3f} v2: {:.3f} tst1: {:.3f} tst2: {:.3f}'.format(epoch+1,self.config['max_epochs'],train_acc_1,train_acc_2,val_acc_1,val_acc_2,test_acc_1,test_acc_2))
                     if (val_acc_1 > best_val):
                         print("saved model, val acc {:.3f}".format(val_acc_1))
                         self.logger.info('   Saved  model')
@@ -321,6 +321,7 @@ class PipelineCO(object):
                     val_acc = self.evaluate(self.valid_loader, self.model_c.network.to(self.device))
                     val_acc_hist.append(val_acc)
                     self.logger.info('   Train epoch {}/{} --- acc t: {:.4f} v: {:.4f}'.format(epoch+1,self.config['max_epochs'],train_acc,val_acc))
+
             print('Done training')
             self.logger.info('Done training')
         else:
@@ -335,7 +336,7 @@ class PipelineCO(object):
 
         print('Testing')
         self.logger.info('Test')
-        _, _, _ = self.real_test(self.model1.network.to(self.device), self.data, self.split_idx)
+        #_, _, _ = self.real_test(self.model1.network.to(self.device), self.data, self.split_idx)
         #test_acc_1 = self.test(self.test_loader, self.model1.network.to(self.device))
         #self.logger.info('   Test acc 1: {:.4f}'.format(test_acc_1))
         print('Done testing')

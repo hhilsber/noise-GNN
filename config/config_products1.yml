@@ -1,6 +1,5 @@
 # Data
-batch_id: 1
-batch_spec: 'both on noisy'
+batch_id: 3
 
 data_type: 'network'
 data_dir: '../data'
@@ -17,7 +16,7 @@ num_layers: 2
 nbr_neighbors: [15,10,5]
 
 # Compare network
-train_type: 'both' # nalgo   baseline   both
+train_type: 'nalgo' # nalgo   baseline   both
 compare_loss : 'normal' # normal back
 
 # Regularization
@@ -27,7 +26,7 @@ dropout: 0.5
 optimizer: 'adam'
 learning_rate: 0.001 # weight_decay: 0.0005
 
-max_epochs: 35
+max_epochs: 30
 batch_size: 1024
 num_workers: 1
 
@@ -35,7 +34,7 @@ num_workers: 1
 cuda: True
  
 # Bool
-do_train: False
+do_train: True
 do_plot: False
 
 # Noise
