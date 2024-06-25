@@ -35,8 +35,8 @@ num_workers: 1
 cuda: True
  
 # Bool
-do_train: True
-do_plot: True
+do_train: False
+do_plot: False
 
 # Noise
 noise_rate: 0.45

@@ -34,7 +34,6 @@ class SAGE(torch.nn.Module):
         # available edges. This leads to faster computation in contrast to
         # immediately computing the final representations of each batch.
         for i in range(self.num_layers):
-            print(i)
             xs = []
             for batch in subgraph_loader:
                 x = x_all[batch.n_id].to(device)

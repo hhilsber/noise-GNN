@@ -87,20 +87,22 @@ class PipelineCO(object):
             num_workers=self.config['num_workers'],
             persistent_workers=True
         )
+        self.test_size = int(len(self.split_idx['test'])/5)
         self.test_loader = NeighborLoader(
             self.data,
-            input_nodes=self.split_idx['test'][:int(len(self.split_idx['test'])/30)],
+            input_nodes=self.split_idx['test'][:self.test_size],
             num_neighbors=self.config['nbr_neighbors'],
             batch_size=self.config['batch_size'],
             num_workers=self.config['num_workers'],
             persistent_workers=True
         )
         print(len(self.test_loader))
+
         self.subgraph_loader = NeighborLoader(
             self.data,
             input_nodes=None,
             num_neighbors=self.config['nbr_neighbors'],
-            batch_size=32,
+            batch_size=self.config['batch_size'],
             num_workers=self.config['num_workers'],
             persistent_workers=True
         )
@@ -207,22 +209,7 @@ class PipelineCO(object):
         val_acc_2 = total_correct_2 / self.split_idx['valid'].size(0)
         return val_acc_1, val_acc_2
     
-    def evaluate(self, valid_loader, model):
-        model.eval()
-
-        total_correct = 0
-        
-        for batch in valid_loader:
-            batch = batch.to(self.device)
-            # Only consider predictions and labels of seed nodes
-            out = model(batch.x, batch.edge_index)[:batch.batch_size]
-            y = batch.y[:batch.batch_size].squeeze()
-
-            total_correct += int(out.argmax(dim=-1).eq(y).sum())
-        val_acc = total_correct / self.split_idx['valid'].size(0)
-        return val_acc
-
-    def test(self, model, data, split_idx):
+    def test_ct(self, model, data, split_idx):
         model.eval()
 
         out = model.inference(data.x, self.subgraph_loader, self.device)
@@ -244,6 +231,36 @@ class PipelineCO(object):
         })['acc']
 
         return train_acc, val_acc, test_acc
+    
+    def evaluate(self, valid_loader, model):
+        model.eval()
+
+        total_correct = 0
+        
+        for batch in valid_loader:
+            batch = batch.to(self.device)
+            # Only consider predictions and labels of seed nodes
+            out = model(batch.x, batch.edge_index)[:batch.batch_size]
+            y = batch.y[:batch.batch_size].squeeze()
+
+            total_correct += int(out.argmax(dim=-1).eq(y).sum())
+        val_acc = total_correct / self.split_idx['valid'].size(0)
+        return val_acc
+    
+    def test(self, test_loader, model):
+        model.eval()
+
+        total_correct = 0
+        
+        for batch in test_loader:
+            batch = batch.to(self.device)
+            # Only consider predictions and labels of seed nodes
+            out = model(batch.x, batch.edge_index)[:batch.batch_size]
+            y = batch.y[:batch.batch_size].squeeze()
+
+            total_correct += int(out.argmax(dim=-1).eq(y).sum())
+        test_acc = total_correct / self.test_size
+        return test_acc
 
     def loop(self):
         print('loop')
@@ -308,16 +325,19 @@ class PipelineCO(object):
             self.logger.info('Done training')
         else:
             print('load')
-            self.logger.info('Load warmup model')
+            self.logger.info('Load trained model')
             self.model1, self.model2 = NGNN(), NGNN()
             self.model1.network.load_state_dict(torch.load('../out_model/coteaching/dt624_id2_both_coteaching_sage_algo_normal_noise_next_pair0.45_lay2_hid128_lr0.001_epo25_bs1024_drop0.5_tk5_colambda0.1_neigh15105_m1.pth'))
             self.model2.network.load_state_dict(torch.load('../out_model/coteaching/dt624_id2_both_coteaching_sage_algo_normal_noise_next_pair0.45_lay2_hid128_lr0.001_epo25_bs1024_drop0.5_tk5_colambda0.1_neigh15105_m2.pth'))
-        
+
+            val_acc_1, val_acc_2 = self.evaluate_ct(self.valid_loader, self.model1.network.to(self.device), self.model2.network.to(self.device))
+            self.logger.info('   Load eval v1: {:.4f} v2: {:.4f}'.format(val_acc_1,val_acc_2))
+
         print('Testing')
         self.logger.info('Test')
-        #_, _, _ = self.test(self.model1.network.to(self.device), self.data, self.split_idx)
-        test_acc_1, test_acc_2 = self.evaluate_ct(self.test_loader, self.model1.network.to(self.device), self.model2.network.to(self.device))
-        self.logger.info('   Test acc 1: {:.4f} 2: {:.4f}'.format(test_acc_1,test_acc_2))
+        _, _, _ = self.real_test(self.model1.network.to(self.device), self.data, self.split_idx)
+        #test_acc_1 = self.test(self.test_loader, self.model1.network.to(self.device))
+        #self.logger.info('   Test acc 1: {:.4f}'.format(test_acc_1))
         print('Done testing')
         self.logger.info('Done testing')
 
@@ -361,3 +381,30 @@ class PipelineCO(object):
             #plt.show()
             plot_name = '../out_plots/coteaching/' + self.output_name + '.png'
             plt.savefig(plot_name)
+
+
+
+"""
+def test(self, model, data, split_idx):
+        model.eval()
+
+        out = model.inference(data.x, self.subgraph_loader, self.device)
+
+        y_true = data.y.cpu()
+        y_pred = out.argmax(dim=-1, keepdim=True)
+
+        train_acc = evaluator.eval({
+            'y_true': y_true[split_idx['train']],
+            'y_pred': y_pred[split_idx['train']],
+        })['acc']
+        val_acc = evaluator.eval({
+            'y_true': y_true[split_idx['valid']],
+            'y_pred': y_pred[split_idx['valid']],
+        })['acc']
+        test_acc = evaluator.eval({
+            'y_true': y_true[split_idx['test']],
+            'y_pred': y_pred[split_idx['test']],
+        })['acc']
+
+        return train_acc, val_acc, test_acc
+        """
