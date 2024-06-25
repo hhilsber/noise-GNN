@@ -1,5 +1,5 @@
 # Data
-batch_id: 3
+batch_id: 1
 
 data_type: 'network'
 data_dir: '../data'
@@ -16,7 +16,7 @@ num_layers: 2
 nbr_neighbors: [15,10,5]
 
 # Compare network
-train_type: 'nalgo' # nalgo   baseline   both
+train_type: 'both' # nalgo   baseline   both
 compare_loss : 'normal' # normal back
 
 # Regularization
@@ -35,15 +35,15 @@ cuda: True
  
 # Bool
 do_train: True
-do_plot: False
+do_plot: True
 
 # Noise
-noise_rate: 0.45
+noise_rate: 0.15
 noise_type: 'next_pair' # pair   sym
 
 # Algo Co-teaching or CNCLU
 algo_type: 'coteaching' # ct codi cn_soft cn_hard
 ct_tk: 5
 ct_exp: 1
-ct_tau: 1.1
+ct_tau: 1.0
 co_lambda: 0.1
