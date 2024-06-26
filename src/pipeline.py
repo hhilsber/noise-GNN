@@ -54,8 +54,6 @@ class PipelineCO(object):
             self.model_c = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module'])
         self.evaluator = Evaluator(name=config['dataset_name'])
         
-        print('train: {}, valid: {}, test: {}'.format(self.split_idx['train'].shape[0],self.split_idx['valid'].shape[0],self.split_idx['test'].shape[0]))
-        
         # Logger and data loader
         date = dt.datetime.date(dt.datetime.now())
         self.output_name = 'dt{}{}_{}_id{}_{}_{}_{}_algo_{}_split_{}_noise_{}{}_lay{}_hid{}_lr{}_epo{}_bs{}_drop{}_tk{}_cttau{}_neigh{}{}{}'.format(date.month,date.day,self.config['dataset_name'],self.config['batch_id'],self.config['train_type'],self.config['algo_type'],self.config['original_split'],self.config['module'],self.config['compare_loss'],self.config['noise_type'],self.config['noise_rate'],self.config['num_layers'],self.config['hidden_size'],self.config['learning_rate'],self.config['max_epochs'],self.config['batch_size'],self.config['dropout'],self.config['ct_tk'],self.config['ct_tau'],self.config['nbr_neighbors'][0],self.config['nbr_neighbors'][1],self.config['nbr_neighbors'][2])
@@ -71,18 +69,21 @@ class PipelineCO(object):
             
             train_prop = 0.15
             valid_prop = 0.02
-            test_prop = 1 - train_prop - valid_prop
+            #test_prop = 1 - train_prop - valid_prop
+            test_prop = 0.30
             train_size = int(train_prop * config['nbr_nodes'])
             valid_size = int(valid_prop * config['nbr_nodes'])
-            test_size = config['nbr_nodes'] - train_size - valid_size
-
-            # Split the indices
+            #test_size = config['nbr_nodes'] - train_size - valid_size
+            test_size = int(test_prop * config['nbr_nodes'])
+            
             train_idx = torch.tensor(all_indices[:train_size], dtype=torch.long)
             valid_idx = torch.tensor(all_indices[train_size:train_size + valid_size], dtype=torch.long)
-            test_idx = torch.tensor(all_indices[train_size + valid_size:], dtype=torch.long)
-
+            #test_idx = torch.tensor(all_indices[train_size + valid_size:], dtype=torch.long)
+            test_idx = torch.tensor(all_indices[train_size + valid_size:train_size + valid_size + test_size], dtype=torch.long)
+            
             # Create the new split_idx dictionary
             self.split_idx = {'train': train_idx, 'valid': valid_idx, 'test': test_idx}
+        print('train: {}, valid: {}, test: {}'.format(self.split_idx['train'].shape[0],self.split_idx['valid'].shape[0],self.split_idx['test'].shape[0]))
         
         self.train_loader = NeighborLoader(
             self.data,

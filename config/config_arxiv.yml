@@ -1,5 +1,5 @@
 # Data
-batch_id: 1
+batch_id: 2
 
 data_type: 'network'
 data_dir: '../data'

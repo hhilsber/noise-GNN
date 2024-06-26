@@ -1,5 +1,5 @@
 # Data
-batch_id: 1
+batch_id: 2
 
 data_type: 'network'
 data_dir: '../data'
@@ -34,6 +34,7 @@ num_workers: 1
 cuda: True
  
 # Bool
+original_split: False
 do_train: True
 do_plot: True
 

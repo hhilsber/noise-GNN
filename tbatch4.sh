@@ -3,8 +3,8 @@
 #SBATCH --mem=32g                         # Job memory request
 #SBATCH --gres=gpu:1                     # Number of requested GPU(s) 
 #SBATCH --time=20:00:00                   # Time limit days-hrs:min:sec
-#SBATCH --error=../out_batch/slurm3.err                # Error file name
-#SBATCH --output=../out_batch/slurm3.out               # Output file name
+#SBATCH --error=../out_batch/slurm4.err                # Error file name
+#SBATCH --output=../out_batch/slurm4.out               # Output file name
 
 source /opt/conda/etc/profile.d/conda.sh      # initialize conda
 conda activate pyl                  # load up the conda environment
