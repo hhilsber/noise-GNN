@@ -1,5 +1,5 @@
 # Data
-batch_id: 2
+batch_id: 5
 
 data_type: 'network'
 data_dir: '../data'
@@ -11,22 +11,22 @@ seed: 1232
 
 # Graph model
 module: 'sage'
-hidden_size: 128
+hidden_size: 64
 num_layers: 2
 nbr_neighbors: [15,10,5]
 
 # Compare network
-train_type: 'both' # nalgo   baseline   both
+train_type: 'nalgo' # nalgo   baseline   both
 compare_loss : 'normal' # normal back
 
 # Regularization
-dropout: 0.5
+dropout: 0.3
 
 # Training
 optimizer: 'adam'
 learning_rate: 0.001 # weight_decay: 0.0005
 
-max_epochs: 25
+max_epochs: 20
 batch_size: 1024
 num_workers: 1
 
@@ -34,12 +34,12 @@ num_workers: 1
 cuda: True
  
 # Bool
-original_split: False
+original_split: True
 do_train: True
 do_plot: True
 
 # Noise
-noise_rate: 0.4
+noise_rate: 0.3
 noise_type: 'next_pair' # pair   sym
 
 # Algo Co-teaching or CNCLU

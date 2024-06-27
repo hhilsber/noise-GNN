@@ -54,37 +54,39 @@ class PipelineCO(object):
             self.model_c = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module'])
         self.evaluator = Evaluator(name=config['dataset_name'])
         
+        # Split data set
+        if config['original_split']:
+            #self.split_idx = self.dataset.get_idx_split()
+            split_idx = self.dataset.get_idx_split()
+            test_idx = split_idx['test']
+            shuffled_test_idx = test_idx[torch.randperm(test_idx.size(0))]
+
+            self.config['test_set_percent'] = 0.2
+            num_test_samples = int(self.config['test_set_percent'] * test_idx.size(0))
+            remaining_test_idx = shuffled_test_idx[:num_test_samples]
+            self.split_idx = {'train': split_idx['train'], 'valid': split_idx['valid'], 'test': remaining_test_idx}
+        else:
+            split_idx = self.dataset.get_idx_split()
+            train_idx = split_idx['train']
+            test_idx = split_idx['test']
+            
+            self.config['add_test_samples_to_train'] = 0.15
+            num_samples_to_move = int(self.config['add_test_samples_to_train'] * config['nbr_nodes'])
+            shuffled_test_idx = test_idx[torch.randperm(test_idx.size(0))]
+            indices_to_move = shuffled_test_idx[:num_samples_to_move]
+            remaining_test_idx = shuffled_test_idx[num_samples_to_move:]
+            new_train_idx = torch.cat([train_idx, indices_to_move])
+            # Create the new split_idx dictionary
+            self.split_idx = {'train': new_train_idx, 'valid': split_idx['valid'], 'test': remaining_test_idx}
+
+        print('train: {}, valid: {}, test: {}'.format(self.split_idx['train'].shape[0],self.split_idx['valid'].shape[0],self.split_idx['test'].shape[0]))
+
         # Logger and data loader
         date = dt.datetime.date(dt.datetime.now())
-        self.output_name = 'dt{}{}_{}_id{}_{}_{}_{}_algo_{}_split_{}_noise_{}{}_lay{}_hid{}_lr{}_epo{}_bs{}_drop{}_tk{}_cttau{}_neigh{}{}{}'.format(date.month,date.day,self.config['dataset_name'],self.config['batch_id'],self.config['train_type'],self.config['algo_type'],self.config['original_split'],self.config['module'],self.config['compare_loss'],self.config['noise_type'],self.config['noise_rate'],self.config['num_layers'],self.config['hidden_size'],self.config['learning_rate'],self.config['max_epochs'],self.config['batch_size'],self.config['dropout'],self.config['ct_tk'],self.config['ct_tau'],self.config['nbr_neighbors'][0],self.config['nbr_neighbors'][1],self.config['nbr_neighbors'][2])
+        self.output_name = 'dt{}{}_{}_id{}_{}_{}_{}_algo_{}_split_{}_noise_{}{}_lay{}_hid{}_lr{}_epo{}_bs{}_drop{}_tk{}_cttau{}_neigh{}{}{}'.format(date.month,date.day,self.config['dataset_name'],self.config['batch_id'],self.config['train_type'],self.config['algo_type'],self.config['module'],self.config['compare_loss'],self.config['original_split'],self.config['noise_type'],self.config['noise_rate'],self.config['num_layers'],self.config['hidden_size'],self.config['learning_rate'],self.config['max_epochs'],self.config['batch_size'],self.config['dropout'],self.config['ct_tk'],self.config['ct_tau'],self.config['nbr_neighbors'][0],self.config['nbr_neighbors'][1],self.config['nbr_neighbors'][2])
         self.logger = initialize_logger(self.config, self.output_name)
         np.save('../out_nmat/' + self.output_name + '.npy', noise_mat)
 
-        # Split data set
-        if config['original_split']:
-            self.split_idx = self.dataset.get_idx_split()
-        else:
-            all_indices = np.arange(config['nbr_nodes'])
-            np.random.shuffle(all_indices)
-            
-            train_prop = 0.15
-            valid_prop = 0.02
-            #test_prop = 1 - train_prop - valid_prop
-            test_prop = 0.30
-            train_size = int(train_prop * config['nbr_nodes'])
-            valid_size = int(valid_prop * config['nbr_nodes'])
-            #test_size = config['nbr_nodes'] - train_size - valid_size
-            test_size = int(test_prop * config['nbr_nodes'])
-            
-            train_idx = torch.tensor(all_indices[:train_size], dtype=torch.long)
-            valid_idx = torch.tensor(all_indices[train_size:train_size + valid_size], dtype=torch.long)
-            #test_idx = torch.tensor(all_indices[train_size + valid_size:], dtype=torch.long)
-            test_idx = torch.tensor(all_indices[train_size + valid_size:train_size + valid_size + test_size], dtype=torch.long)
-            
-            # Create the new split_idx dictionary
-            self.split_idx = {'train': train_idx, 'valid': valid_idx, 'test': test_idx}
-        print('train: {}, valid: {}, test: {}'.format(self.split_idx['train'].shape[0],self.split_idx['valid'].shape[0],self.split_idx['test'].shape[0]))
-        
         self.train_loader = NeighborLoader(
             self.data,
             input_nodes=self.split_idx['train'],
@@ -102,25 +104,17 @@ class PipelineCO(object):
             num_workers=self.config['num_workers'],
             persistent_workers=True
         )
-        self.test_size = int(len(self.split_idx['test'])/5)
+        
         self.test_loader = NeighborLoader(
             self.data,
-            input_nodes=self.split_idx['test'][:self.test_size],
-            num_neighbors=[-1],
+            input_nodes=self.split_idx['test'],
+            num_neighbors=self.config['nbr_neighbors'],
             batch_size=self.config['batch_size'],
             num_workers=self.config['num_workers'],
             persistent_workers=True
         )
         print(len(self.test_loader))
 
-        self.subgraph_loader = NeighborLoader(
-            self.data,
-            input_nodes=None,
-            num_neighbors=self.config['nbr_neighbors'],
-            batch_size=self.config['batch_size'],
-            num_workers=self.config['num_workers'],
-            persistent_workers=True
-        )
 
     def train_ct(self, train_loader, epoch, model1, optimizer1, model2, optimizer2):
         if not((epoch+1)%5) or ((epoch+1)==1):
@@ -240,8 +234,8 @@ class PipelineCO(object):
 
             total_correct_1 += int(out1.argmax(dim=-1).eq(y).sum())
             total_correct_2 += int(out2.argmax(dim=-1).eq(y).sum())
-        test_acc_1 = total_correct_1 / self.test_size #self.split_idx['test'].size(0) #self.test_size
-        test_acc_2 = total_correct_2 / self.test_size #self.split_idx['test'].size(0)
+        test_acc_1 = total_correct_1 / self.split_idx['test'].size(0) #self.test_size
+        test_acc_2 = total_correct_2 / self.split_idx['test'].size(0)
         return test_acc_1, test_acc_2
 
     def test(self, test_loader, model):
@@ -304,19 +298,18 @@ class PipelineCO(object):
                     
                     val_acc_1, val_acc_2 = self.evaluate_ct(self.valid_loader, self.model1.network.to(self.device), self.model2.network.to(self.device))
                     val_acc_1_hist.append(val_acc_1), val_acc_2_hist.append(val_acc_2)
-                    #if (epoch < 5):
-                    #    self.logger.info('   Train epoch {}/{} --- acc t1: {:.3f} t2: {:.3f} v1: {:.3f} v2: {:.3f}'.format(epoch+1,self.config['max_epochs'],train_acc_1,train_acc_2,val_acc_1,val_acc_2))
-                    #else:
+                    
                     test_acc_1, test_acc_2 = self.test_ct(self.test_loader, self.model1.network.to(self.device), self.model2.network.to(self.device))
                     test_acc_1_hist.append(test_acc_1), test_acc_2_hist.append(test_acc_2)
                     self.logger.info('   Train epoch {}/{} --- acc t1: {:.3f} t2: {:.3f} v1: {:.3f} v2: {:.3f} tst1: {:.3f} tst2: {:.3f}'.format(epoch+1,self.config['max_epochs'],train_acc_1,train_acc_2,val_acc_1,val_acc_2,test_acc_1,test_acc_2))
+                    """
                     if (val_acc_1 > best_val):
                         print("saved model, val acc {:.3f}".format(val_acc_1))
                         self.logger.info('   Saved  model')
                         best_val = val_acc_1
                         torch.save(self.model1.network.state_dict(), '../out_model/' + self.config['algo_type'] + '/' + self.output_name + '_m1.pth')
                         torch.save(self.model2.network.state_dict(), '../out_model/' + self.config['algo_type'] + '/' + self.output_name + '_m2.pth')
-        
+                    """
             if self.config['train_type'] in ['baseline','both']:
                 print('Train baseline')
                 self.logger.info('Train baseline')
@@ -403,6 +396,16 @@ class PipelineCO(object):
 
 
 """
+
+        self.subgraph_loader = NeighborLoader(
+            self.data,
+            input_nodes=None,
+            num_neighbors=self.config['nbr_neighbors'],
+            batch_size=self.config['batch_size'],
+            num_workers=self.config['num_workers'],
+            persistent_workers=True
+        )
+
 def test(self, model, data, split_idx):
         model.eval()
 
