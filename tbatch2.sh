@@ -8,4 +8,4 @@
 
 source /opt/conda/etc/profile.d/conda.sh      # initialize conda
 conda activate pyl                  # load up the conda environment
-python main.py -config config/config_products1.yml                      # launch the code
+python main.py -config config/config_products2.yml                      # launch the code

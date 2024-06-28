@@ -14,6 +14,8 @@ from src.pipeline_contrast import PipelineCT
 def main(config):
     if config['algo_type'] == 'coteaching':
         model = PipelineCO(config)
+    elif config['algo_type'] == 'ctp':
+        model = PipelineCTP(config)
     elif config['algo_type'] == 'contrastive':
         model = PipelineCT(config)
     else:

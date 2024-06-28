@@ -7,7 +7,7 @@ def initialize_logger(config, file_name):
     logging.getLogger().handlers = []
 
     # Set up the logger
-    log_name = '../out_logs/' + config['algo_type'] + '/' + file_name + '.log'
+    log_name = '../out_logs/' + config['algo_type'] + '2/' + file_name + '.log'
     
     # Clear log file if it exists
     if os.path.exists(log_name):

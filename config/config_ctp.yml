@@ -3,7 +3,7 @@ batch_id: 1
 
 data_type: 'network'
 data_dir: '../data'
-dataset_name: 'ogbn-products'
+dataset_name: 'ogbn-arxiv'
 task_type: 'classification'
 
 # Seed
@@ -11,8 +11,8 @@ seed: 1232
 
 # Graph model
 module: 'sage'
-hidden_size: 32
-num_layers: 3
+hidden_size: 64
+num_layers: 2
 nbr_neighbors: [15,10,5]
 
 # Compare network
@@ -26,8 +26,8 @@ dropout: 0.5
 optimizer: 'adam'
 learning_rate: 0.001 # weight_decay: 0.0005
 
-max_epochs: 25
-batch_size: 1024
+max_epochs: 5
+batch_size: 512
 num_workers: 1
 
 # Device
@@ -43,7 +43,7 @@ noise_rate: 0.3
 noise_type: 'next_pair' # pair   sym
 
 # Algo Co-teaching or CNCLU
-algo_type: 'coteaching' # ct codi cn_soft cn_hard
+algo_type: 'ctp' # coteaching ctp
 ct_tk: 15
 ct_exp: 1
-ct_tau: 1.1
+ct_tau: 1.2
