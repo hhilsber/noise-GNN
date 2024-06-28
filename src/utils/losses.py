@@ -27,8 +27,8 @@ class CTLoss(nn.Module):
         pure_ratio_1 = torch.sum(noise_or_not[ind.cpu()[ind_1_sorted[:num_remember]]])/float(num_remember)
         pure_ratio_2 = torch.sum(noise_or_not[ind.cpu()[ind_2_sorted[:num_remember]]])/float(num_remember)
 
-        ind_1_update=ind_1_sorted[:num_remember]
-        ind_2_update=ind_2_sorted[:num_remember]
+        ind_1_update = ind_1_sorted[:num_remember]
+        ind_2_update = ind_2_sorted[:num_remember]
         ind_clean_1 = ind.cpu()[ind_1_sorted[:num_remember]]
         ind_clean_2 = ind.cpu()[ind_2_sorted[:num_remember]]
         ind_noisy_1 = ind.cpu()[ind_1_sorted[num_remember:]]

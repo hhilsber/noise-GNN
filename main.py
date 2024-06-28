@@ -8,6 +8,7 @@ import torch
 import torch.nn as nn
 
 from src.pipeline import PipelineCO
+from src.pipeline_ctp import PipelineCTP
 from src.pipeline_contrast import PipelineCT
 
 ##################################### Main #####################################

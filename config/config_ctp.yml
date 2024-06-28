@@ -17,10 +17,9 @@ nbr_neighbors: [15,10,5]
 
 # Compare network
 train_type: 'nalgo' # nalgo   baseline   both
-compare_loss : 'normal' # normal back
 
 # Regularization
-dropout: 0.5
+dropout: 0.3
 
 # Training
 optimizer: 'adam'
@@ -34,7 +33,6 @@ num_workers: 1
 cuda: True
  
 # Bool
-original_split: True
 do_train: True
 do_plot: True
 
@@ -44,6 +42,6 @@ noise_type: 'next_pair' # pair   sym
 
 # Algo Co-teaching or CNCLU
 algo_type: 'ctp' # coteaching ctp
-ct_tk: 15
+ct_tk: 2
 ct_exp: 1
-ct_tau: 1.2
+ct_tau: 1.1
