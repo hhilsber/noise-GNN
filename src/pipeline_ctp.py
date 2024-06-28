@@ -103,6 +103,8 @@ class PipelineCTP(object):
             yhn = batch.yhn[:batch.batch_size].squeeze()
             
             loss_1, loss_2, pure_ratio_1, pure_ratio_2, _, _, _, _ = self.criterion(out1, out2, yhn, self.rate_schedule[epoch], batch.n_id, self.noise_or_not)
+            ###
+            loss_ncr_pure = neighbor_align_batch(edge_index, data.x, out1, 0, torch.tensor([0]))
             
             total_loss_1 += float(loss_1)
             total_loss_2 += float(loss_2)
@@ -208,9 +210,8 @@ class PipelineCTP(object):
         if self.config['do_plot']:
             fig, axs = plt.subplots(3, 1, figsize=(10, 15))
             
-            axs[0].axhline(y=0.55, color='grey', linestyle='--')
-            axs[0].axhline(y=0.60, color='grey', linestyle='--')
-            axs[0].axhline(y=0.70, color='grey', linestyle='--')
+            axs[0].axhline(y=0.8, color='grey', linestyle='--')
+            axs[0].axhline(y=0.75, color='grey', linestyle='--')
             if self.config['train_type'] in ['nalgo','both']:
                 line1, = axs[0].plot(train_acc_1_hist, 'blue', label="train_acc_1_hist")
                 line2, = axs[0].plot(train_acc_2_hist, 'darkgreen', label="train_acc_2_hist")

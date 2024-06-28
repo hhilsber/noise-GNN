@@ -353,9 +353,8 @@ class PipelineCO(object):
         if self.config['do_plot']:
             fig, axs = plt.subplots(3, 1, figsize=(10, 15))
             
-            axs[0].axhline(y=0.55, color='grey', linestyle='--')
-            axs[0].axhline(y=0.60, color='grey', linestyle='--')
-            axs[0].axhline(y=0.70, color='grey', linestyle='--')
+            axs[0].axhline(y=0.80, color='grey', linestyle='--')
+            axs[0].axhline(y=0.75, color='grey', linestyle='--')
             if self.config['train_type'] in ['nalgo','both']:
                 line1, = axs[0].plot(train_acc_1_hist, 'blue', label="train_acc_1_hist")
                 line2, = axs[0].plot(train_acc_2_hist, 'darkgreen', label="train_acc_2_hist")
