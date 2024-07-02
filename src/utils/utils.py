@@ -1,6 +1,20 @@
 import logging
 import matplotlib
 import os
+import torch
+import numpy as np
+import scipy.sparse as sp
+
+def to_scipy_sparse_matrix(edge_index, num_nodes):
+    row = edge_index[0].numpy()
+    col = edge_index[1].numpy()
+    data = np.ones(len(row))
+    shape = (num_nodes, num_nodes)
+    return sp.coo_matrix((data, (row, col)), shape=shape)
+
+def to_scipy_sparse_matrix_rcd(row, col, data, num_nodes):
+    shape = (num_nodes, num_nodes)
+    return sp.coo_matrix((data, (row, col)), shape=shape)
 
 def initialize_logger(config, file_name):
     # Clear handlers if they were created in other runs

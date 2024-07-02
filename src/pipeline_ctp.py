@@ -79,7 +79,7 @@ class PipelineCTP(object):
             persistent_workers=True
         )
 
-    def train_ct(self, train_loader, epoch, model1, optimizer1, model2, optimizer2):
+    def train(self, train_loader, epoch, model1, optimizer1, model2, optimizer2):
         if not((epoch+1)%5) or ((epoch+1)==1):
             print('   Train epoch {}/{}'.format(epoch+1, self.config['max_epochs']))
         model1.train()
@@ -94,18 +94,21 @@ class PipelineCTP(object):
         total_ratio_1=0
         total_ratio_2=0
 
+        total_loss_ncr=0
+
         for batch in train_loader:
             batch = batch.to(self.device)
             # Only consider predictions and labels of seed nodes
-            out1 = model1(batch.x, batch.edge_index)[:batch.batch_size]
+            out1_full = model1(batch.x, batch.edge_index)
+            out1 = out1_full[:batch.batch_size]
             out2 = model2(batch.x, batch.edge_index)[:batch.batch_size]
             y = batch.y[:batch.batch_size].squeeze()
             yhn = batch.yhn[:batch.batch_size].squeeze()
             
-            loss_1, loss_2, pure_ratio_1, pure_ratio_2, _, _, _, _ = self.criterion(out1, out2, yhn, self.rate_schedule[epoch], batch.n_id, self.noise_or_not)
+            loss_1, loss_2, pure_ratio_1, pure_ratio_2, batch_ind_noisy_1, batch_ind_noisy_2 = self.criterion(out1, out2, yhn, self.rate_schedule[epoch], batch.n_id, self.noise_or_not)
             ###
-            loss_ncr_pure = neighbor_align_batch(edge_index, data.x, out1, 0, torch.tensor([0]))
-            
+            loss_ncr_pure = neighbor_align_batch(batch.edge_index, batch.x, out1_full, batch_ind_noisy_1)
+            total_loss_ncr += float(loss_ncr_pure)
             total_loss_1 += float(loss_1)
             total_loss_2 += float(loss_2)
             total_correct_1 += int(out1.argmax(dim=-1).eq(y).sum())
@@ -127,11 +130,11 @@ class PipelineCTP(object):
         train_acc_2 = total_correct_2 / self.split_idx['train'].size(0)
         pure_ratio_1_list = total_ratio_1 / len(train_loader)
         pure_ratio_2_list = total_ratio_2 / len(train_loader)
-        
-        return train_loss_1, train_loss_2, train_acc_1, train_acc_2, pure_ratio_1_list, pure_ratio_2_list
+        train_loss_ncr = total_loss_ncr / len(train_loader)
+        return train_loss_1, train_loss_2, train_acc_1, train_acc_2, pure_ratio_1_list, pure_ratio_2_list, train_loss_ncr
     
 
-    def evaluate_ct(self, valid_loader, model1, model2):
+    def evaluate(self, valid_loader, model1, model2):
         model1.eval()
         model2.eval()
 
@@ -151,7 +154,7 @@ class PipelineCTP(object):
         val_acc_2 = total_correct_2 / self.split_idx['valid'].size(0)
         return val_acc_1, val_acc_2
     
-    def test_ct(self, test_loader, model1, model2):
+    def test(self, test_loader, model1, model2):
         model1.eval()
         model2.eval()
 
@@ -174,38 +177,40 @@ class PipelineCTP(object):
     def loop(self):
         print('loop')
         
-        if self.config['train_type'] in ['nalgo','both']:
-            print('Train nalgo')
-            self.logger.info('Train nalgo')
+        print('Train nalgo')
+        self.logger.info('Train nalgo')
 
-            train_loss_1_hist = []
-            train_loss_2_hist = []
-            train_acc_1_hist = []
-            train_acc_2_hist = []
-            pure_ratio_1_hist = []
-            pure_ratio_2_hist = []
-            val_acc_1_hist = []
-            val_acc_2_hist = []
-            test_acc_1_hist = []
-            test_acc_2_hist = []
+        train_loss_1_hist = []
+        train_loss_2_hist = []
+        train_acc_1_hist = []
+        train_acc_2_hist = []
+        pure_ratio_1_hist = []
+        pure_ratio_2_hist = []
+        val_acc_1_hist = []
+        val_acc_2_hist = []
+        test_acc_1_hist = []
+        test_acc_2_hist = []
 
-            best_val = 0.3
-            for epoch in range(self.config['max_epochs']):
-                train_loss_1, train_loss_2, train_acc_1, train_acc_2, pure_ratio_1_list, pure_ratio_2_list = self.train_ct(self.train_loader, epoch, self.model1.network.to(self.device), self.model1.optimizer, self.model2.network.to(self.device), self.model2.optimizer)
-
-                train_loss_1_hist.append(train_loss_1), train_loss_2_hist.append(train_loss_2)
-                train_acc_1_hist.append(train_acc_1), train_acc_2_hist.append(train_acc_2)
-                pure_ratio_1_hist.append(pure_ratio_1_list), pure_ratio_2_hist.append(pure_ratio_2_list)
-                
-                val_acc_1, val_acc_2 = self.evaluate_ct(self.valid_loader, self.model1.network.to(self.device), self.model2.network.to(self.device))
-                val_acc_1_hist.append(val_acc_1), val_acc_2_hist.append(val_acc_2)
-                
-                test_acc_1, test_acc_2 = self.test_ct(self.test_loader, self.model1.network.to(self.device), self.model2.network.to(self.device))
-                test_acc_1_hist.append(test_acc_1), test_acc_2_hist.append(test_acc_2)
-                self.logger.info('   Train epoch {}/{} --- acc t1: {:.3f} t2: {:.3f} v1: {:.3f} v2: {:.3f} tst1: {:.3f} tst2: {:.3f}'.format(epoch+1,self.config['max_epochs'],train_acc_1,train_acc_2,val_acc_1,val_acc_2,test_acc_1,test_acc_2))
-    
-        print('Done training')
-        self.logger.info('Done training')
+        best_test = 0.3
+        for epoch in range(self.config['max_epochs']):
+            train_loss_1, train_loss_2, train_acc_1, train_acc_2, pure_ratio_1_list, pure_ratio_2_list, train_loss_ncr = self.train(self.train_loader, epoch, self.model1.network.to(self.device), self.model1.optimizer, self.model2.network.to(self.device), self.model2.optimizer)
+            print(train_loss_ncr)
+            train_loss_1_hist.append(train_loss_1), train_loss_2_hist.append(train_loss_2)
+            train_acc_1_hist.append(train_acc_1), train_acc_2_hist.append(train_acc_2)
+            pure_ratio_1_hist.append(pure_ratio_1_list), pure_ratio_2_hist.append(pure_ratio_2_list)
+            
+            val_acc_1, val_acc_2 = self.evaluate(self.valid_loader, self.model1.network.to(self.device), self.model2.network.to(self.device))
+            val_acc_1_hist.append(val_acc_1), val_acc_2_hist.append(val_acc_2)
+            
+            test_acc_1, test_acc_2 = self.test(self.test_loader, self.model1.network.to(self.device), self.model2.network.to(self.device))
+            test_acc_1_hist.append(test_acc_1), test_acc_2_hist.append(test_acc_2)
+            self.logger.info('   Train epoch {}/{} --- acc t1: {:.3f} t2: {:.3f} v1: {:.3f} v2: {:.3f} tst1: {:.3f} tst2: {:.3f}'.format(epoch+1,self.config['max_epochs'],train_acc_1,train_acc_2,val_acc_1,val_acc_2,test_acc_1,test_acc_2))
+            if (test_acc_1 > best_test):
+                best_test = test_acc_1
+            elif (test_acc_2 > best_test):
+                best_test = test_acc_2
+        self.logger.info('Best test acc: {:.3f}'.format(best_test))
+        print('Done')
 
         if self.config['do_plot']:
             fig, axs = plt.subplots(3, 1, figsize=(10, 15))

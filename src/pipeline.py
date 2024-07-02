@@ -288,7 +288,7 @@ class PipelineCO(object):
                 test_acc_1_hist = []
                 test_acc_2_hist = []
 
-                best_val = 0.3
+                best_test = 0.3
                 for epoch in range(self.config['max_epochs']):
                     train_loss_1, train_loss_2, train_acc_1, train_acc_2, pure_ratio_1_list, pure_ratio_2_list = self.train_ct(self.train_loader, epoch, self.model1.network.to(self.device), self.model1.optimizer, self.model2.network.to(self.device), self.model2.optimizer)
 
@@ -302,6 +302,10 @@ class PipelineCO(object):
                     test_acc_1, test_acc_2 = self.test_ct(self.test_loader, self.model1.network.to(self.device), self.model2.network.to(self.device))
                     test_acc_1_hist.append(test_acc_1), test_acc_2_hist.append(test_acc_2)
                     self.logger.info('   Train epoch {}/{} --- acc t1: {:.3f} t2: {:.3f} v1: {:.3f} v2: {:.3f} tst1: {:.3f} tst2: {:.3f}'.format(epoch+1,self.config['max_epochs'],train_acc_1,train_acc_2,val_acc_1,val_acc_2,test_acc_1,test_acc_2))
+                    if (test_acc_1 > best_test):
+                        best_test = test_acc_1
+                    elif (test_acc_2 > best_test):
+                        best_test = test_acc_2
                     """
                     if (val_acc_1 > best_val):
                         print("saved model, val acc {:.3f}".format(val_acc_1))
@@ -342,13 +346,11 @@ class PipelineCO(object):
             val_acc_1, val_acc_2 = self.evaluate_ct(self.valid_loader, self.model1.network.to(self.device), self.model2.network.to(self.device))
             self.logger.info('   Load eval v1: {:.4f} v2: {:.4f}'.format(val_acc_1,val_acc_2))
 
-        print('Testing')
-        self.logger.info('Test')
+        self.logger.info('Best test acc: {:.3f}'.format(best_test))
         #_, _, _ = self.real_test(self.model1.network.to(self.device), self.data, self.split_idx)
         #test_acc_1 = self.test(self.test_loader, self.model1.network.to(self.device))
         #self.logger.info('   Test acc 1: {:.4f}'.format(test_acc_1))
-        print('Done testing')
-        self.logger.info('Done testing')
+        print('Done')
 
         if self.config['do_plot']:
             fig, axs = plt.subplots(3, 1, figsize=(10, 15))

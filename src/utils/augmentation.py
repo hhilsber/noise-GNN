@@ -2,19 +2,10 @@ import numpy as np
 import torch
 from scipy.sparse import coo_matrix, csr_matrix
 import scipy.sparse as sp
+from .utils import *
 
 
 
-def to_scipy_sparse_matrix(edge_index, num_nodes):
-    row = edge_index[0].numpy()
-    col = edge_index[1].numpy()
-    data = np.ones(len(row))
-    shape = (num_nodes, num_nodes)
-    return sp.coo_matrix((data, (row, col)), shape=shape)
-
-def to_scipy_sparse_matrix_rcd(row, col, data, num_nodes):
-    shape = (num_nodes, num_nodes)
-    return sp.coo_matrix((data, (row, col)), shape=shape)
 
 def shuffle_pos(features, device='cpu', prob=0.1):
     """
