@@ -6,7 +6,8 @@ import scipy.sparse as sp
 from .utils import *
 
 def neighbor_align_batch(edge_index, x, h,
-                    batch_mask,
+                    ind_noisy,
+                    batch_size = 512,
                     epsilon = 1e-16,
                     temp = 0.1,
                     ncr_conf = 0.0,
@@ -15,8 +16,11 @@ def neighbor_align_batch(edge_index, x, h,
                     device = 'cpu'):
 
     
+    mask_noisy = np.zeros(batch_size)
+    mask_noisy[ind_noisy] = 1
+
     p = torch.exp(h)
-    
+
     num_nodes = h.shape[0]
     coo_matrix = to_scipy_sparse_matrix(edge_index.cpu(), num_nodes)
     indices = np.vstack((np.array(coo_matrix.row), np.array(coo_matrix.col)))
@@ -25,23 +29,26 @@ def neighbor_align_batch(edge_index, x, h,
         torch.FloatTensor(np.array(coo_matrix.data)),
         torch.Size(coo_matrix.shape)
     )
-
-    adj_matrix = adj_matrix.to(device)
+    adj_matrix_ts = torch.tensor(coo_matrix.toarray()).float().to(device)
+    #adj_matrix_coo = adj_matrix.to(device)
     h = h.to(device)
 
     if ncr_loss == 'kl':
-        mean = torch.sparse.mm(adj_matrix, h)
-        mean = mean / (adj_matrix.sum(dim=1).to_dense().view(-1,1) + epsilon)
+        #mean = torch.sparse.mm(adj_matrix, h)[:batch_size,:]
+        mean = torch.matmul(adj_matrix_ts, h)[:batch_size,:]
+        print(mean[:10,:10])
+        mean = mean / (adj_matrix_ts[:batch_size,:batch_size].sum(dim=1).to_dense().view(-1,1) + epsilon)
         sharp_mean = (torch.pow(mean, 1./temp) / torch.sum(torch.pow(mean, 1./temp) + epsilon, dim=1, keepdim=True)).detach()
+        print(sharp_mean[:10])
         if on_noisy_lbl == "yes":
-            kl_loss = F.kl_div(h, sharp_mean, reduction='none')[batch_mask].sum(1)
-            filtered_kl_loss = kl_loss[mean[batch_mask].max(1)[0] > ncr_conf]
+            kl_loss = F.kl_div(h[:batch_size], sharp_mean, reduction='none')[ind_noisy]#.sum(1)
+            filtered_kl_loss = kl_loss[mean[:batch_size][ind_noisy].max(1)[0] > ncr_conf]
             local_ncr = torch.mean(filtered_kl_loss)
         else:
             local_ncr = torch.mean((-sharp_mean * torch.log_softmax(h, dim=1)).sum(1)[torch.softmax(mean, dim=-1).max(1)[0] > ncr_conf])
     else:
         print('wrong ncr_loss')
-
+    print(a)
     return local_ncr
 
 class CTLoss(nn.Module):
@@ -75,14 +82,15 @@ class CTLoss(nn.Module):
         ind_clean_2 = ind.cpu()[ind_2_sorted[:num_remember]]
         ind_noisy_1 = ind.cpu()[ind_1_sorted[num_remember:]]
         ind_noisy_2 = ind.cpu()[ind_2_sorted[num_remember:]]"""
-        batch_ind_noisy_1 = ind_1_sorted[num_remember:]
-        batch_ind_noisy_2 = ind_2_sorted[num_remember:]
+
+        ind_noisy_1 = ind_1_sorted[num_remember:]
+        ind_noisy_2 = ind_2_sorted[num_remember:]
         # exchange
         loss_1_update = F.cross_entropy(y_1[ind_2_update], y_noise[ind_2_update])
         loss_2_update = F.cross_entropy(y_2[ind_1_update], y_noise[ind_1_update])
 
         #return torch.sum(loss_1_update)/num_remember, torch.sum(loss_2_update)/num_remember, pure_ratio_1, pure_ratio_2
-        return loss_1_update, loss_2_update, pure_ratio_1, pure_ratio_2, batch_ind_noisy_1, batch_ind_noisy_2
+        return loss_1_update, loss_2_update, pure_ratio_1, pure_ratio_2, ind_noisy_1, ind_noisy_2
 
 class CoDiLoss(nn.Module):
     """

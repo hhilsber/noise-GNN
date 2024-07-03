@@ -43,7 +43,7 @@ class PipelineCTP(object):
         self.criterion = CTLoss(self.device)
         self.rate_schedule = np.ones(self.config['max_epochs'])*self.config['noise_rate']*self.config['ct_tau']
         self.rate_schedule[:self.config['ct_tk']] = np.linspace(0, self.config['noise_rate']**self.config['ct_exp'], self.config['ct_tk'])
-
+        
         self.split_idx = self.dataset.get_idx_split()
         print('train: {}, valid: {}, test: {}'.format(self.split_idx['train'].shape[0],self.split_idx['valid'].shape[0],self.split_idx['test'].shape[0]))
 
@@ -85,32 +85,46 @@ class PipelineCTP(object):
         model1.train()
         model2.train()
 
-        pure_ratio_1_list=[]
-        pure_ratio_2_list=[]
-        total_loss_1=0
-        total_loss_2=0
-        total_correct_1=0
-        total_correct_2=0
-        total_ratio_1=0
-        total_ratio_2=0
+        pure_ratio_1_list = []
+        pure_ratio_2_list = []
+        total_loss_1 = 0
+        total_loss_2 = 0
+        total_correct_1 = 0
+        total_correct_2 = 0
+        total_ratio_1 = 0
+        total_ratio_2 = 0
 
-        total_loss_ncr=0
+        total_loss_nal_1 = 0
+        total_loss_nal_2 = 0
 
         for batch in train_loader:
             batch = batch.to(self.device)
             # Only consider predictions and labels of seed nodes
             out1_full = model1(batch.x, batch.edge_index)
+            out2_full = model2(batch.x, batch.edge_index)
             out1 = out1_full[:batch.batch_size]
-            out2 = model2(batch.x, batch.edge_index)[:batch.batch_size]
+            out2 = out2_full[:batch.batch_size]
             y = batch.y[:batch.batch_size].squeeze()
             yhn = batch.yhn[:batch.batch_size].squeeze()
             
-            loss_1, loss_2, pure_ratio_1, pure_ratio_2, batch_ind_noisy_1, batch_ind_noisy_2 = self.criterion(out1, out2, yhn, self.rate_schedule[epoch], batch.n_id, self.noise_or_not)
+            loss_ct_1, loss_ct_2, pure_ratio_1, pure_ratio_2, ind_noisy_1, ind_noisy_2 = self.criterion(out1, out2, yhn, self.rate_schedule[epoch], batch.n_id, self.noise_or_not)
             ###
-            loss_ncr_pure = neighbor_align_batch(batch.edge_index, batch.x, out1_full, batch_ind_noisy_1)
-            total_loss_ncr += float(loss_ncr_pure)
+            if (epoch > 0):
+                loss_nal_1 = neighbor_align_batch(batch.edge_index, batch.x, out1_full, ind_noisy_1)
+                loss_nal_2 = neighbor_align_batch(batch.edge_index, batch.x, out2_full, ind_noisy_2)
+            else:
+                loss_nal_1 = 0
+                loss_nal_2 = 0
+            ###
+            beta = 0.5
+            loss_1 = loss_ct_1 + beta * loss_nal_1
+            loss_2 = loss_ct_2 + beta * loss_nal_2
+
             total_loss_1 += float(loss_1)
             total_loss_2 += float(loss_2)
+            total_loss_nal_1 += float(loss_nal_1)
+            total_loss_nal_2 += float(loss_nal_2)
+
             total_correct_1 += int(out1.argmax(dim=-1).eq(y).sum())
             total_correct_2 += int(out2.argmax(dim=-1).eq(y).sum())
             total_ratio_1 += (100*pure_ratio_1)
@@ -118,20 +132,27 @@ class PipelineCTP(object):
             
             optimizer1.zero_grad()
             loss_1.backward()
+            #loss_1.backward(retain_graph=True)
             optimizer1.step()
 
+            
+            
             optimizer2.zero_grad()
             loss_2.backward()
+            #loss_2.backward(retain_graph=True)
             optimizer2.step()
 
         train_loss_1 = total_loss_1 / len(train_loader)
         train_loss_2 = total_loss_2 / len(train_loader)
+        train_loss_nal_1 = total_loss_nal_1 / len(train_loader)
+        train_loss_nal_2 = total_loss_nal_2 / len(train_loader)
+
         train_acc_1 = total_correct_1 / self.split_idx['train'].size(0)
         train_acc_2 = total_correct_2 / self.split_idx['train'].size(0)
         pure_ratio_1_list = total_ratio_1 / len(train_loader)
         pure_ratio_2_list = total_ratio_2 / len(train_loader)
-        train_loss_ncr = total_loss_ncr / len(train_loader)
-        return train_loss_1, train_loss_2, train_acc_1, train_acc_2, pure_ratio_1_list, pure_ratio_2_list, train_loss_ncr
+        
+        return train_loss_1, train_loss_2, train_acc_1, train_acc_2, pure_ratio_1_list, pure_ratio_2_list, train_loss_nal_1, train_loss_nal_2
     
 
     def evaluate(self, valid_loader, model1, model2):
@@ -182,6 +203,8 @@ class PipelineCTP(object):
 
         train_loss_1_hist = []
         train_loss_2_hist = []
+        nal_loss_1_hist = []
+        nal_loss_2_hist = []
         train_acc_1_hist = []
         train_acc_2_hist = []
         pure_ratio_1_hist = []
@@ -193,9 +216,10 @@ class PipelineCTP(object):
 
         best_test = 0.3
         for epoch in range(self.config['max_epochs']):
-            train_loss_1, train_loss_2, train_acc_1, train_acc_2, pure_ratio_1_list, pure_ratio_2_list, train_loss_ncr = self.train(self.train_loader, epoch, self.model1.network.to(self.device), self.model1.optimizer, self.model2.network.to(self.device), self.model2.optimizer)
-            print(train_loss_ncr)
+            train_loss_1, train_loss_2, train_acc_1, train_acc_2, pure_ratio_1_list, pure_ratio_2_list, train_loss_nal_1, train_loss_nal_2 = self.train(self.train_loader, epoch, self.model1.network.to(self.device), self.model1.optimizer, self.model2.network.to(self.device), self.model2.optimizer)
+            #print(train_loss_1, train_loss_2)
             train_loss_1_hist.append(train_loss_1), train_loss_2_hist.append(train_loss_2)
+            nal_loss_1_hist.append(train_loss_nal_1), nal_loss_2_hist.append(train_loss_nal_2)
             train_acc_1_hist.append(train_acc_1), train_acc_2_hist.append(train_acc_2)
             pure_ratio_1_hist.append(pure_ratio_1_list), pure_ratio_2_hist.append(pure_ratio_2_list)
             
@@ -215,8 +239,8 @@ class PipelineCTP(object):
         if self.config['do_plot']:
             fig, axs = plt.subplots(3, 1, figsize=(10, 15))
             
-            axs[0].axhline(y=0.8, color='grey', linestyle='--')
-            axs[0].axhline(y=0.75, color='grey', linestyle='--')
+            #axs[0].axhline(y=0.8, color='grey', linestyle='--')
+            #axs[0].axhline(y=0.75, color='grey', linestyle='--')
             if self.config['train_type'] in ['nalgo','both']:
                 line1, = axs[0].plot(train_acc_1_hist, 'blue', label="train_acc_1_hist")
                 line2, = axs[0].plot(train_acc_2_hist, 'darkgreen', label="train_acc_2_hist")
@@ -230,6 +254,8 @@ class PipelineCTP(object):
 
                 axs[2].plot(train_loss_1_hist, 'blue', label="train_loss_1_hist")
                 axs[2].plot(train_loss_2_hist, 'darkgreen', label="train_loss_2_hist")
+                axs[2].plot(nal_loss_1_hist, 'aqua', label="nal_loss_1_hist")
+                axs[2].plot(nal_loss_2_hist, 'lawngreen', label="nal_loss_2_hist")
                 
             if self.config['train_type'] in ['baseline','both']:
                 line7, = axs[0].plot(train_acc_hist, 'red', label="train_acc_hist")
