@@ -5,6 +5,70 @@ import torch.nn.functional as F
 import scipy.sparse as sp
 from .utils import *
 
+def entropy(p, axis=1):
+    return -torch.sum(p * torch.log2(p+1e-5), dim=axis)
+
+def get_uncertainty_batch(edge_index, y_pure, nbr_classes, device = 'cpu', epsilon=1e-16):
+
+    p = torch.exp(y_pure)
+    num_nodes = y_pure.shape[0]
+    coo_matrix = to_scipy_sparse_matrix(edge_index.cpu(), num_nodes)
+    indices = np.vstack((np.array(coo_matrix.row), np.array(coo_matrix.col)))
+    adj_matrix = torch.sparse_coo_tensor(
+        torch.LongTensor(indices),
+        torch.FloatTensor(np.array(coo_matrix.data)),
+        torch.Size(coo_matrix.shape)
+    )
+    adj_matrix = adj_matrix.to(device)
+
+    ptc = torch.sparse.mm(adj_matrix, p)
+    ptc = ptc / (adj_matrix.sum(dim=1).to_dense().view(-1,1) + epsilon)
+    hpt = entropy(ptc)
+    w = torch.exp(-hpt/torch.log2(torch.tensor(nbr_classes)))
+    return w
+
+def ce_loss(logits, targets, use_hard_labels=True, reduction='none'):
+    if use_hard_labels:
+        return F.cross_entropy(logits, targets, reduction=reduction)
+    else:
+        assert logits.shape == targets.shape
+        log_pred = F.log_softmax(logits, dim=-1)
+        nll_loss = torch.sum(-targets*log_pred, dim=1)
+        return nll_loss
+
+def fix_cr(y_pure, y_noisy, ind_noisy, name='ce', T=1.0, p_cutoff=0.0, use_hard_labels=True, w=None):
+    assert name in ['ce', 'l2']
+
+    num_nodes = y_pure.shape[0]
+    mask_noisy = np.zeros(num_nodes).astype(bool)
+    mask_noisy[ind_noisy] = True
+
+    y_pure = y_pure[mask_noisy]
+    y_noisy = y_noisy[mask_noisy]
+
+    pseudo_label = torch.exp(y_pure)
+    y_noisy = torch.exp(y_noisy)
+
+    pseudo_label = y_pure.detach()
+    if name == 'l2':
+        assert y_pure.size() == y_noisy.size()
+        return F.mse_loss(y_noisy, y_pure, reduction='mean')
+    elif name == 'ce':
+        # pseudo_label = torch.softmax(y_pure, dim=-1)
+        max_probs, max_idx = torch.max(pseudo_label, dim=-1)
+        mask = max_probs.ge(p_cutoff).float()
+        if use_hard_labels:
+            masked_loss = ce_loss(y_noisy, max_idx, use_hard_labels, reduction='none') * mask
+        else:
+            pseudo_label = torch.softmax(y_pure/T, dim=-1)
+            masked_loss = ce_loss(y_noisy, pseudo_label, use_hard_labels) * mask
+        if w is None:
+            return masked_loss.mean() #, mask.mean()
+        else:
+            return (w[mask_noisy] * masked_loss).mean()
+    else:
+        assert Exception('Not Implemented consistency_loss')
+
 def neighbor_align_batch(edge_index, x, h,
                     ind_noisy,
                     batch_size = 512,
@@ -15,13 +79,10 @@ def neighbor_align_batch(edge_index, x, h,
                     on_noisy_lbl = 'yes',
                     device = 'cpu'):
 
-    
-    mask_noisy = np.zeros(batch_size)
-    mask_noisy[ind_noisy] = 1
-
-    p = torch.exp(h)
-
     num_nodes = h.shape[0]
+    mask_noisy = np.zeros(num_nodes).astype(bool)
+    mask_noisy[ind_noisy] = True
+
     coo_matrix = to_scipy_sparse_matrix(edge_index.cpu(), num_nodes)
     indices = np.vstack((np.array(coo_matrix.row), np.array(coo_matrix.col)))
     adj_matrix = torch.sparse_coo_tensor(
@@ -29,26 +90,30 @@ def neighbor_align_batch(edge_index, x, h,
         torch.FloatTensor(np.array(coo_matrix.data)),
         torch.Size(coo_matrix.shape)
     )
-    adj_matrix_ts = torch.tensor(coo_matrix.toarray()).float().to(device)
-    #adj_matrix_coo = adj_matrix.to(device)
+    #adj_matrix_ts = torch.tensor(coo_matrix.toarray()).float().to(device)
+    adj_matrix_coo = adj_matrix.to(device)
+    y = torch.softmax(h, dim=1).to(device)
     h = h.to(device)
-
+    print(h[:1,:])
+    print(y[:1,:])
+    #print(torch.sum(adj_matrix_ts[:batch_size,:batch_size]))
+    print(a)
     if ncr_loss == 'kl':
-        #mean = torch.sparse.mm(adj_matrix, h)[:batch_size,:]
-        mean = torch.matmul(adj_matrix_ts, h)[:batch_size,:]
-        print(mean[:10,:10])
-        mean = mean / (adj_matrix_ts[:batch_size,:batch_size].sum(dim=1).to_dense().view(-1,1) + epsilon)
+        mean = torch.sparse.mm(adj_matrix_coo, h) #[:batch_size,:]
+        #mean = torch.matmul(adj_matrix_ts, h)[:batch_size,:]
+        #mean = mean / (adj_matrix_ts[:batch_size,:batch_size].sum(dim=1).to_dense().view(-1,1) + epsilon)
+        mean = mean / (adj_matrix_coo.sum(dim=1).to_dense().view(-1,1) + epsilon)
         sharp_mean = (torch.pow(mean, 1./temp) / torch.sum(torch.pow(mean, 1./temp) + epsilon, dim=1, keepdim=True)).detach()
-        print(sharp_mean[:10])
+        
         if on_noisy_lbl == "yes":
-            kl_loss = F.kl_div(h[:batch_size], sharp_mean, reduction='none')[ind_noisy]#.sum(1)
-            filtered_kl_loss = kl_loss[mean[:batch_size][ind_noisy].max(1)[0] > ncr_conf]
+            kl_loss = F.kl_div(h, sharp_mean, reduction='none')[mask_noisy].sum(1)
+            #filtered_kl_loss = kl_loss[mean[:batch_size][ind_noisy].max(1)[0] > ncr_conf]
+            filtered_kl_loss = kl_loss[mean[mask_noisy].max(1)[0] > ncr_conf]
             local_ncr = torch.mean(filtered_kl_loss)
         else:
             local_ncr = torch.mean((-sharp_mean * torch.log_softmax(h, dim=1)).sum(1)[torch.softmax(mean, dim=-1).max(1)[0] > ncr_conf])
     else:
         print('wrong ncr_loss')
-    print(a)
     return local_ncr
 
 class CTLoss(nn.Module):

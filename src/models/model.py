@@ -4,13 +4,14 @@ import torch.optim as optim
 from .layers.convolution import SimpleGCN
 from .layers.sage import SAGE
 from .layers.sageFC import SAGEFC
+from .layers.sagePL import SAGEPL
 
 
 class NGNN(object):
     """
     d
     """
-    def __init__(self, in_size=100, hidden_size=128, out_size=47, num_layers=2, dropout=0.5, lr=0.001, optimizer='adam', module='sage'):
+    def __init__(self, in_size=100, hidden_size=128, out_size=47, num_layers=2, dropout=0.5, lr=0.001, optimizer='adam', module='sage', nbr_nodes=1):
         #self.config = config
         
         self.criterion = None
@@ -22,6 +23,7 @@ class NGNN(object):
         self.out_size = out_size
         self.num_layers = num_layers
         self.dropout = dropout
+        self.nbr_nodes = nbr_nodes
 
         self.lr = lr
         self.optimizer = optimizer
@@ -49,6 +51,13 @@ class NGNN(object):
                                     out_size=self.out_size,
                                     num_layers=self.num_layers,
                                     dropout=self.dropout)
+        elif self.module == 'sagePL':
+            self.network = SAGEPL(in_size=self.in_size,
+                                    hidden_size=self.hidden_size,
+                                    out_size=self.out_size,
+                                    num_layers=self.num_layers,
+                                    dropout=self.dropout,
+                                    nbr_nodes=self.nbr_nodes)
 
 
     def init_optimizer(self):

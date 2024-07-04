@@ -38,8 +38,8 @@ class PipelineCTP(object):
         self.config = config
 
         # Initialize the model
-        self.model1 = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module'])
-        self.model2 = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module'])
+        self.model1 = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module'],self.config['nbr_nodes'])
+        self.model2 = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module'],self.config['nbr_nodes'])
         self.criterion = CTLoss(self.device)
         self.rate_schedule = np.ones(self.config['max_epochs'])*self.config['noise_rate']*self.config['ct_tau']
         self.rate_schedule[:self.config['ct_tk']] = np.linspace(0, self.config['noise_rate']**self.config['ct_exp'], self.config['ct_tk'])
@@ -100,30 +100,44 @@ class PipelineCTP(object):
         for batch in train_loader:
             batch = batch.to(self.device)
             # Only consider predictions and labels of seed nodes
-            out1_full = model1(batch.x, batch.edge_index)
-            out2_full = model2(batch.x, batch.edge_index)
-            out1 = out1_full[:batch.batch_size]
-            out2 = out2_full[:batch.batch_size]
+            x_pure1, y_pure1, z_pure1, x_noisy1, y_noisy1, z_noisy1 = model1(batch.x, batch.edge_index, n_id=batch.n_id)
+            x_pure2, y_pure2, z_pure2, x_noisy2, y_noisy2, z_noisy2 = model2(batch.x, batch.edge_index, n_id=batch.n_id)
+            out1 = z_pure1[:batch.batch_size]
+            out2 = z_pure2[:batch.batch_size]
             y = batch.y[:batch.batch_size].squeeze()
             yhn = batch.yhn[:batch.batch_size].squeeze()
             
             loss_ct_1, loss_ct_2, pure_ratio_1, pure_ratio_2, ind_noisy_1, ind_noisy_2 = self.criterion(out1, out2, yhn, self.rate_schedule[epoch], batch.n_id, self.noise_or_not)
-            ###
+            
+            with torch.no_grad():
+                w1 = get_uncertainty_batch(batch.edge_index, y_pure1, nbr_classes=self.config['nbr_classes'], device=self.device)
+                w2 = get_uncertainty_batch(batch.edge_index, y_pure2, nbr_classes=self.config['nbr_classes'], device=self.device)
+
             if (epoch > 0):
-                loss_nal_1 = neighbor_align_batch(batch.edge_index, batch.x, out1_full, ind_noisy_1)
-                loss_nal_2 = neighbor_align_batch(batch.edge_index, batch.x, out2_full, ind_noisy_2)
+                """
+                loss_nal_1 = neighbor_align_batch(batch.edge_index, batch.x, out1_full, ind_noisy_1, batch_size=batch.batch_size, device=self.device)
+                loss_nal_2 = neighbor_align_batch(batch.edge_index, batch.x, out2_full, ind_noisy_2, batch_size=batch.batch_size, device=self.device)
+                ###
+                beta = 0.5
+                loss_1 = loss_ct_1 + beta * loss_nal_1
+                loss_2 = loss_ct_2 + beta * loss_nal_2"""
+                loss_cr1 = fix_cr(y_pure1, y_noisy1, ind_noisy_1, name='ce', w=w1)
+                loss_cr2 = fix_cr(y_pure2, y_noisy2, ind_noisy_2, name='ce', w=w2)
+                beta = 0.5
+                loss_1 = loss_ct_1 + beta * loss_cr1
+                loss_2 = loss_ct_2 + beta * loss_cr2
             else:
-                loss_nal_1 = 0
-                loss_nal_2 = 0
-            ###
-            beta = 0.5
-            loss_1 = loss_ct_1 + beta * loss_nal_1
-            loss_2 = loss_ct_2 + beta * loss_nal_2
+                loss_1 = loss_ct_1
+                loss_2 = loss_ct_2
+                loss_cr1 = 0
+                loss_cr2 = 0
+            
+            
 
             total_loss_1 += float(loss_1)
             total_loss_2 += float(loss_2)
-            total_loss_nal_1 += float(loss_nal_1)
-            total_loss_nal_2 += float(loss_nal_2)
+            total_loss_nal_1 += float(loss_cr1)
+            total_loss_nal_2 += float(loss_cr2)
 
             total_correct_1 += int(out1.argmax(dim=-1).eq(y).sum())
             total_correct_2 += int(out2.argmax(dim=-1).eq(y).sum())
@@ -165,8 +179,12 @@ class PipelineCTP(object):
         for batch in valid_loader:
             batch = batch.to(self.device)
             # Only consider predictions and labels of seed nodes
-            out1 = model1(batch.x, batch.edge_index)[:batch.batch_size]
-            out2 = model2(batch.x, batch.edge_index)[:batch.batch_size]
+            #out1 = model1(batch.x, batch.edge_index)[:batch.batch_size]
+            #out2 = model2(batch.x, batch.edge_index)[:batch.batch_size]
+            x_pure1, y_pure1, z_pure1, x_noisy1, y_noisy1, z_noisy1 = model1(batch.x, batch.edge_index, n_id=batch.n_id)
+            x_pure2, y_pure2, z_pure2, x_noisy2, y_noisy2, z_noisy2 = model2(batch.x, batch.edge_index, n_id=batch.n_id)
+            out1 = z_pure1[:batch.batch_size]
+            out2 = z_pure2[:batch.batch_size]
             y = batch.y[:batch.batch_size].squeeze()
 
             total_correct_1 += int(out1.argmax(dim=-1).eq(y).sum())
@@ -185,8 +203,12 @@ class PipelineCTP(object):
         for batch in test_loader:
             batch = batch.to(self.device)
             # Only consider predictions and labels of seed nodes
-            out1 = model1(batch.x, batch.edge_index)[:batch.batch_size]
-            out2 = model2(batch.x, batch.edge_index)[:batch.batch_size]
+            #out1 = model1(batch.x, batch.edge_index)[:batch.batch_size]
+            #out2 = model2(batch.x, batch.edge_index)[:batch.batch_size]
+            x_pure1, y_pure1, z_pure1, x_noisy1, y_noisy1, z_noisy1 = model1(batch.x, batch.edge_index, n_id=batch.n_id)
+            x_pure2, y_pure2, z_pure2, x_noisy2, y_noisy2, z_noisy2 = model2(batch.x, batch.edge_index, n_id=batch.n_id)
+            out1 = z_pure1[:batch.batch_size]
+            out2 = z_pure2[:batch.batch_size]
             y = batch.y[:batch.batch_size].squeeze()
 
             total_correct_1 += int(out1.argmax(dim=-1).eq(y).sum())
@@ -217,7 +239,7 @@ class PipelineCTP(object):
         best_test = 0.3
         for epoch in range(self.config['max_epochs']):
             train_loss_1, train_loss_2, train_acc_1, train_acc_2, pure_ratio_1_list, pure_ratio_2_list, train_loss_nal_1, train_loss_nal_2 = self.train(self.train_loader, epoch, self.model1.network.to(self.device), self.model1.optimizer, self.model2.network.to(self.device), self.model2.optimizer)
-            #print(train_loss_1, train_loss_2)
+            print(train_loss_nal_1, train_loss_nal_2)
             train_loss_1_hist.append(train_loss_1), train_loss_2_hist.append(train_loss_2)
             nal_loss_1_hist.append(train_loss_nal_1), nal_loss_2_hist.append(train_loss_nal_2)
             train_acc_1_hist.append(train_acc_1), train_acc_2_hist.append(train_acc_2)
@@ -240,7 +262,7 @@ class PipelineCTP(object):
             fig, axs = plt.subplots(3, 1, figsize=(10, 15))
             
             #axs[0].axhline(y=0.8, color='grey', linestyle='--')
-            #axs[0].axhline(y=0.75, color='grey', linestyle='--')
+            axs[0].axhline(y=0.55, color='grey', linestyle='--')
             if self.config['train_type'] in ['nalgo','both']:
                 line1, = axs[0].plot(train_acc_1_hist, 'blue', label="train_acc_1_hist")
                 line2, = axs[0].plot(train_acc_2_hist, 'darkgreen', label="train_acc_2_hist")
