@@ -49,7 +49,7 @@ def fix_cr(y_pure, y_noisy, ind_noisy, name='ce', T=1.0, p_cutoff=0.0, use_hard_
     pseudo_label = torch.exp(y_pure)
     y_noisy = torch.exp(y_noisy)
 
-    pseudo_label = y_pure.detach()
+    #pseudo_label = y_pure.detach()
     if name == 'l2':
         assert y_pure.size() == y_noisy.size()
         return F.mse_loss(y_noisy, y_pure, reduction='mean')
