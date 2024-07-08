@@ -44,7 +44,7 @@ class PipelineTE(object):
             self.model1 = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module1'])
             self.model2 = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module2'])
             if self.config['algo_type'] == 'coteaching':
-                self.criterion = CTLoss(self.device)
+                self.criterion = CTLoss2(self.device)
             elif self.config['algo_type'] == 'codi':
                 self.criterion = CoDiLoss(self.device, self.config['co_lambda'])
             self.rate_schedule = np.ones(self.config['max_epochs'])*self.config['noise_rate']*self.config['ct_tau']
@@ -87,7 +87,16 @@ class PipelineTE(object):
         self.logger = initialize_logger(self.config, self.output_name)
         #np.save('../out_nmat/' + self.output_name + '.npy', noise_mat)
 
-        self.train_loader = NeighborLoader(
+        self.train_loader1 = NeighborLoader(
+            self.data,
+            input_nodes=self.split_idx['train'],
+            num_neighbors=self.config['nbr_neighbors'],
+            batch_size=self.config['batch_size'],
+            shuffle=True,
+            num_workers=self.config['num_workers'],
+            persistent_workers=True
+        )
+        self.train_loader2 = NeighborLoader(
             self.data,
             input_nodes=self.split_idx['train'],
             num_neighbors=self.config['nbr_neighbors'],
@@ -116,7 +125,7 @@ class PipelineTE(object):
         print(len(self.test_loader))
 
 
-    def train_ct(self, train_loader, epoch, model1, optimizer1, model2, optimizer2):
+    def train_ct(self, train_loader1, train_loader2, epoch, model1, optimizer1, model2, optimizer2):
         if not((epoch+1)%5) or ((epoch+1)==1):
             print('   Train epoch {}/{}'.format(epoch+1, self.config['max_epochs']))
         model1.train()
@@ -131,20 +140,23 @@ class PipelineTE(object):
         total_ratio_1=0
         total_ratio_2=0
 
-        for batch in train_loader:
+        for batch,batch2 in zip(train_loader1,train_loader2):
             batch = batch.to(self.device)
+            batch2 = batch2.to(self.device)
             # Only consider predictions and labels of seed nodes
             out1 = model1(batch.x, batch.edge_index)[:batch.batch_size]
-            out2 = model2(batch.x, batch.edge_index)[:batch.batch_size]
+            out2 = model2(batch2.x, batch2.edge_index)[:batch2.batch_size]
             y = batch.y[:batch.batch_size].squeeze()
             yhn = batch.yhn[:batch.batch_size].squeeze()
+            y2 = batch2.y[:batch2.batch_size].squeeze()
+            yhn2 = batch2.yhn[:batch2.batch_size].squeeze()
             
-            loss_1, loss_2, pure_ratio_1, pure_ratio_2, _, _, = self.criterion(out1, out2, yhn, self.rate_schedule[epoch], batch.n_id, self.noise_or_not)
+            loss_1, loss_2, pure_ratio_1, pure_ratio_2, _, _, = self.criterion(out1, out2, yhn, yhn2, self.rate_schedule[epoch], batch.n_id, self.noise_or_not)
             
             total_loss_1 += float(loss_1)
             total_loss_2 += float(loss_2)
             total_correct_1 += int(out1.argmax(dim=-1).eq(y).sum())
-            total_correct_2 += int(out2.argmax(dim=-1).eq(y).sum())
+            total_correct_2 += int(out2.argmax(dim=-1).eq(y2).sum())
             total_ratio_1 += (100*pure_ratio_1)
             total_ratio_2 += (100*pure_ratio_2)
             
@@ -156,12 +168,12 @@ class PipelineTE(object):
             loss_2.backward()
             optimizer2.step()
 
-        train_loss_1 = total_loss_1 / len(train_loader)
-        train_loss_2 = total_loss_2 / len(train_loader)
+        train_loss_1 = total_loss_1 / len(train_loader1)
+        train_loss_2 = total_loss_2 / len(train_loader2)
         train_acc_1 = total_correct_1 / self.split_idx['train'].size(0)
         train_acc_2 = total_correct_2 / self.split_idx['train'].size(0)
-        pure_ratio_1_list = total_ratio_1 / len(train_loader)
-        pure_ratio_2_list = total_ratio_2 / len(train_loader)
+        pure_ratio_1_list = total_ratio_1 / len(train_loader1)
+        pure_ratio_2_list = total_ratio_2 / len(train_loader2)
         
         return train_loss_1, train_loss_2, train_acc_1, train_acc_2, pure_ratio_1_list, pure_ratio_2_list
     
@@ -290,7 +302,7 @@ class PipelineTE(object):
 
                 best_test = 0.3
                 for epoch in range(self.config['max_epochs']):
-                    train_loss_1, train_loss_2, train_acc_1, train_acc_2, pure_ratio_1_list, pure_ratio_2_list = self.train_ct(self.train_loader, epoch, self.model1.network.to(self.device), self.model1.optimizer, self.model2.network.to(self.device), self.model2.optimizer)
+                    train_loss_1, train_loss_2, train_acc_1, train_acc_2, pure_ratio_1_list, pure_ratio_2_list = self.train_ct(self.train_loader1, self.train_loader2, epoch, self.model1.network.to(self.device), self.model1.optimizer, self.model2.network.to(self.device), self.model2.optimizer)
 
                     train_loss_1_hist.append(train_loss_1), train_loss_2_hist.append(train_loss_2)
                     train_acc_1_hist.append(train_acc_1), train_acc_2_hist.append(train_acc_2)

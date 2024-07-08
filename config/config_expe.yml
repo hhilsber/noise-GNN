@@ -1,6 +1,6 @@
 # Data
-batch_id: 1
-spec: "diff data loaders"
+batch_id: 2
+spec: "diff data loaders and shuffle true"
 data_type: 'network'
 data_dir: '../data'
 dataset_name: 'ogbn-arxiv'

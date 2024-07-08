@@ -12,8 +12,10 @@ def get_uncertainty_batch(edge_index, y_pure, nbr_classes, device = 'cpu', epsil
 
     p = torch.exp(y_pure)
     num_nodes = y_pure.shape[0]
+
     coo_matrix = to_scipy_sparse_matrix(edge_index.cpu(), num_nodes)
     indices = np.vstack((np.array(coo_matrix.row), np.array(coo_matrix.col)))
+
     adj_matrix = torch.sparse_coo_tensor(
         torch.LongTensor(indices),
         torch.FloatTensor(np.array(coo_matrix.data)),
@@ -42,9 +44,9 @@ def fix_cr(y_pure, y_noisy, ind_noisy, name='ce', T=1.0, p_cutoff=0.0, use_hard_
     num_nodes = y_pure.shape[0]
     mask_noisy = np.zeros(num_nodes).astype(bool)
     mask_noisy[ind_noisy] = True
-
-    y_pure = y_pure[mask_noisy]
-    y_noisy = y_noisy[mask_noisy]
+    
+    #y_pure = y_pure[mask_noisy]
+    #y_noisy = y_noisy[mask_noisy]
 
     pseudo_label = torch.exp(y_pure)
     y_noisy = torch.exp(y_noisy)
@@ -155,7 +157,49 @@ class CTLoss(nn.Module):
         loss_2_update = F.cross_entropy(y_2[ind_1_update], y_noise[ind_1_update])
 
         #return torch.sum(loss_1_update)/num_remember, torch.sum(loss_2_update)/num_remember, pure_ratio_1, pure_ratio_2
+        return loss_1_update, loss_2_update, pure_ratio_1, pure_ratio_2, ind_1_update, ind_2_update, ind_noisy_1, ind_noisy_2
+
+class CTLoss2(nn.Module):
+    """
+    Co-teaching loss
+    https://github.com/bhanML/Co-teaching/blob/master/loss.py
+    """
+    def __init__(self, device):
+        super(CTLoss2, self).__init__()
+        self.device = device
+    
+    def forward(self, y_1, y_2, y_noise, y_noise2, forget_rate, ind, noise_or_not):
+        loss_1 = F.cross_entropy(y_1, y_noise, reduction = 'none')
+        ind_1_sorted = np.argsort(loss_1.cpu().data)
+        loss_1_sorted = loss_1[ind_1_sorted]
+
+        loss_2 = F.cross_entropy(y_2, y_noise2, reduction = 'none')
+        ind_2_sorted = np.argsort(loss_2.cpu().data)
+        loss_2_sorted = loss_2[ind_2_sorted]
+
+        remember_rate = 1 - forget_rate
+        num_remember = int(remember_rate * len(loss_1_sorted))
+        
+        pure_ratio_1 = torch.sum(noise_or_not[ind.cpu()[ind_1_sorted[:num_remember]]])/float(num_remember)
+        pure_ratio_2 = torch.sum(noise_or_not[ind.cpu()[ind_2_sorted[:num_remember]]])/float(num_remember)
+
+        ind_1_update = ind_1_sorted[:num_remember]
+        ind_2_update = ind_2_sorted[:num_remember]
+        """
+        ind_clean_1 = ind.cpu()[ind_1_sorted[:num_remember]]
+        ind_clean_2 = ind.cpu()[ind_2_sorted[:num_remember]]
+        ind_noisy_1 = ind.cpu()[ind_1_sorted[num_remember:]]
+        ind_noisy_2 = ind.cpu()[ind_2_sorted[num_remember:]]"""
+
+        ind_noisy_1 = ind_1_sorted[num_remember:]
+        ind_noisy_2 = ind_2_sorted[num_remember:]
+        # exchange
+        loss_1_update = F.cross_entropy(y_1[ind_2_update], y_noise[ind_2_update])
+        loss_2_update = F.cross_entropy(y_2[ind_1_update], y_noise2[ind_1_update])
+
+        #return torch.sum(loss_1_update)/num_remember, torch.sum(loss_2_update)/num_remember, pure_ratio_1, pure_ratio_2
         return loss_1_update, loss_2_update, pure_ratio_1, pure_ratio_2, ind_noisy_1, ind_noisy_2
+
 
 class CoDiLoss(nn.Module):
     """

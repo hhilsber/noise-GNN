@@ -107,7 +107,7 @@ class PipelineCTP(object):
             y = batch.y[:batch.batch_size].squeeze()
             yhn = batch.yhn[:batch.batch_size].squeeze()
             
-            loss_ct_1, loss_ct_2, pure_ratio_1, pure_ratio_2, ind_noisy_1, ind_noisy_2 = self.criterion(out1, out2, yhn, self.rate_schedule[epoch], batch.n_id, self.noise_or_not)
+            loss_ct_1, loss_ct_2, pure_ratio_1, pure_ratio_2, ind_1_update, ind_2_update, ind_noisy_1, ind_noisy_2 = self.criterion(out1, out2, yhn, self.rate_schedule[epoch], batch.n_id, self.noise_or_not)
             
             if (epoch > 0):
                 """
@@ -117,12 +117,11 @@ class PipelineCTP(object):
                 beta = 0.5
                 loss_1 = loss_ct_1 + beta * loss_nal_1
                 loss_2 = loss_ct_2 + beta * loss_nal_2"""
+                
                 with torch.no_grad():
                     w1 = get_uncertainty_batch(batch.edge_index, y_pure1, nbr_classes=self.config['nbr_classes'], device=self.device)
                     w2 = get_uncertainty_batch(batch.edge_index, y_pure2, nbr_classes=self.config['nbr_classes'], device=self.device)
-                #print(torch.min(w1))
-                #print(torch.max(w1))
-                # print(a)
+                
                 loss_cr1 = fix_cr(y_pure1, y_noisy1, ind_noisy_1, name='ce', w=w1)
                 loss_cr2 = fix_cr(y_pure2, y_noisy2, ind_noisy_2, name='ce', w=w2)
                 beta = 0.7

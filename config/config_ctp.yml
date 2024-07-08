@@ -1,11 +1,11 @@
 # Data
 batch_id: 3
-aaa_spec: "noisy_rate=0.1 beta = 0.6"
+aaa_spec: "loss_cr1 = fix_cr(y_pure1, y_noisy1, ind_noisy_2, name='ce', w=w2)"
 data_type: 'network'
 data_dir: '../data'
 dataset_name: 'ogbn-arxiv'
 task_type: 'classification'
-
+what: '2'
 # Seed
 seed: 1232
 
@@ -25,7 +25,7 @@ dropout: 0.5
 optimizer: 'adam'
 learning_rate: 0.001 # weight_decay: 0.0005
 
-max_epochs: 45
+max_epochs: 25
 batch_size: 512
 num_workers: 1
 
@@ -44,4 +44,4 @@ noise_type: 'next_pair' # pair   sym
 algo_type: 'ctp' # coteaching ctp
 ct_tk: 15
 ct_exp: 1
-ct_tau: 1.25
+ct_tau: 1.2
