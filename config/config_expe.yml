@@ -1,17 +1,19 @@
 # Data
 batch_id: 1
-
+spec: "diff data loaders"
 data_type: 'network'
 data_dir: '../data'
 dataset_name: 'ogbn-arxiv'
 task_type: 'classification'
+what: '_expe'
 
 # Seed
 seed: 1232
 
 # Graph model
-module: 'gcn'
-hidden_size: 256
+module1: 'sage'
+module2: 'sage'
+hidden_size: 128
 num_layers: 3
 nbr_neighbors: [15,10,5]
 
@@ -26,13 +28,13 @@ dropout: 0.5
 optimizer: 'adam'
 learning_rate: 0.001 # weight_decay: 0.0005
 
-max_epochs: 35
-batch_size: 256
+max_epochs: 25
+batch_size: 512
 num_workers: 1
 
 # Device
 cuda: True
- 
+
 # Bool
 original_split: True
 do_train: True

@@ -1,10 +1,11 @@
 # Data
-batch_id: 2
+batch_id: 1
 
 data_type: 'network'
 data_dir: '../data'
 dataset_name: 'ogbn-products'
 task_type: 'classification'
+what: '2'
 
 # Seed
 seed: 1232

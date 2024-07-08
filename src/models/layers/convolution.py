@@ -5,7 +5,7 @@ from torch_geometric.nn import GCNConv
 from torch_geometric.nn import global_mean_pool
 
 class SimpleGCN(torch.nn.Module):
-    def __init__(self, in_channels, hidden_channels, out_channels, num_layers,
+    def __init__(self, in_size, hidden_size, out_size, num_layers,
                  dropout):
         super(SimpleGCN, self).__init__()
         
@@ -16,12 +16,12 @@ class SimpleGCN(torch.nn.Module):
         self.num_layers = num_layers
         self.convs = torch.nn.ModuleList()
         self.convs.append(
-            GCNConv(in_channels, hidden_channels, normalize=False))
+            GCNConv(in_size, hidden_size, normalize=False))
         for _ in range(num_layers - 2):
             self.convs.append(
-                GCNConv(hidden_channels, hidden_channels, normalize=False))
+                GCNConv(hidden_size, hidden_size, normalize=False))
         self.convs.append(
-            GCNConv(hidden_channels, out_channels, normalize=False))
+            GCNConv(hidden_size, out_size, normalize=False))
 
         self.dropout = dropout
 
@@ -30,12 +30,12 @@ class SimpleGCN(torch.nn.Module):
             conv.reset_parameters()
 
     def forward(self, x, adj_t):
-        for i, conv in enumerate(self.convs[:-1]):
+        for i, conv in enumerate(self.convs):
             x = conv(x, adj_t)
-            x = F.relu(x)
-            x = F.dropout(x, p=self.dropout, training=self.training)
-        x = self.convs[-1](x, adj_t)
-        return x.log_softmax(dim=-1)
+            if i != self.num_layers - 1:
+                x = x.relu()
+                x = F.dropout(x, p=self.dropout, training=self.training)
+        return x #x.log_softmax(dim=-1)
     
     def inference(self, x_all, subgraph_loader, device):
         # Compute representations of nodes layer by layer, using *all*
@@ -61,6 +61,19 @@ class SimpleGCN(torch.nn.Module):
 
 
 #####################################################################################
+
+"""
+def forward(self, x, adj_t):
+        for i, conv in enumerate(self.convs[:-1]):
+            x = conv(x, adj_t)
+            x = F.relu(x)
+            x = F.dropout(x, p=self.dropout, training=self.training)
+        x = self.convs[-1](x, adj_t)
+        return x.log_softmax(dim=-1)
+"""
+
+###
+
 """
 
 class SimpleGCN(nn.Module):

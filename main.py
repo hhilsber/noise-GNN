@@ -10,11 +10,15 @@ import torch.nn as nn
 from src.pipeline import PipelineCO
 from src.pipeline_ctp import PipelineCTP
 from src.pipeline_contrast import PipelineCT
+from src.pipeline_test import PipelineTE
 
 ##################################### Main #####################################
 def main(config):
     if config['algo_type'] == 'coteaching':
-        model = PipelineCO(config)
+        if config['what'] == '_expe':
+            model = PipelineTE(config)
+        else:
+            model = PipelineCO(config)
     elif config['algo_type'] == 'ctp':
         model = PipelineCTP(config)
     elif config['algo_type'] == 'contrastive':

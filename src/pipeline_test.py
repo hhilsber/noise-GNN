@@ -15,7 +15,7 @@ from .utils.noise import flip_label
 from .models.model import NGNN
 from .utils.losses import *
 
-class PipelineCO(object):
+class PipelineTE(object):
     """
     Processing pipeline
     """
@@ -41,8 +41,8 @@ class PipelineCO(object):
         if self.config['train_type'] in ['nalgo','both']:
             #self.model1 = NGNN(config)
             #self.model2 = NGNN(config)
-            self.model1 = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module'])
-            self.model2 = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module'])
+            self.model1 = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module1'])
+            self.model2 = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module2'])
             if self.config['algo_type'] == 'coteaching':
                 self.criterion = CTLoss(self.device)
             elif self.config['algo_type'] == 'codi':
@@ -83,7 +83,7 @@ class PipelineCO(object):
 
         # Logger and data loader
         date = dt.datetime.date(dt.datetime.now())
-        self.output_name = 'dt{}{}_{}_id{}_{}_{}_{}_algo_{}_split_{}_noise_{}{}_lay{}_hid{}_lr{}_epo{}_bs{}_drop{}_tk{}_cttau{}_neigh{}{}{}'.format(date.month,date.day,self.config['dataset_name'],self.config['batch_id'],self.config['train_type'],self.config['algo_type'],self.config['module'],self.config['compare_loss'],self.config['original_split'],self.config['noise_type'],self.config['noise_rate'],self.config['num_layers'],self.config['hidden_size'],self.config['learning_rate'],self.config['max_epochs'],self.config['batch_size'],self.config['dropout'],self.config['ct_tk'],self.config['ct_tau'],self.config['nbr_neighbors'][0],self.config['nbr_neighbors'][1],self.config['nbr_neighbors'][2])
+        self.output_name = 'dt{}{}_{}_id{}_{}_{}_{}_{}_algo_{}_split_{}_noise_{}{}_lay{}_hid{}_lr{}_epo{}_bs{}_drop{}_tk{}_cttau{}_neigh{}{}{}'.format(date.month,date.day,self.config['dataset_name'],self.config['batch_id'],self.config['train_type'],self.config['algo_type'],self.config['module1'],self.config['module2'],self.config['compare_loss'],self.config['original_split'],self.config['noise_type'],self.config['noise_rate'],self.config['num_layers'],self.config['hidden_size'],self.config['learning_rate'],self.config['max_epochs'],self.config['batch_size'],self.config['dropout'],self.config['ct_tk'],self.config['ct_tau'],self.config['nbr_neighbors'][0],self.config['nbr_neighbors'][1],self.config['nbr_neighbors'][2])
         self.logger = initialize_logger(self.config, self.output_name)
         #np.save('../out_nmat/' + self.output_name + '.npy', noise_mat)
 
@@ -392,7 +392,7 @@ class PipelineCO(object):
 
             plt.tight_layout()
             #plt.show()
-            plot_name = '../out_plots/coteaching2/' + self.output_name + '.png'
+            plot_name = '../out_plots/coteaching_expe/' + self.output_name + '.png'
             plt.savefig(plot_name)
 
 

@@ -1,16 +1,18 @@
 # Data
-batch_id: 2
+batch_id: 1
 
 data_type: 'network'
 data_dir: '../data'
 dataset_name: 'ogbn-products'
 task_type: 'classification'
+what: '2'
 
 # Seed
 seed: 1232
 
 # Graph model
-module: 'sage'
+module1: 'sage'
+module2: 'gcn'
 hidden_size: 128
 num_layers: 3
 nbr_neighbors: [15,10,5]
