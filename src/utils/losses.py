@@ -38,36 +38,36 @@ def ce_loss(logits, targets, use_hard_labels=True, reduction='none'):
         nll_loss = torch.sum(-targets*log_pred, dim=1)
         return nll_loss
 
-def fix_cr(y_pure, y_noisy, ind_noisy, name='ce', T=1.0, p_cutoff=0.0, use_hard_labels=True, w=None):
+def fix_cr(y_pure, y_noisy, ind_noisy, batch_size=512, name='ce', T=1.0, p_cutoff=0.0, use_hard_labels=False, w=None):
     assert name in ['ce', 'l2']
 
     num_nodes = y_pure.shape[0]
     mask_noisy = np.zeros(num_nodes).astype(bool)
     mask_noisy[ind_noisy] = True
-    
-    #y_pure = y_pure[mask_noisy]
-    #y_noisy = y_noisy[mask_noisy]
 
-    pseudo_label = torch.exp(y_pure)
-    y_noisy = torch.exp(y_noisy)
+    y_pure = y_pure[:batch_size]
+    y_noisy = y_noisy[:batch_size]
 
-    #pseudo_label = y_pure.detach()
+    pseudo_pure = torch.exp(y_pure)
+    pseudo_noisy = torch.exp(y_noisy)
+
+    #pseudo_pure = pseudo_pure.detach()
     if name == 'l2':
         assert y_pure.size() == y_noisy.size()
         return F.mse_loss(y_noisy, y_pure, reduction='mean')
     elif name == 'ce':
-        # pseudo_label = torch.softmax(y_pure, dim=-1)
-        max_probs, max_idx = torch.max(pseudo_label, dim=-1)
+        # pseudo_pure = torch.softmax(y_pure, dim=-1)
+        max_probs, max_idx = torch.max(pseudo_pure, dim=-1)
         mask = max_probs.ge(p_cutoff).float()
         if use_hard_labels:
-            masked_loss = ce_loss(y_noisy, max_idx, use_hard_labels, reduction='none') * mask
+            masked_loss = ce_loss(pseudo_noisy, max_idx, use_hard_labels, reduction='none') * mask
         else:
-            pseudo_label = torch.softmax(y_pure/T, dim=-1)
-            masked_loss = ce_loss(y_noisy, pseudo_label, use_hard_labels) * mask
+            #pseudo_pure = torch.softmax(y_pure/T, dim=-1)
+            masked_loss = ce_loss(pseudo_noisy, pseudo_pure, use_hard_labels) * mask
         if w is None:
             return masked_loss.mean() #, mask.mean()
         else:
-            return (w[mask_noisy] * masked_loss).mean()
+            return (w[:batch_size] * masked_loss).mean()
     else:
         assert Exception('Not Implemented consistency_loss')
 

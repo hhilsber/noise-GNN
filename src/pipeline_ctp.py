@@ -122,9 +122,9 @@ class PipelineCTP(object):
                     w1 = get_uncertainty_batch(batch.edge_index, y_pure1, nbr_classes=self.config['nbr_classes'], device=self.device)
                     w2 = get_uncertainty_batch(batch.edge_index, y_pure2, nbr_classes=self.config['nbr_classes'], device=self.device)
                 
-                loss_cr1 = fix_cr(y_pure1, y_noisy1, ind_noisy_1, name='ce', w=w1)
-                loss_cr2 = fix_cr(y_pure2, y_noisy2, ind_noisy_2, name='ce', w=w2)
-                beta = 0.7
+                loss_cr1 = fix_cr(y_pure1, y_noisy1, ind_noisy_1, batch_size=batch.batch_size, name='ce', w=w1)
+                loss_cr2 = fix_cr(y_pure2, y_noisy2, ind_noisy_2, batch_size=batch.batch_size, name='ce', w=w2)
+                beta = 1.0
                 loss_1 = loss_ct_1 + beta * loss_cr1
                 loss_2 = loss_ct_2 + beta * loss_cr2
             else:
@@ -240,7 +240,7 @@ class PipelineCTP(object):
         best_test = 0.3
         for epoch in range(self.config['max_epochs']):
             train_loss_1, train_loss_2, train_acc_1, train_acc_2, pure_ratio_1_list, pure_ratio_2_list, train_loss_nal_1, train_loss_nal_2 = self.train(self.train_loader, epoch, self.model1.network.to(self.device), self.model1.optimizer, self.model2.network.to(self.device), self.model2.optimizer)
-            
+            print('{:.3f} --- {:.3f}'.format(train_loss_nal_1, train_loss_nal_2))
             train_loss_1_hist.append(train_loss_1), train_loss_2_hist.append(train_loss_2)
             nal_loss_1_hist.append(train_loss_nal_1), nal_loss_2_hist.append(train_loss_nal_2)
             train_acc_1_hist.append(train_acc_1), train_acc_2_hist.append(train_acc_2)

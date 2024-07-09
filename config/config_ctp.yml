@@ -1,6 +1,6 @@
 # Data
-batch_id: 3
-aaa_spec: "loss_cr1 = fix_cr(y_pure1, y_noisy1, ind_noisy_2, name='ce', w=w2)"
+batch_id: 4
+aaa_spec: "y_pure = y_pure[:batch_size],    noisy_rate=0.3     beta = 1.0  use_hard_labels=False"
 data_type: 'network'
 data_dir: '../data'
 dataset_name: 'ogbn-arxiv'
@@ -25,7 +25,7 @@ dropout: 0.5
 optimizer: 'adam'
 learning_rate: 0.001 # weight_decay: 0.0005
 
-max_epochs: 25
+max_epochs: 30
 batch_size: 512
 num_workers: 1
 
@@ -37,7 +37,7 @@ do_train: True
 do_plot: True
 
 # Noise
-noise_rate: 0.3
+noise_rate: 0.2
 noise_type: 'next_pair' # pair   sym
 
 # Algo Co-teaching or CNCLU

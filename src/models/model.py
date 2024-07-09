@@ -11,7 +11,7 @@ class NGNN(object):
     """
     d
     """
-    def __init__(self, in_size=100, hidden_size=128, out_size=47, num_layers=2, dropout=0.5, lr=0.001, optimizer='adam', module='sage', nbr_nodes=1):
+    def __init__(self, in_size=100, hidden_size=128, out_size=47, num_layers=2, dropout=0.5, lr=0.001, wd=0.0005, optimizer='adam', module='sage', nbr_nodes=1):
         #self.config = config
         
         self.criterion = None
@@ -26,6 +26,7 @@ class NGNN(object):
         self.nbr_nodes = nbr_nodes
 
         self.lr = lr
+        self.wd = wd
         self.optimizer = optimizer
         self.module = module
 
@@ -63,7 +64,8 @@ class NGNN(object):
     def init_optimizer(self):
         if self.optimizer == 'adam':
             self.optimizer = torch.optim.Adam(self.network.parameters(),
-                                            lr=self.lr)
+                                            lr=self.lr,
+                                            weight_decay=self.wd)
         elif self.optimizer == 'single_adam':
             self.optimizer = torch.optim.Adam(self.network.parameters(),
                                                 lr=self.lr,
