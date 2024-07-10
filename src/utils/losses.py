@@ -159,46 +159,6 @@ class CTLoss(nn.Module):
         #return torch.sum(loss_1_update)/num_remember, torch.sum(loss_2_update)/num_remember, pure_ratio_1, pure_ratio_2
         return loss_1_update, loss_2_update, pure_ratio_1, pure_ratio_2, ind_1_update, ind_2_update, ind_noisy_1, ind_noisy_2
 
-class CTLoss2(nn.Module):
-    """
-    Co-teaching loss
-    https://github.com/bhanML/Co-teaching/blob/master/loss.py
-    """
-    def __init__(self, device):
-        super(CTLoss2, self).__init__()
-        self.device = device
-    
-    def forward(self, y_1, y_2, y_noise, y_noise2, forget_rate, ind, noise_or_not):
-        loss_1 = F.cross_entropy(y_1, y_noise, reduction = 'none')
-        ind_1_sorted = np.argsort(loss_1.cpu().data)
-        loss_1_sorted = loss_1[ind_1_sorted]
-
-        loss_2 = F.cross_entropy(y_2, y_noise2, reduction = 'none')
-        ind_2_sorted = np.argsort(loss_2.cpu().data)
-        loss_2_sorted = loss_2[ind_2_sorted]
-
-        remember_rate = 1 - forget_rate
-        num_remember = int(remember_rate * len(loss_1_sorted))
-        
-        pure_ratio_1 = torch.sum(noise_or_not[ind.cpu()[ind_1_sorted[:num_remember]]])/float(num_remember)
-        pure_ratio_2 = torch.sum(noise_or_not[ind.cpu()[ind_2_sorted[:num_remember]]])/float(num_remember)
-
-        ind_1_update = ind_1_sorted[:num_remember]
-        ind_2_update = ind_2_sorted[:num_remember]
-        """
-        ind_clean_1 = ind.cpu()[ind_1_sorted[:num_remember]]
-        ind_clean_2 = ind.cpu()[ind_2_sorted[:num_remember]]
-        ind_noisy_1 = ind.cpu()[ind_1_sorted[num_remember:]]
-        ind_noisy_2 = ind.cpu()[ind_2_sorted[num_remember:]]"""
-
-        ind_noisy_1 = ind_1_sorted[num_remember:]
-        ind_noisy_2 = ind_2_sorted[num_remember:]
-        # exchange
-        loss_1_update = F.cross_entropy(y_1[ind_2_update], y_noise[ind_2_update])
-        loss_2_update = F.cross_entropy(y_2[ind_1_update], y_noise2[ind_1_update])
-
-        #return torch.sum(loss_1_update)/num_remember, torch.sum(loss_2_update)/num_remember, pure_ratio_1, pure_ratio_2
-        return loss_1_update, loss_2_update, pure_ratio_1, pure_ratio_2, ind_noisy_1, ind_noisy_2
 
 
 class CoDiLoss(nn.Module):
@@ -289,3 +249,43 @@ def backward_correction(output, labels, C, device, nclass):
     output = torch.clamp(output, min=1e-5, max=1.0-1e-5)
     return -torch.mean(torch.matmul(label_oh, C_inv) * torch.log(output))
 
+class CTLoss2(nn.Module):
+    """
+    Co-teaching loss
+    https://github.com/bhanML/Co-teaching/blob/master/loss.py
+    """
+    def __init__(self, device):
+        super(CTLoss2, self).__init__()
+        self.device = device
+    
+    def forward(self, y_1, y_2, y_noise, y_noise2, forget_rate, ind, noise_or_not):
+        loss_1 = F.cross_entropy(y_1, y_noise, reduction = 'none')
+        ind_1_sorted = np.argsort(loss_1.cpu().data)
+        loss_1_sorted = loss_1[ind_1_sorted]
+
+        loss_2 = F.cross_entropy(y_2, y_noise2, reduction = 'none')
+        ind_2_sorted = np.argsort(loss_2.cpu().data)
+        loss_2_sorted = loss_2[ind_2_sorted]
+
+        remember_rate = 1 - forget_rate
+        num_remember = int(remember_rate * len(loss_1_sorted))
+        
+        pure_ratio_1 = torch.sum(noise_or_not[ind.cpu()[ind_1_sorted[:num_remember]]])/float(num_remember)
+        pure_ratio_2 = torch.sum(noise_or_not[ind.cpu()[ind_2_sorted[:num_remember]]])/float(num_remember)
+
+        ind_1_update = ind_1_sorted[:num_remember]
+        ind_2_update = ind_2_sorted[:num_remember]
+        """
+        ind_clean_1 = ind.cpu()[ind_1_sorted[:num_remember]]
+        ind_clean_2 = ind.cpu()[ind_2_sorted[:num_remember]]
+        ind_noisy_1 = ind.cpu()[ind_1_sorted[num_remember:]]
+        ind_noisy_2 = ind.cpu()[ind_2_sorted[num_remember:]]"""
+
+        ind_noisy_1 = ind_1_sorted[num_remember:]
+        ind_noisy_2 = ind_2_sorted[num_remember:]
+        # exchange
+        loss_1_update = F.cross_entropy(y_1[ind_2_update], y_noise[ind_2_update])
+        loss_2_update = F.cross_entropy(y_2[ind_1_update], y_noise2[ind_1_update])
+
+        #return torch.sum(loss_1_update)/num_remember, torch.sum(loss_2_update)/num_remember, pure_ratio_1, pure_ratio_2
+        return loss_1_update, loss_2_update, pure_ratio_1, pure_ratio_2, ind_noisy_1, ind_noisy_2

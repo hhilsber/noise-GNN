@@ -2,10 +2,39 @@ import numpy as np
 import torch
 from scipy.sparse import coo_matrix, csr_matrix
 import scipy.sparse as sp
+import torch.nn.functional as F
 from .utils import *
 
 
+def topk_rewire(h, edge_index, device, k_percent=0.1, directed=True):
+    if directed:
+        nbr_nodes,_ = h.shape
+        k = int(nbr_nodes * k_percent)
+        normalized_h = F.normalize(h, dim=1)
+        sim_mat = torch.mm(normalized_h, torch.transpose(normalized_h,dim0=0,dim1=1))
+        
+        adj = torch.zeros((nbr_nodes,nbr_nodes))
+        adj[edge_index[0],edge_index[1]] = 1
+        adj_remove = adj - torch.eye(nbr_nodes)
+        adj_remove[(adj - torch.eye(nbr_nodes)) <= 0] = 1000
+        adj_remove = adj_remove.to(device)
+        # Remove
+        values, indices = torch.topk((torch.mul(sim_mat,adj_remove)).view(-1), k=k, largest=False)
+        delete_mask = torch.ones((nbr_nodes,nbr_nodes))
+        delete_mask.view(-1)[indices] = 0
+        adj_removed = (adj * delete_mask).to(device)
 
+        # Add
+        values, indices = torch.topk((sim_mat - adj_removed * 100 - torch.eye(nbr_nodes).to(device) * 100).view(-1), k=k)
+        adj_add = torch.zeros((nbr_nodes,nbr_nodes))
+        adj_add.view(-1)[indices] = 1
+        adj_new = adj_removed + adj_add.to(device)
+        
+        indexes = torch.nonzero(adj_new, as_tuple=True)
+        edge_new = torch.stack(indexes)
+    else:
+        print('undirected graph rewire ?')
+    return edge_new
 
 def shuffle_pos(features, device='cpu', prob=0.1):
     """
@@ -33,6 +62,7 @@ def shuffle_neg(features, device='cpu'):
     features_shuffled = features_shuffled[idx, :]
     print('neg feature shuffled')
     return features_shuffled.to(device)
+
 
 
 def augment_edges_pos(edge_index, nbr_nodes, prob=0.1):

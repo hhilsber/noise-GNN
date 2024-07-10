@@ -11,12 +11,13 @@ from src.pipeline import PipelineCO
 from src.pipeline_ctp import PipelineCTP
 from src.pipeline_contrast import PipelineCT
 from src.pipeline_test import PipelineTE
+from src.pipeline_h import PipelineH
 
 ##################################### Main #####################################
 def main(config):
     if config['algo_type'] == 'coteaching':
         if config['what'] == '_expe':
-            model = PipelineTE(config)
+            model = PipelineH(config)
         else:
             model = PipelineCO(config)
     elif config['algo_type'] == 'ctp':

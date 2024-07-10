@@ -1,6 +1,6 @@
 # Data
-batch_id: 2
-spec: "diff data loaders and shuffle true"
+batch_id: 1
+aaa_spec: "h pipe"
 data_type: 'network'
 data_dir: '../data'
 dataset_name: 'ogbn-arxiv'
@@ -11,8 +11,7 @@ what: '_expe'
 seed: 1232
 
 # Graph model
-module1: 'sage'
-module2: 'sage'
+module: 'sageH'
 hidden_size: 128
 num_layers: 3
 nbr_neighbors: [15,10,5]
@@ -26,7 +25,8 @@ dropout: 0.5
 
 # Training
 optimizer: 'adam'
-learning_rate: 0.001 # weight_decay: 0.0005
+learning_rate: 0.001
+weight_decay: 0.0005
 
 max_epochs: 25
 batch_size: 512

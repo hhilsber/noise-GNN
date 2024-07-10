@@ -3,7 +3,7 @@ import torch.optim as optim
 
 from .layers.convolution import SimpleGCN
 from .layers.sage import SAGE
-from .layers.sageFC import SAGEFC
+from .layers.sageH import SAGEH
 from .layers.sagePL import SAGEPL
 
 
@@ -46,8 +46,8 @@ class NGNN(object):
                                     out_size=self.out_size,
                                     num_layers=self.num_layers,
                                     dropout=self.dropout)
-        elif self.module == 'sageFC':
-            self.network = SAGEFC(in_size=self.in_size,
+        elif self.module == 'sageH':
+            self.network = SAGEH(in_size=self.in_size,
                                     hidden_size=self.hidden_size,
                                     out_size=self.out_size,
                                     num_layers=self.num_layers,

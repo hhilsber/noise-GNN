@@ -9,13 +9,13 @@ from ogb.nodeproppred import Evaluator
 import datetime as dt
 
 from .utils.load_utils import load_network
-from .utils.data_utils import topk_accuracy
+from .utils.augmentation import topk_rewire
 from .utils.utils import initialize_logger
 from .utils.noise import flip_label
 from .models.model import NGNN
 from .utils.losses import *
 
-class PipelineCO(object):
+class PipelineH(object):
     """
     Processing pipeline
     """
@@ -113,7 +113,6 @@ class PipelineCO(object):
             num_workers=self.config['num_workers'],
             persistent_workers=True
         )
-        print(len(self.test_loader))
 
 
     def train_ct(self, train_loader, epoch, model1, optimizer1, model2, optimizer2):
@@ -134,11 +133,15 @@ class PipelineCO(object):
         for batch in train_loader:
             batch = batch.to(self.device)
             # Only consider predictions and labels of seed nodes
-            out1 = model1(batch.x, batch.edge_index)[:batch.batch_size]
-            out2 = model2(batch.x, batch.edge_index)[:batch.batch_size]
+            out1, h1 = model1(batch.x, batch.edge_index)
+            out2, h1 = model2(batch.x, batch.edge_index)
+            out1 = out1[:batch.batch_size]
+            out2 = out2[:batch.batch_size]
             y = batch.y[:batch.batch_size].squeeze()
             yhn = batch.yhn[:batch.batch_size].squeeze()
             
+            ttt = topk_rewire(h1, batch.edge_index, self.device)
+
             loss_1, loss_2, pure_ratio_1, pure_ratio_2, _, _, _, _  = self.criterion(out1, out2, yhn, self.rate_schedule[epoch], batch.n_id, self.noise_or_not)
             
             total_loss_1 += float(loss_1)
