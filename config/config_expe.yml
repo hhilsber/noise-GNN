@@ -1,5 +1,5 @@
 # Data
-batch_id: 1
+batch_id: 2
 aaa_spec: "h pipe"
 data_type: 'network'
 data_dir: '../data'
@@ -12,7 +12,7 @@ seed: 1232
 
 # Graph model
 module: 'sageH'
-hidden_size: 128
+hidden_size: 256
 num_layers: 3
 nbr_neighbors: [15,10,5]
 
@@ -28,7 +28,7 @@ optimizer: 'adam'
 learning_rate: 0.001
 weight_decay: 0.0005
 
-max_epochs: 3
+max_epochs: 10
 batch_size: 512
 num_workers: 1
 
@@ -46,6 +46,6 @@ noise_type: 'next_pair' # pair   sym
 
 # Algo Co-teaching or CNCLU
 algo_type: 'coteaching' # ct codi cn_soft cn_hard
-ct_tk: 1
+ct_tk: 9
 ct_exp: 1
 ct_tau: 1.2

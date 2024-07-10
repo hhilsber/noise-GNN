@@ -42,9 +42,11 @@ class PipelineH(object):
         self.model1 = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['weight_decay'],self.config['optimizer'],self.config['module'])
         self.model2 = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['weight_decay'],self.config['optimizer'],self.config['module'])
         self.pseudo_gcn = GCN(self.config['hidden_size'],self.config['nbr_classes'])
-        self.pseudo_optim = torch.optim.Adam(self.pseudo_gcn.parameters(),
-                                            lr=config['learning_rate'],
-                                            weight_decay=config['weight_decay'])
+        self.pseudo_optim = torch.optim.Adam(self.pseudo_gcn.parameters(),lr=config['learning_rate'],weight_decay=config['weight_decay'])
+
+        self.optimizer = torch.optim.Adam(list(self.model1.network.parameters()) + list(self.model2.network.parameters())+ list(self.pseudo_gcn.parameters()),lr=config['learning_rate'],weight_decay=config['weight_decay'])
+
+
         self.criterion = CTLoss(self.device)
         self.rate_schedule = np.ones(self.config['max_epochs'])*self.config['noise_rate']*self.config['ct_tau']
         self.rate_schedule[:self.config['ct_tk']] = np.linspace(0, self.config['noise_rate']**self.config['ct_exp'], self.config['ct_tk'])
@@ -143,22 +145,30 @@ class PipelineH(object):
             if (epoch > 0):
                 new_edge1 = topk_rewire(h1, batch.edge_index, self.device)
                 new_edge2 = topk_rewire(h2, batch.edge_index, self.device)
-                pseudo_lbl_1 = pseudo_gcn(batch.x, new_edge1)[:batch.batch_size]
-                pseudo_lbl_2 = pseudo_gcn(batch.x, new_edge2)[:batch.batch_size]
-                print(pseudo_lbl_1.shape)
+                pseudo_lbl_1 = pseudo_gcn(h1, new_edge1)[:batch.batch_size]
+                pred_1 = F.softmax(pseudo_lbl_1,dim=1).detach()
+                pseudo_lbl_2 = pseudo_gcn(h2, new_edge2)[:batch.batch_size]
+                pred_2 = F.softmax(pseudo_lbl_2,dim=1).detach()
                 
+                pred_model_1 = F.softmax(out1,dim=1)
+                pred_model_2 = F.softmax(out2,dim=1)
+                # loss from pseudo labels
+                #loss_add = (-torch.sum(pred[self.idx_add] * torch.log(pred_model[self.idx_add]), dim=1)).mean()
                 loss_pseudo_1 = F.cross_entropy(out1[ind_noisy_1], pseudo_lbl_1[ind_noisy_1])
                 loss_pseudo_2 = F.cross_entropy(out2[ind_noisy_2], pseudo_lbl_2[ind_noisy_2])
-
-                beta = 1.0
-                loss_1 = loss_ct_1 + beta * loss_pseudo_1
-                loss_2 = loss_ct_2 + beta * loss_pseudo_2
             else:
                 loss_1 = loss_ct_1
                 loss_2 = loss_ct_2
-                loss_cr1 = 0
-                loss_cr2 = 0
+                loss_pseudo_1 = 0
+                loss_pseudo_2 = 0
             
+            beta = 1.0
+            
+            loss_1 = loss_ct_1 + beta * loss_pseudo_1
+            loss_2 = loss_ct_2 + beta * loss_pseudo_2
+            loss_pseudo = loss_pseudo_1 + loss_pseudo_2
+
+            loss = loss_ct_1 + beta * loss_pseudo_1 + loss_ct_2 + beta * loss_pseudo_2
 
             total_loss_1 += float(loss_1)
             total_loss_2 += float(loss_2)
@@ -166,7 +176,12 @@ class PipelineH(object):
             total_correct_2 += int(out2.argmax(dim=-1).eq(y).sum())
             total_ratio_1 += (100*pure_ratio_1)
             total_ratio_2 += (100*pure_ratio_2)
-            
+
+            self.optimizer.zero_grad()
+            loss.backward()
+            self.optimizer.step()
+
+            """
             optimizer1.zero_grad()
             loss_1.backward()
             optimizer1.step()
@@ -174,6 +189,11 @@ class PipelineH(object):
             optimizer2.zero_grad()
             loss_2.backward()
             optimizer2.step()
+            
+            if (epoch > 0):
+                pseudo_optim.zero_grad()
+                loss_pseudo.backward()
+                pseudo_optim.step()"""
 
         train_loss_1 = total_loss_1 / len(train_loader)
         train_loss_2 = total_loss_2 / len(train_loader)
@@ -194,8 +214,8 @@ class PipelineH(object):
         for batch in valid_loader:
             batch = batch.to(self.device)
             # Only consider predictions and labels of seed nodes
-            out1, _ = model1(batch.x, batch.edge_index)
-            out2, _ = model2(batch.x, batch.edge_index)
+            out1, _ = model1(batch.x, batch.edge_index, training=False)
+            out2, _ = model2(batch.x, batch.edge_index, training=False)
             out1 = out1[:batch.batch_size]
             out2 = out2[:batch.batch_size]
             y = batch.y[:batch.batch_size].squeeze()
@@ -216,8 +236,8 @@ class PipelineH(object):
         for batch in test_loader:
             batch = batch.to(self.device)
             # Only consider predictions and labels of seed nodes
-            out1, _ = model1(batch.x, batch.edge_index)
-            out2, _ = model2(batch.x, batch.edge_index)
+            out1, _ = model1(batch.x, batch.edge_index, training=False)
+            out2, _ = model2(batch.x, batch.edge_index, training=False)
             out1 = out1[:batch.batch_size]
             out2 = out2[:batch.batch_size]
             y = batch.y[:batch.batch_size].squeeze()

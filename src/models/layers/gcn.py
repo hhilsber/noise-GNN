@@ -1,24 +1,26 @@
 import torch
 import torch.nn as nn
 from torch_geometric.nn import GCNConv, SAGEConv
-
+import torch.nn.functional as F
 
 
 class GCN(torch.nn.Module):
-    def __init__(self, in_channels, out_channels):
+    def __init__(self, in_channels, out_channels, dropout=0.5):
         super(GCN, self).__init__()
 
         self.convs = torch.nn.ModuleList()
-        self.convs.append(GCNConv(in_channels, out_channels, normalize=False))
+        self.convs.append(SAGEConv(in_channels, out_channels, normalize=False))
+        self.dropout = dropout
 
     def reset_parameters(self):
         for conv in self.convs:
             conv.reset_parameters()
 
-    def forward(self, x, edge):
+    def forward(self, x, edge_index, training=True):
         for i, conv in enumerate(self.convs):
-            x = conv(x, edge)
-        return x # x.log_softmax(dim=-1)
+            x = F.dropout(x, p=self.dropout, training=training)
+            x = conv(x, edge_index)
+        return x #x.softmax(dim=-1)
 
 
 """
