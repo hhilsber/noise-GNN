@@ -18,6 +18,7 @@ def topk_rewire(h, edge_index, device, k_percent=0.1, directed=True):
         adj_remove = adj - torch.eye(nbr_nodes)
         adj_remove[(adj - torch.eye(nbr_nodes)) <= 0] = 1000
         adj_remove = adj_remove.to(device)
+        
         # Remove
         values, indices = torch.topk((torch.mul(sim_mat,adj_remove)).view(-1), k=k, largest=False)
         delete_mask = torch.ones((nbr_nodes,nbr_nodes))
