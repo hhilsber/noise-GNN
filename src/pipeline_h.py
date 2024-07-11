@@ -128,6 +128,9 @@ class PipelineH(object):
         total_ratio_1=0
         total_ratio_2=0
 
+        total_loss_pred=0
+        total_loss_add=0
+
         for batch in train_loader:
             batch = batch.to(self.device)
             # Only consider predictions and labels of seed nodes
@@ -140,11 +143,12 @@ class PipelineH(object):
             
             
 
-            loss_ct_1, loss_ct_2, pure_ratio_1, pure_ratio_2, _, _, ind_noisy_1, ind_noisy_2  = self.criterion(out1, out2, yhn, self.rate_schedule[epoch], batch.n_id, self.noise_or_not)
+            loss_ct_1, loss_ct_2, pure_ratio_1, pure_ratio_2, ind_1_update, ind_2_update, ind_noisy_1, ind_noisy_2  = self.criterion(out1, out2, yhn, self.rate_schedule[epoch], batch.n_id, self.noise_or_not)
             
             if (epoch > 0):
-                new_edge1 = topk_rewire(h1, batch.edge_index, self.device)
-                new_edge2 = topk_rewire(h2, batch.edge_index, self.device)
+                new_edge1 = topk_rewire(h1, batch.edge_index, self.device, k_percent=0.2)
+                new_edge2 = topk_rewire(h2, batch.edge_index, self.device, k_percent=0.2)
+
                 pseudo_lbl_1 = pseudo_gcn(h1, new_edge1)[:batch.batch_size]
                 pred_1 = F.softmax(pseudo_lbl_1,dim=1).detach()
                 pseudo_lbl_2 = pseudo_gcn(h2, new_edge2)[:batch.batch_size]
@@ -153,29 +157,38 @@ class PipelineH(object):
                 pred_model_1 = F.softmax(out1,dim=1)
                 pred_model_2 = F.softmax(out2,dim=1)
                 # loss from pseudo labels
-                #loss_add = (-torch.sum(pred[self.idx_add] * torch.log(pred_model[self.idx_add]), dim=1)).mean()
-                loss_pseudo_1 = F.cross_entropy(out1[ind_noisy_1], pseudo_lbl_1[ind_noisy_1])
-                loss_pseudo_2 = F.cross_entropy(out2[ind_noisy_2], pseudo_lbl_2[ind_noisy_2])
+                loss_add = (-torch.sum(pred_1[ind_noisy_1] * torch.log(pred_model_1[ind_noisy_1]), dim=1)).mean() \
+                             + (-torch.sum(pred_2[ind_noisy_2] * torch.log(pred_model_2[ind_noisy_2]), dim=1)).mean()
+
+                loss_pred = F.cross_entropy(pseudo_lbl_1[ind_1_update], yhn[ind_1_update]) \
+                             + F.cross_entropy(pseudo_lbl_2[ind_2_update], yhn[ind_2_update])
+
+                #loss_pseudo_1 = F.cross_entropy(out1[ind_noisy_1], pseudo_lbl_1[ind_noisy_1])
+                #loss_pseudo_2 = F.cross_entropy(out2[ind_noisy_2], pseudo_lbl_2[ind_noisy_2])
+                beta = 0.8
+                loss = loss_ct_1 + loss_ct_2 + loss_pred + beta * loss_add
             else:
                 loss_1 = loss_ct_1
                 loss_2 = loss_ct_2
-                loss_pseudo_1 = 0
-                loss_pseudo_2 = 0
-            
+                loss = loss_ct_1 + loss_ct_2
+                loss_pred = 0
+                loss_add = 0
+            """
             beta = 1.0
-            
             loss_1 = loss_ct_1 + beta * loss_pseudo_1
             loss_2 = loss_ct_2 + beta * loss_pseudo_2
             loss_pseudo = loss_pseudo_1 + loss_pseudo_2
+            loss = loss_ct_1 + beta * loss_pseudo_1 + loss_ct_2 + beta * loss_pseudo_2"""
 
-            loss = loss_ct_1 + beta * loss_pseudo_1 + loss_ct_2 + beta * loss_pseudo_2
-
-            total_loss_1 += float(loss_1)
-            total_loss_2 += float(loss_2)
+            total_loss_1 += float(loss_ct_1)
+            total_loss_2 += float(loss_ct_2)
             total_correct_1 += int(out1.argmax(dim=-1).eq(y).sum())
             total_correct_2 += int(out2.argmax(dim=-1).eq(y).sum())
             total_ratio_1 += (100*pure_ratio_1)
             total_ratio_2 += (100*pure_ratio_2)
+
+            total_loss_pred += float(loss_pred)
+            total_loss_add += float(loss_add)
 
             self.optimizer.zero_grad()
             loss.backward()
@@ -202,7 +215,9 @@ class PipelineH(object):
         pure_ratio_1_list = total_ratio_1 / len(train_loader)
         pure_ratio_2_list = total_ratio_2 / len(train_loader)
         
-        return train_loss_1, train_loss_2, train_acc_1, train_acc_2, pure_ratio_1_list, pure_ratio_2_list
+        train_loss_pred = total_loss_pred / len(train_loader)
+        train_loss_add = total_loss_add / len(train_loader)
+        return train_loss_1, train_loss_2, train_acc_1, train_acc_2, pure_ratio_1_list, pure_ratio_2_list, train_loss_pred, train_loss_add
 
     def evaluate_ct(self, valid_loader, model1, model2):
         model1.eval()
@@ -268,14 +283,19 @@ class PipelineH(object):
         test_acc_1_hist = []
         test_acc_2_hist = []
 
+        train_loss_pred_hist = []
+        train_loss_add_hist = []
+
         best_test = 0.3
         for epoch in range(self.config['max_epochs']):
-            train_loss_1, train_loss_2, train_acc_1, train_acc_2, pure_ratio_1_list, pure_ratio_2_list = self.train_ct(self.train_loader, epoch, self.model1.network.to(self.device), self.model1.optimizer, self.model2.network.to(self.device), self.model2.optimizer, self.pseudo_gcn.to(self.device), self.pseudo_optim)
+            train_loss_1, train_loss_2, train_acc_1, train_acc_2, pure_ratio_1_list, pure_ratio_2_list, train_loss_pred, train_loss_add = self.train_ct(self.train_loader, epoch, self.model1.network.to(self.device), self.model1.optimizer, self.model2.network.to(self.device), self.model2.optimizer, self.pseudo_gcn.to(self.device), self.pseudo_optim)
 
             train_loss_1_hist.append(train_loss_1), train_loss_2_hist.append(train_loss_2)
             train_acc_1_hist.append(train_acc_1), train_acc_2_hist.append(train_acc_2)
             pure_ratio_1_hist.append(pure_ratio_1_list), pure_ratio_2_hist.append(pure_ratio_2_list)
             
+            train_loss_pred_hist.append(train_loss_pred), train_loss_add_hist.append(train_loss_add)
+
             val_acc_1, val_acc_2 = self.evaluate_ct(self.valid_loader, self.model1.network.to(self.device), self.model2.network.to(self.device))
             val_acc_1_hist.append(val_acc_1), val_acc_2_hist.append(val_acc_2)
             
@@ -284,7 +304,7 @@ class PipelineH(object):
             self.logger.info('   Train epoch {}/{} --- acc t1: {:.3f} t2: {:.3f} v1: {:.3f} v2: {:.3f} tst1: {:.3f} tst2: {:.3f}'.format(epoch+1,self.config['max_epochs'],train_acc_1,train_acc_2,val_acc_1,val_acc_2,test_acc_1,test_acc_2))
             if (test_acc_1 > best_test):
                 best_test = test_acc_1
-            elif (test_acc_2 > best_test):
+            if (test_acc_2 > best_test):
                 best_test = test_acc_2
             
         print('Done training')
@@ -310,7 +330,8 @@ class PipelineH(object):
 
             axs[2].plot(train_loss_1_hist, 'blue', label="train_loss_1_hist")
             axs[2].plot(train_loss_2_hist, 'darkgreen', label="train_loss_2_hist")
-                
+            axs[2].plot(train_loss_pred_hist, 'red', label="train_loss_pred_hist")
+            axs[2].plot(train_loss_add_hist, 'cyan', label="train_loss_add_hist")
             
             axs[0].legend(handles=[line1, line2, line3, line4, line5, line6], loc='upper left', bbox_to_anchor=(1.05, 1))
             
@@ -321,6 +342,6 @@ class PipelineH(object):
 
             plt.tight_layout()
             #plt.show()
-            plot_name = '../out_plots/coteaching2/' + self.output_name + '.png'
+            plot_name = '../out_plots/coteaching_expe/' + self.output_name + '.png'
             plt.savefig(plot_name)
 

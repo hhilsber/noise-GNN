@@ -1,6 +1,6 @@
 # Data
-batch_id: 2
-aaa_spec: "h pipe"
+batch_id: 9
+aaa_spec: "beta = 0.8   k_percent=0.2"
 data_type: 'network'
 data_dir: '../data'
 dataset_name: 'ogbn-arxiv'
@@ -28,7 +28,7 @@ optimizer: 'adam'
 learning_rate: 0.001
 weight_decay: 0.0005
 
-max_epochs: 10
+max_epochs: 20
 batch_size: 512
 num_workers: 1
 
@@ -46,6 +46,6 @@ noise_type: 'next_pair' # pair   sym
 
 # Algo Co-teaching or CNCLU
 algo_type: 'coteaching' # ct codi cn_soft cn_hard
-ct_tk: 9
+ct_tk: 15
 ct_exp: 1
-ct_tau: 1.2
+ct_tau: 1.3

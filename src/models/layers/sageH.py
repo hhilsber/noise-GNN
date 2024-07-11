@@ -24,12 +24,12 @@ class SAGEH(torch.nn.Module):
         for conv in self.convs:
             conv.reset_parameters()
 
-    def forward(self, x, edge_index):
+    def forward(self, x, edge_index, training=True):
         for i, conv in enumerate(self.convs):
             x = conv(x, edge_index)
             if i != self.num_layers - 1:
                 #h_out = self.act(x)
                 #h_out = self.bnl(x)
                 h_out = x.relu()
-                x = F.dropout(h_out, p=self.dropout, training=self.training)
+                x = F.dropout(h_out, p=self.dropout, training=training)
         return x, h_out
