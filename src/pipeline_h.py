@@ -146,8 +146,8 @@ class PipelineH(object):
             loss_ct_1, loss_ct_2, pure_ratio_1, pure_ratio_2, ind_1_update, ind_2_update, ind_noisy_1, ind_noisy_2  = self.criterion(out1, out2, yhn, self.rate_schedule[epoch], batch.n_id, self.noise_or_not)
             
             if (epoch > 0):
-                new_edge1 = topk_rewire(h1, batch.edge_index, self.device, k_percent=0.2)
-                new_edge2 = topk_rewire(h2, batch.edge_index, self.device, k_percent=0.2)
+                new_edge1 = topk_rewire(h1, batch.edge_index, self.device, k_percent=0.1)
+                new_edge2 = topk_rewire(h2, batch.edge_index, self.device, k_percent=0.1)
 
                 pseudo_lbl_1 = pseudo_gcn(h1, new_edge1)[:batch.batch_size]
                 pred_1 = F.softmax(pseudo_lbl_1,dim=1).detach()
@@ -316,8 +316,8 @@ class PipelineH(object):
         if self.config['do_plot']:
             fig, axs = plt.subplots(3, 1, figsize=(10, 15))
             
-            axs[0].axhline(y=0.80, color='grey', linestyle='--')
-            axs[0].axhline(y=0.75, color='grey', linestyle='--')
+            axs[0].axhline(y=0.55, color='grey', linestyle='--')
+            #axs[0].axhline(y=0.75, color='grey', linestyle='--')
             line1, = axs[0].plot(train_acc_1_hist, 'blue', label="train_acc_1_hist")
             line2, = axs[0].plot(train_acc_2_hist, 'darkgreen', label="train_acc_2_hist")
             line3, = axs[0].plot(val_acc_1_hist, 'purple', label="val_acc_1_hist")
