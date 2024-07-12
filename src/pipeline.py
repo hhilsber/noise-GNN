@@ -41,8 +41,8 @@ class PipelineCO(object):
         if self.config['train_type'] in ['nalgo','both']:
             #self.model1 = NGNN(config)
             #self.model2 = NGNN(config)
-            self.model1 = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['weight_decay'],self.config['optimizer'],self.config['module'])
-            self.model2 = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['weight_decay'],self.config['optimizer'],self.config['module'])
+            self.model1 = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module'])
+            self.model2 = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module'])
             if self.config['algo_type'] == 'coteaching':
                 self.criterion = CTLoss(self.device)
             elif self.config['algo_type'] == 'codi':
@@ -249,7 +249,7 @@ class PipelineCO(object):
             y = batch.y[:batch.batch_size].squeeze()
 
             total_correct += int(out.argmax(dim=-1).eq(y).sum())
-        test_acc = total_correct / self.test_size #self.split_idx['test'].size(0)
+        test_acc = total_correct / self.split_idx['test'].size(0) #self.test_size #
         return test_acc
 
     def evaluate(self, valid_loader, model):
@@ -302,11 +302,12 @@ class PipelineCO(object):
                     test_acc_1, test_acc_2 = self.test_ct(self.test_loader, self.model1.network.to(self.device), self.model2.network.to(self.device))
                     test_acc_1_hist.append(test_acc_1), test_acc_2_hist.append(test_acc_2)
                     self.logger.info('   Train epoch {}/{} --- acc t1: {:.3f} t2: {:.3f} v1: {:.3f} v2: {:.3f} tst1: {:.3f} tst2: {:.3f}'.format(epoch+1,self.config['max_epochs'],train_acc_1,train_acc_2,val_acc_1,val_acc_2,test_acc_1,test_acc_2))
+                    """
                     if (test_acc_1 > best_test):
                         best_test = test_acc_1
                     elif (test_acc_2 > best_test):
                         best_test = test_acc_2
-                    """
+                    
                     if (val_acc_1 > best_val):
                         print("saved model, val acc {:.3f}".format(val_acc_1))
                         self.logger.info('   Saved  model')
@@ -346,17 +347,18 @@ class PipelineCO(object):
             val_acc_1, val_acc_2 = self.evaluate_ct(self.valid_loader, self.model1.network.to(self.device), self.model2.network.to(self.device))
             self.logger.info('   Load eval v1: {:.4f} v2: {:.4f}'.format(val_acc_1,val_acc_2))
 
-        self.logger.info('Best test acc: {:.3f}'.format(best_test))
-        #_, _, _ = self.real_test(self.model1.network.to(self.device), self.data, self.split_idx)
-        #test_acc_1 = self.test(self.test_loader, self.model1.network.to(self.device))
-        #self.logger.info('   Test acc 1: {:.4f}'.format(test_acc_1))
+        if self.config['train_type'] in ['nalgo','both']:
+            self.logger.info('Best test acc1: {:.3f}   acc2: {:.3f}'.format(max(test_acc_1_hist),max(test_acc_2_hist)))
+        if self.config['train_type'] in ['baseline','both']:
+            self.logger.info('Best baseline test acc: {:.3f}'.format(max(test_acc_hist)))
+        
         print('Done')
 
         if self.config['do_plot']:
             fig, axs = plt.subplots(3, 1, figsize=(10, 15))
             
-            axs[0].axhline(y=0.80, color='grey', linestyle='--')
-            axs[0].axhline(y=0.75, color='grey', linestyle='--')
+            #axs[0].axhline(y=0.80, color='grey', linestyle='--')
+            #axs[0].axhline(y=0.75, color='grey', linestyle='--')
             if self.config['train_type'] in ['nalgo','both']:
                 line1, = axs[0].plot(train_acc_1_hist, 'blue', label="train_acc_1_hist")
                 line2, = axs[0].plot(train_acc_2_hist, 'darkgreen', label="train_acc_2_hist")

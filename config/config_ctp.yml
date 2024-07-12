@@ -1,6 +1,6 @@
 # Data
-batch_id: 4
-aaa_spec: "y_pure = y_pure[:batch_size],    noisy_rate=0.3     beta = 1.0  use_hard_labels=False"
+batch_id: 2
+aaa_spec: "pseudo_pure = pseudo_pure.detach(), beta = 1.0, noisy_rate=0.1, use_hard_labels=True"
 data_type: 'network'
 data_dir: '../data'
 dataset_name: 'ogbn-arxiv'
@@ -11,7 +11,7 @@ seed: 1232
 
 # Graph model
 module: 'sagePL'
-hidden_size: 512
+hidden_size: 256
 num_layers: 3
 nbr_neighbors: [15,10,5]
 
@@ -23,7 +23,8 @@ dropout: 0.5
 
 # Training
 optimizer: 'adam'
-learning_rate: 0.001 # weight_decay: 0.0005
+learning_rate: 0.001
+weight_decay: 0.0005
 
 max_epochs: 30
 batch_size: 512
@@ -37,11 +38,11 @@ do_train: True
 do_plot: True
 
 # Noise
-noise_rate: 0.2
+noise_rate: 0.3
 noise_type: 'next_pair' # pair   sym
 
-# Algo Co-teaching or CNCLU
+# Algo 
 algo_type: 'ctp' # coteaching ctp
 ct_tk: 15
 ct_exp: 1
-ct_tau: 1.2
+ct_tau: 1.1

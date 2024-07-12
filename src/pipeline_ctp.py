@@ -38,8 +38,8 @@ class PipelineCTP(object):
         self.config = config
 
         # Initialize the model
-        self.model1 = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module'],self.config['nbr_nodes'])
-        self.model2 = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module'],self.config['nbr_nodes'])
+        self.model1 = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['weight_decay'],self.config['optimizer'],self.config['module'],self.config['nbr_nodes'])
+        self.model2 = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['weight_decay'],self.config['optimizer'],self.config['module'],self.config['nbr_nodes'])
         self.criterion = CTLoss(self.device)
         self.rate_schedule = np.ones(self.config['max_epochs'])*self.config['noise_rate']*self.config['ct_tau']
         self.rate_schedule[:self.config['ct_tk']] = np.linspace(0, self.config['noise_rate']**self.config['ct_exp'], self.config['ct_tk'])
@@ -252,11 +252,7 @@ class PipelineCTP(object):
             test_acc_1, test_acc_2 = self.test(self.test_loader, self.model1.network.to(self.device), self.model2.network.to(self.device))
             test_acc_1_hist.append(test_acc_1), test_acc_2_hist.append(test_acc_2)
             self.logger.info('   Train epoch {}/{} --- acc t1: {:.3f} t2: {:.3f} v1: {:.3f} v2: {:.3f} tst1: {:.3f} tst2: {:.3f}'.format(epoch+1,self.config['max_epochs'],train_acc_1,train_acc_2,val_acc_1,val_acc_2,test_acc_1,test_acc_2))
-            if (test_acc_1 > best_test):
-                best_test = test_acc_1
-            elif (test_acc_2 > best_test):
-                best_test = test_acc_2
-        self.logger.info('Best test acc: {:.3f}'.format(best_test))
+        self.logger.info('Best test acc1: {:.3f}   acc2: {:.3f}'.format(max(test_acc_1_hist),max(test_acc_2_hist)))
         print('Done')
 
         if self.config['do_plot']:

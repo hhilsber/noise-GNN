@@ -38,7 +38,7 @@ def ce_loss(logits, targets, use_hard_labels=True, reduction='none'):
         nll_loss = torch.sum(-targets*log_pred, dim=1)
         return nll_loss
 
-def fix_cr(y_pure, y_noisy, ind_noisy, batch_size=512, name='ce', T=1.0, p_cutoff=0.0, use_hard_labels=False, w=None):
+def fix_cr(y_pure, y_noisy, ind_noisy, batch_size=512, name='ce', T=1.0, p_cutoff=0.0, use_hard_labels=True, w=None):
     assert name in ['ce', 'l2']
 
     num_nodes = y_pure.shape[0]
@@ -51,7 +51,7 @@ def fix_cr(y_pure, y_noisy, ind_noisy, batch_size=512, name='ce', T=1.0, p_cutof
     pseudo_pure = torch.exp(y_pure)
     pseudo_noisy = torch.exp(y_noisy)
 
-    #pseudo_pure = pseudo_pure.detach()
+    pseudo_pure = pseudo_pure.detach()
     if name == 'l2':
         assert y_pure.size() == y_noisy.size()
         return F.mse_loss(y_noisy, y_pure, reduction='mean')

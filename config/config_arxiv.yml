@@ -1,5 +1,5 @@
 # Data
-batch_id: 1
+batch_id: 3
 
 data_type: 'network'
 data_dir: '../data'
@@ -17,7 +17,7 @@ num_layers: 3
 nbr_neighbors: [15,10,5]
 
 # Compare network
-train_type: 'nalgo' # nalgo   baseline   both
+train_type: 'both' # nalgo   baseline   both
 compare_loss : 'normal' # normal back
 
 # Regularization
@@ -28,7 +28,7 @@ optimizer: 'adam'
 learning_rate: 0.001
 weight_decay: 0.0005
 
-max_epochs: 35
+max_epochs: 40
 batch_size: 512
 num_workers: 1
 
@@ -48,4 +48,4 @@ noise_type: 'next_pair' # pair   sym
 algo_type: 'coteaching' # ct codi cn_soft cn_hard
 ct_tk: 15
 ct_exp: 1
-ct_tau: 1.2
+ct_tau: 0.9
