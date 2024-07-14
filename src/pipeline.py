@@ -27,7 +27,7 @@ class PipelineCO(object):
         self.dataset = load_network(config)
         self.data = self.dataset[0]
         print('noise type and rate: {} {}'.format(config['noise_type'], config['noise_rate']))
-        self.data.yhn, noise_mat = flip_label(self.data.y, self.dataset.num_classes, config['noise_type'], config['noise_rate'])
+        self.data.yhn, self.noise_mat = flip_label(self.data.y, self.dataset.num_classes, config['noise_type'], config['noise_rate'])
         self.noise_or_not = (self.data.y.squeeze() == self.data.yhn) #.int() # true if same lbl
         
         config['nbr_features'] = self.dataset.num_features #self.dataset.x.shape[-1]
@@ -185,10 +185,10 @@ class PipelineCO(object):
                 loss = F.cross_entropy(out, yhn)
                 #loss = F.cross_entropy(out, y)
             else:
-                loss = backward_correction(out, yhn, self.noise_mat, self.device, self.config['nbr_classes'])
+                loss = backward_correction(out, yhn, self.noise_mat, self.config['nbr_classes'], self.device)
             
             total_loss += float(loss)
-            total_correct += int(out.argmax(dim=-1).eq(y).sum()) 
+            total_correct += int(out.argmax(dim=-1).eq(y).sum())
 
             optimizer.zero_grad()
             loss.backward()

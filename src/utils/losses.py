@@ -159,7 +159,26 @@ class CTLoss(nn.Module):
         #return torch.sum(loss_1_update)/num_remember, torch.sum(loss_2_update)/num_remember, pure_ratio_1, pure_ratio_2
         return loss_1_update, loss_2_update, pure_ratio_1, pure_ratio_2, ind_1_update, ind_2_update, ind_noisy_1, ind_noisy_2
 
+def backward_correction(output, labels, C, nbr_class, device):
+    '''
+    https://github.com/gear/denoising-gnn/blob/master/models/loss.py
 
+        Backward loss correction.
+
+        output: raw (logits) output from model
+        labels: true labels
+        C: correction matrix
+    '''
+    softmax = nn.Softmax(dim=1)
+    C_inv = np.linalg.inv(C).astype(np.float32)
+    C_inv = torch.from_numpy(C_inv).to(device)
+    label_oh = torch.FloatTensor(len(labels), nbr_class).to(device)
+    label_oh.zero_()
+    label_oh.scatter_(1,labels.view(-1,1),1)
+    output = softmax(output)
+    #output /= torch.sum(output, dim=-1, keepdim=True)
+    output = torch.clamp(output, min=1e-5, max=1.0-1e-5)
+    return -torch.mean(torch.matmul(label_oh, C_inv) * torch.log(output))
 
 class CoDiLoss(nn.Module):
     """
@@ -228,26 +247,7 @@ class CoDiLoss(nn.Module):
         #return torch.sum(loss_1_update)/num_remember, torch.sum(loss_2_update)/num_remember, pure_ratio_1, pure_ratio_2
         return loss_1_update, loss_2_update, pure_ratio_1, pure_ratio_2
 
-def backward_correction(output, labels, C, device, nclass):
-    '''
-    https://github.com/gear/denoising-gnn/blob/master/models/loss.py
 
-        Backward loss correction.
-
-        output: raw (logits) output from model
-        labels: true labels
-        C: correction matrix
-    '''
-    softmax = nn.Softmax(dim=1)
-    C_inv = np.linalg.inv(C).astype(np.float32)
-    C_inv = torch.from_numpy(C_inv).to(device)
-    label_oh = torch.FloatTensor(len(labels), nclass).to(device)
-    label_oh.zero_()
-    label_oh.scatter_(1,labels.view(-1,1),1)
-    output = softmax(output)
-    #output /= torch.sum(output, dim=-1, keepdim=True)
-    output = torch.clamp(output, min=1e-5, max=1.0-1e-5)
-    return -torch.mean(torch.matmul(label_oh, C_inv) * torch.log(output))
 
 class CTLoss2(nn.Module):
     """

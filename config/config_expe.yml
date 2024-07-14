@@ -1,9 +1,11 @@
 # Data
-batch_id: 12
-aaa_spec: "beta = 0.8   k_percent=0.1"
+batch_id: 2
+#aaa_spec: "backward loss for noisy samples, loss_bc1 = backward_correction(out1[ind_noisy_1]"
+#aaa_spec2: "new estimate of noise mat, prob = 0.8"
+
 data_type: 'network'
 data_dir: '../data'
-dataset_name: 'ogbn-products'
+dataset_name: 'ogbn-arxiv'
 task_type: 'classification'
 what: '_expe'
 
@@ -11,13 +13,13 @@ what: '_expe'
 seed: 1232
 
 # Graph model
-module: 'sageH'
+module: 'sage'
 hidden_size: 256
 num_layers: 3
 nbr_neighbors: [15,10,5]
 
 # Compare network
-train_type: 'nalgo' # nalgo   baseline   both
+train_type: 'both' # nalgo   baseline   both
 compare_loss : 'normal' # normal back
 
 # Regularization
@@ -26,10 +28,10 @@ dropout: 0.5
 # Training
 optimizer: 'adam'
 learning_rate: 0.001
-weight_decay: 0.0005
+#weight_decay: 0.0005
 
-max_epochs: 25
-batch_size: 512
+max_epochs: 24
+batch_size: 256
 num_workers: 1
 
 # Device
@@ -48,4 +50,4 @@ noise_type: 'next_pair' # pair   sym
 algo_type: 'coteaching' # ct codi cn_soft cn_hard
 ct_tk: 15
 ct_exp: 1
-ct_tau: 1.1
+ct_tau: 1.0
