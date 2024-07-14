@@ -11,7 +11,6 @@ def topk_rewire(h, edge_index, device, k_percent=0.1, directed=True):
         nbr_nodes,_ = h.shape
         k = int(nbr_nodes * k_percent)
         normalized_h = F.normalize(h, dim=1)
-        print(normalized_h.shape)
         sim_mat = torch.mm(normalized_h, torch.transpose(normalized_h,dim0=0,dim1=1))
         
         adj = torch.zeros((nbr_nodes,nbr_nodes))

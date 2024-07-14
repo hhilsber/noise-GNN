@@ -39,12 +39,12 @@ class PipelineH(object):
         self.config = config
 
         # Initialize the model
-        self.model1 = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['weight_decay'],self.config['optimizer'],self.config['module'])
-        self.model2 = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['weight_decay'],self.config['optimizer'],self.config['module'])
+        self.model1 = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module'])
+        self.model2 = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module'])
         self.pseudo_gcn = GCN(self.config['hidden_size'],self.config['nbr_classes'])
-        self.pseudo_optim = torch.optim.Adam(self.pseudo_gcn.parameters(),lr=config['learning_rate'],weight_decay=config['weight_decay'])
+        self.pseudo_optim = torch.optim.Adam(self.pseudo_gcn.parameters(),lr=config['learning_rate'])
 
-        self.optimizer = torch.optim.Adam(list(self.model1.network.parameters()) + list(self.model2.network.parameters())+ list(self.pseudo_gcn.parameters()),lr=config['learning_rate'],weight_decay=config['weight_decay'])
+        self.optimizer = torch.optim.Adam(list(self.model1.network.parameters()) + list(self.model2.network.parameters())+ list(self.pseudo_gcn.parameters()),lr=config['learning_rate'])#,weight_decay=config['weight_decay'])
 
 
         self.criterion = CTLoss(self.device)
@@ -140,8 +140,6 @@ class PipelineH(object):
             out2 = out2[:batch.batch_size]
             y = batch.y[:batch.batch_size].squeeze()
             yhn = batch.yhn[:batch.batch_size].squeeze()
-            
-            
 
             loss_ct_1, loss_ct_2, pure_ratio_1, pure_ratio_2, ind_1_update, ind_2_update, ind_noisy_1, ind_noisy_2  = self.criterion(out1, out2, yhn, self.rate_schedule[epoch], batch.n_id, self.noise_or_not)
             
@@ -173,12 +171,7 @@ class PipelineH(object):
                 loss = loss_ct_1 + loss_ct_2
                 loss_pred = 0
                 loss_add = 0
-            """
-            beta = 1.0
-            loss_1 = loss_ct_1 + beta * loss_pseudo_1
-            loss_2 = loss_ct_2 + beta * loss_pseudo_2
-            loss_pseudo = loss_pseudo_1 + loss_pseudo_2
-            loss = loss_ct_1 + beta * loss_pseudo_1 + loss_ct_2 + beta * loss_pseudo_2"""
+           
 
             total_loss_1 += float(loss_ct_1)
             total_loss_2 += float(loss_ct_2)
@@ -194,19 +187,6 @@ class PipelineH(object):
             loss.backward()
             self.optimizer.step()
 
-            """
-            optimizer1.zero_grad()
-            loss_1.backward()
-            optimizer1.step()
-
-            optimizer2.zero_grad()
-            loss_2.backward()
-            optimizer2.step()
-            
-            if (epoch > 0):
-                pseudo_optim.zero_grad()
-                loss_pseudo.backward()
-                pseudo_optim.step()"""
 
         train_loss_1 = total_loss_1 / len(train_loader)
         train_loss_2 = total_loss_2 / len(train_loader)

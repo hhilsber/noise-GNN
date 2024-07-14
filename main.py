@@ -17,7 +17,7 @@ from src.pipeline_h import PipelineH
 def main(config):
     if config['algo_type'] == 'coteaching':
         if config['what'] == '_expe':
-            model = PipelineTE(config)
+            model = PipelineH(config)
         else:
             model = PipelineCO(config)
     elif config['algo_type'] == 'ctp':
@@ -26,7 +26,7 @@ def main(config):
         model = PipelineCT(config)
     else:
         print('wrong algo type')
-    #model.loop()
+    model.loop()
 
 
 ##################################### Fcts #####################################

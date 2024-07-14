@@ -13,7 +13,7 @@ what: '_expe'
 seed: 1232
 
 # Graph model
-module: 'sage'
+module: 'sageH'
 hidden_size: 256
 num_layers: 3
 nbr_neighbors: [15,10,5]
@@ -30,7 +30,7 @@ optimizer: 'adam'
 learning_rate: 0.001
 #weight_decay: 0.0005
 
-max_epochs: 24
+max_epochs: 20
 batch_size: 256
 num_workers: 1
 
