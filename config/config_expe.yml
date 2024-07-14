@@ -1,7 +1,6 @@
 # Data
-batch_id: 2
-#aaa_spec: "backward loss for noisy samples, loss_bc1 = backward_correction(out1[ind_noisy_1]"
-#aaa_spec2: "new estimate of noise mat, prob = 0.8"
+batch_id: 6
+aaa_spec: "pl"
 
 data_type: 'network'
 data_dir: '../data'
@@ -19,7 +18,7 @@ num_layers: 3
 nbr_neighbors: [15,10,5]
 
 # Compare network
-train_type: 'both' # nalgo   baseline   both
+train_type: 'nalgo' # nalgo   baseline   both
 compare_loss : 'normal' # normal back
 
 # Regularization
@@ -48,6 +47,6 @@ noise_type: 'next_pair' # pair   sym
 
 # Algo Co-teaching or CNCLU
 algo_type: 'coteaching' # ct codi cn_soft cn_hard
-ct_tk: 15
+ct_tk: 12
 ct_exp: 1
 ct_tau: 1.0

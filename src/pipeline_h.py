@@ -42,10 +42,9 @@ class PipelineH(object):
         self.model1 = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module'])
         self.model2 = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module'])
         self.pseudo_gcn = GCN(self.config['hidden_size'],self.config['nbr_classes'])
-        self.pseudo_optim = torch.optim.Adam(self.pseudo_gcn.parameters(),lr=config['learning_rate'])
+        #self.pseudo_optim = torch.optim.Adam(self.pseudo_gcn.parameters(),lr=config['learning_rate'])
 
         self.optimizer = torch.optim.Adam(list(self.model1.network.parameters()) + list(self.model2.network.parameters())+ list(self.pseudo_gcn.parameters()),lr=config['learning_rate'])#,weight_decay=config['weight_decay'])
-
 
         self.criterion = CTLoss(self.device)
         self.rate_schedule = np.ones(self.config['max_epochs'])*self.config['noise_rate']*self.config['ct_tau']
@@ -53,6 +52,8 @@ class PipelineH(object):
 
         
         # Split data set
+        self.split_idx = self.dataset.get_idx_split()
+        """
         if config['original_split']:
             #self.split_idx = self.dataset.get_idx_split()
             split_idx = self.dataset.get_idx_split()
@@ -75,7 +76,7 @@ class PipelineH(object):
             remaining_test_idx = shuffled_test_idx[num_samples_to_move:]
             new_train_idx = torch.cat([train_idx, indices_to_move])
             # Create the new split_idx dictionary
-            self.split_idx = {'train': new_train_idx, 'valid': split_idx['valid'], 'test': remaining_test_idx}
+            self.split_idx = {'train': new_train_idx, 'valid': split_idx['valid'], 'test': remaining_test_idx}"""
 
         print('train: {}, valid: {}, test: {}'.format(self.split_idx['train'].shape[0],self.split_idx['valid'].shape[0],self.split_idx['test'].shape[0]))
 
@@ -113,7 +114,7 @@ class PipelineH(object):
         )
 
 
-    def train_ct(self, train_loader, epoch, model1, optimizer1, model2, optimizer2, pseudo_gcn, pseudo_optim):
+    def train_ct(self, train_loader, epoch, model1, model2, pseudo_gcn, optimizer):
         if not((epoch+1)%5) or ((epoch+1)==1):
             print('   Train epoch {}/{}'.format(epoch+1, self.config['max_epochs']))
         model1.train()
@@ -125,6 +126,8 @@ class PipelineH(object):
         total_loss_2=0
         total_correct_1=0
         total_correct_2=0
+        total_correct_pl1=0
+        total_correct_pl2=0
         total_ratio_1=0
         total_ratio_2=0
 
@@ -164,40 +167,46 @@ class PipelineH(object):
                 #loss_pseudo_1 = F.cross_entropy(out1[ind_noisy_1], pseudo_lbl_1[ind_noisy_1])
                 #loss_pseudo_2 = F.cross_entropy(out2[ind_noisy_2], pseudo_lbl_2[ind_noisy_2])
                 beta = 0.8
-                loss = loss_ct_1 + loss_ct_2 + loss_pred + beta * loss_add
+                loss = loss_ct_1 + loss_ct_2 + beta * loss_add + loss_pred 
             else:
                 loss_1 = loss_ct_1
                 loss_2 = loss_ct_2
                 loss = loss_ct_1 + loss_ct_2
                 loss_pred = 0
                 loss_add = 0
+                pseudo_lbl_1 = out1
+                pseudo_lbl_2 = out2
            
 
             total_loss_1 += float(loss_ct_1)
             total_loss_2 += float(loss_ct_2)
             total_correct_1 += int(out1.argmax(dim=-1).eq(y).sum())
             total_correct_2 += int(out2.argmax(dim=-1).eq(y).sum())
+            total_correct_pl1 += int(pseudo_lbl_1.argmax(dim=-1).eq(y).sum())
+            total_correct_pl2 += int(pseudo_lbl_2.argmax(dim=-1).eq(y).sum())
             total_ratio_1 += (100*pure_ratio_1)
             total_ratio_2 += (100*pure_ratio_2)
 
             total_loss_pred += float(loss_pred)
             total_loss_add += float(loss_add)
 
-            self.optimizer.zero_grad()
+            optimizer.zero_grad()
             loss.backward()
-            self.optimizer.step()
+            optimizer.step()
 
 
         train_loss_1 = total_loss_1 / len(train_loader)
         train_loss_2 = total_loss_2 / len(train_loader)
         train_acc_1 = total_correct_1 / self.split_idx['train'].size(0)
         train_acc_2 = total_correct_2 / self.split_idx['train'].size(0)
+        train_acc_pl1 = total_correct_pl1 / self.split_idx['train'].size(0)
+        train_acc_pl2 = total_correct_pl2 / self.split_idx['train'].size(0)
         pure_ratio_1_list = total_ratio_1 / len(train_loader)
         pure_ratio_2_list = total_ratio_2 / len(train_loader)
         
         train_loss_pred = total_loss_pred / len(train_loader)
         train_loss_add = total_loss_add / len(train_loader)
-        return train_loss_1, train_loss_2, train_acc_1, train_acc_2, pure_ratio_1_list, pure_ratio_2_list, train_loss_pred, train_loss_add
+        return train_loss_1, train_loss_2, train_acc_1, train_acc_2, train_acc_pl1, train_acc_pl2, pure_ratio_1_list, pure_ratio_2_list, train_loss_pred, train_loss_add
 
     def evaluate_ct(self, valid_loader, model1, model2):
         model1.eval()
@@ -262,16 +271,19 @@ class PipelineH(object):
         val_acc_2_hist = []
         test_acc_1_hist = []
         test_acc_2_hist = []
+        train_acc_pl1_hist = []
+        train_acc_pl2_hist = []
 
         train_loss_pred_hist = []
         train_loss_add_hist = []
 
         best_test = 0.3
         for epoch in range(self.config['max_epochs']):
-            train_loss_1, train_loss_2, train_acc_1, train_acc_2, pure_ratio_1_list, pure_ratio_2_list, train_loss_pred, train_loss_add = self.train_ct(self.train_loader, epoch, self.model1.network.to(self.device), self.model1.optimizer, self.model2.network.to(self.device), self.model2.optimizer, self.pseudo_gcn.to(self.device), self.pseudo_optim)
+            train_loss_1, train_loss_2, train_acc_1, train_acc_2, train_acc_pl1, train_acc_pl2, pure_ratio_1_list, pure_ratio_2_list, train_loss_pred, train_loss_add = self.train_ct(self.train_loader, epoch, self.model1.network.to(self.device), self.model2.network.to(self.device), self.pseudo_gcn.to(self.device), self.optimizer)
 
             train_loss_1_hist.append(train_loss_1), train_loss_2_hist.append(train_loss_2)
             train_acc_1_hist.append(train_acc_1), train_acc_2_hist.append(train_acc_2)
+            train_acc_pl1_hist.append(train_acc_pl1), train_acc_pl2_hist.append(train_acc_pl2)
             pure_ratio_1_hist.append(pure_ratio_1_list), pure_ratio_2_hist.append(pure_ratio_2_list)
             
             train_loss_pred_hist.append(train_loss_pred), train_loss_add_hist.append(train_loss_add)
@@ -294,31 +306,35 @@ class PipelineH(object):
         print('Done')
 
         if self.config['do_plot']:
-            fig, axs = plt.subplots(3, 1, figsize=(10, 15))
+            fig, axs = plt.subplots(4, 1, figsize=(10, 15))
             
             axs[0].axhline(y=0.55, color='grey', linestyle='--')
-            #axs[0].axhline(y=0.75, color='grey', linestyle='--')
             line1, = axs[0].plot(train_acc_1_hist, 'blue', label="train_acc_1_hist")
             line2, = axs[0].plot(train_acc_2_hist, 'darkgreen', label="train_acc_2_hist")
             line3, = axs[0].plot(val_acc_1_hist, 'purple', label="val_acc_1_hist")
             line4, = axs[0].plot(val_acc_2_hist, 'darkseagreen', label="val_acc_2_hist")
             line5, = axs[0].plot(test_acc_1_hist, 'deepskyblue', label="test_acc_1_hist")
             line6, = axs[0].plot(test_acc_2_hist, 'chartreuse', label="test_acc_2_hist")
-            axs[1].plot(pure_ratio_1_hist, 'blue', label="pure_ratio_1_hist")
-            axs[1].plot(pure_ratio_2_hist, 'darkgreen', label="pure_ratio_2_hist")
-            axs[1].legend()
 
-            axs[2].plot(train_loss_1_hist, 'blue', label="train_loss_1_hist")
-            axs[2].plot(train_loss_2_hist, 'darkgreen', label="train_loss_2_hist")
-            axs[2].plot(train_loss_pred_hist, 'red', label="train_loss_pred_hist")
-            axs[2].plot(train_loss_add_hist, 'cyan', label="train_loss_add_hist")
+            axs[1].plot(train_acc_pl1_hist, 'blue', label="train_acc_pl1_hist")
+            axs[1].plot(train_acc_pl2_hist, 'darkgreen', label="train_acc_pl2_hist")
+
+            axs[2].plot(pure_ratio_1_hist, 'blue', label="pure_ratio_1_hist")
+            axs[2].plot(pure_ratio_2_hist, 'darkgreen', label="pure_ratio_2_hist")
+            axs[2].legend()
+
+            axs[3].plot(train_loss_1_hist, 'blue', label="train_loss_1_hist")
+            axs[3].plot(train_loss_2_hist, 'darkgreen', label="train_loss_2_hist")
+            axs[3].plot(train_loss_pred_hist, 'red', label="train_loss_pred_hist")
+            axs[3].plot(train_loss_add_hist, 'cyan', label="train_loss_add_hist")
             
             axs[0].legend(handles=[line1, line2, line3, line4, line5, line6], loc='upper left', bbox_to_anchor=(1.05, 1))
             
             axs[0].set_title('Plot 1')
             axs[1].set_title('Plot 2')
-            axs[2].legend()
             axs[2].set_title('Plot 3')
+            axs[3].legend()
+            axs[3].set_title('Plot 4')
 
             plt.tight_layout()
             #plt.show()
