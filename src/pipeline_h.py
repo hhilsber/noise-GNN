@@ -173,12 +173,6 @@ class PipelineH(object):
                 loss = loss_ct_1 + loss_ct_2
                 loss_pred = 0
                 loss_add = 0
-            """
-            beta = 1.0
-            loss_1 = loss_ct_1 + beta * loss_pseudo_1
-            loss_2 = loss_ct_2 + beta * loss_pseudo_2
-            loss_pseudo = loss_pseudo_1 + loss_pseudo_2
-            loss = loss_ct_1 + beta * loss_pseudo_1 + loss_ct_2 + beta * loss_pseudo_2"""
 
             total_loss_1 += float(loss_ct_1)
             total_loss_2 += float(loss_ct_2)
@@ -193,20 +187,6 @@ class PipelineH(object):
             self.optimizer.zero_grad()
             loss.backward()
             self.optimizer.step()
-
-            """
-            optimizer1.zero_grad()
-            loss_1.backward()
-            optimizer1.step()
-
-            optimizer2.zero_grad()
-            loss_2.backward()
-            optimizer2.step()
-            
-            if (epoch > 0):
-                pseudo_optim.zero_grad()
-                loss_pseudo.backward()
-                pseudo_optim.step()"""
 
         train_loss_1 = total_loss_1 / len(train_loader)
         train_loss_2 = total_loss_2 / len(train_loader)
@@ -316,8 +296,6 @@ class PipelineH(object):
         if self.config['do_plot']:
             fig, axs = plt.subplots(3, 1, figsize=(10, 15))
             
-            axs[0].axhline(y=0.80, color='grey', linestyle='--')
-            axs[0].axhline(y=0.75, color='grey', linestyle='--')
             line1, = axs[0].plot(train_acc_1_hist, 'blue', label="train_acc_1_hist")
             line2, = axs[0].plot(train_acc_2_hist, 'darkgreen', label="train_acc_2_hist")
             line3, = axs[0].plot(val_acc_1_hist, 'purple', label="val_acc_1_hist")
