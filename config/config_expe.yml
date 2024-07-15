@@ -29,7 +29,7 @@ optimizer: 'adam'
 learning_rate: 0.001
 weight_decay: 0.0005
 
-max_epochs: 20
+max_epochs: 15
 batch_size: 256
 num_workers: 1
 
@@ -42,11 +42,11 @@ do_train: True
 do_plot: True
 
 # Noise
-noise_rate: 0.45
+noise_rate: 0.3
 noise_type: 'next_pair' # pair   sym
 
 # Algo Co-teaching or CNCLU
 algo_type: 'coteaching' # ct codi cn_soft cn_hard
-ct_tk: 15
+ct_tk: 10
 ct_exp: 1
-ct_tau: 1.0
+ct_tau: 1.2
