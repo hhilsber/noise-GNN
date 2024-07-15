@@ -50,7 +50,7 @@ class PipelineH(object):
         self.rate_schedule = np.ones(self.config['max_epochs'])*self.config['noise_rate']*self.config['ct_tau']
         self.rate_schedule[:self.config['ct_tk']] = np.linspace(0, self.config['noise_rate']**self.config['ct_exp'], self.config['ct_tk'])
 
-        
+        print(self.rate_schedule)
         # Split data set
         self.split_idx = self.dataset.get_idx_split()
         """
@@ -151,9 +151,9 @@ class PipelineH(object):
                 new_edge2 = topk_rewire(h2, batch.edge_index, self.device, k_percent=0.1)
 
                 pseudo_lbl_1 = pseudo_gcn(h1, new_edge1)[:batch.batch_size]
-                pred_1 = F.softmax(pseudo_lbl_1,dim=1).detach()
+                pred_1 = F.softmax(pseudo_lbl_1,dim=1) #.detach()
                 pseudo_lbl_2 = pseudo_gcn(h2, new_edge2)[:batch.batch_size]
-                pred_2 = F.softmax(pseudo_lbl_2,dim=1).detach()
+                pred_2 = F.softmax(pseudo_lbl_2,dim=1) # .detach()
                 
                 pred_model_1 = F.softmax(out1,dim=1)
                 pred_model_2 = F.softmax(out2,dim=1)
@@ -166,7 +166,7 @@ class PipelineH(object):
 
                 #loss_pseudo_1 = F.cross_entropy(out1[ind_noisy_1], pseudo_lbl_1[ind_noisy_1])
                 #loss_pseudo_2 = F.cross_entropy(out2[ind_noisy_2], pseudo_lbl_2[ind_noisy_2])
-                beta = 0.8
+                beta = 1.0
                 loss = loss_ct_1 + loss_ct_2 + beta * loss_add + loss_pred 
             else:
                 loss_1 = loss_ct_1

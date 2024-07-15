@@ -1,6 +1,6 @@
 # Data
-batch_id: 6
-aaa_spec: "pl"
+batch_id: 2
+aaa_spec: "pl, beta = 1.0, pred_1 = F.softmax(pseudo_lbl_1,dim=1) #.detach()"
 
 data_type: 'network'
 data_dir: '../data'
@@ -29,7 +29,7 @@ optimizer: 'adam'
 learning_rate: 0.001
 #weight_decay: 0.0005
 
-max_epochs: 20
+max_epochs: 10
 batch_size: 256
 num_workers: 1
 
@@ -47,6 +47,6 @@ noise_type: 'next_pair' # pair   sym
 
 # Algo Co-teaching or CNCLU
 algo_type: 'coteaching' # ct codi cn_soft cn_hard
-ct_tk: 12
+ct_tk: 5
 ct_exp: 1
 ct_tau: 1.0
