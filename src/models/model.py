@@ -64,7 +64,7 @@ class NGNN(object):
     def init_optimizer(self):
         if self.optimizer == 'adam':
             self.optimizer = torch.optim.Adam(self.network.parameters(),
-                                            lr=self.lr)#, weight_decay=self.wd)
+                                            lr=self.lr, weight_decay=self.wd)
         elif self.optimizer == 'single_adam':
             self.optimizer = torch.optim.Adam(self.network.parameters(),
                                                 lr=self.lr,

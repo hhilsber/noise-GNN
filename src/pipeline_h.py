@@ -39,12 +39,12 @@ class PipelineH(object):
         self.config = config
 
         # Initialize the model
-        self.model1 = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module'])
-        self.model2 = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module'])
+        self.model1 = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module'],self.config['weight_decay'])
+        self.model2 = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module'],self.config['weight_decay'])
         self.pseudo_gcn = GCN(self.config['hidden_size'],self.config['nbr_classes'])
         #self.pseudo_optim = torch.optim.Adam(self.pseudo_gcn.parameters(),lr=config['learning_rate'])
 
-        self.optimizer = torch.optim.Adam(list(self.model1.network.parameters()) + list(self.model2.network.parameters())+ list(self.pseudo_gcn.parameters()),lr=config['learning_rate'])#,weight_decay=config['weight_decay'])
+        self.optimizer = torch.optim.Adam(list(self.model1.network.parameters()) + list(self.model2.network.parameters())+ list(self.pseudo_gcn.parameters()),lr=config['learning_rate'],weight_decay=config['weight_decay'])
 
         self.criterion = CTLoss(self.device)
         self.rate_schedule = np.ones(self.config['max_epochs'])*self.config['noise_rate']*self.config['ct_tau']
@@ -53,30 +53,6 @@ class PipelineH(object):
         print(self.rate_schedule)
         # Split data set
         self.split_idx = self.dataset.get_idx_split()
-        """
-        if config['original_split']:
-            #self.split_idx = self.dataset.get_idx_split()
-            split_idx = self.dataset.get_idx_split()
-            test_idx = split_idx['test']
-            shuffled_test_idx = test_idx[torch.randperm(test_idx.size(0))]
-
-            self.config['test_set_percent'] = 0.2
-            num_test_samples = int(self.config['test_set_percent'] * test_idx.size(0))
-            remaining_test_idx = shuffled_test_idx[:num_test_samples]
-            self.split_idx = {'train': split_idx['train'], 'valid': split_idx['valid'], 'test': remaining_test_idx}
-        else:
-            split_idx = self.dataset.get_idx_split()
-            train_idx = split_idx['train']
-            test_idx = split_idx['test']
-            
-            self.config['add_test_samples_to_train'] = 0.15
-            num_samples_to_move = int(self.config['add_test_samples_to_train'] * config['nbr_nodes'])
-            shuffled_test_idx = test_idx[torch.randperm(test_idx.size(0))]
-            indices_to_move = shuffled_test_idx[:num_samples_to_move]
-            remaining_test_idx = shuffled_test_idx[num_samples_to_move:]
-            new_train_idx = torch.cat([train_idx, indices_to_move])
-            # Create the new split_idx dictionary
-            self.split_idx = {'train': new_train_idx, 'valid': split_idx['valid'], 'test': remaining_test_idx}"""
 
         print('train: {}, valid: {}, test: {}'.format(self.split_idx['train'].shape[0],self.split_idx['valid'].shape[0],self.split_idx['test'].shape[0]))
 
@@ -147,13 +123,13 @@ class PipelineH(object):
             loss_ct_1, loss_ct_2, pure_ratio_1, pure_ratio_2, ind_1_update, ind_2_update, ind_noisy_1, ind_noisy_2  = self.criterion(out1, out2, yhn, self.rate_schedule[epoch], batch.n_id, self.noise_or_not)
             
             if (epoch > 0):
-                new_edge1 = topk_rewire(h1, batch.edge_index, self.device, k_percent=0.1)
-                new_edge2 = topk_rewire(h2, batch.edge_index, self.device, k_percent=0.1)
+                new_edge1 = topk_rewire(h1, batch.edge_index, self.device, k_percent=0.2)
+                new_edge2 = topk_rewire(h2, batch.edge_index, self.device, k_percent=0.2)
 
                 pseudo_lbl_1 = pseudo_gcn(h1, new_edge1)[:batch.batch_size]
-                pred_1 = F.softmax(pseudo_lbl_1,dim=1) #.detach()
+                pred_1 = F.softmax(pseudo_lbl_1,dim=1).detach()
                 pseudo_lbl_2 = pseudo_gcn(h2, new_edge2)[:batch.batch_size]
-                pred_2 = F.softmax(pseudo_lbl_2,dim=1) # .detach()
+                pred_2 = F.softmax(pseudo_lbl_2,dim=1).detach()
                 
                 pred_model_1 = F.softmax(out1,dim=1)
                 pred_model_2 = F.softmax(out2,dim=1)
@@ -166,8 +142,8 @@ class PipelineH(object):
 
                 #loss_pseudo_1 = F.cross_entropy(out1[ind_noisy_1], pseudo_lbl_1[ind_noisy_1])
                 #loss_pseudo_2 = F.cross_entropy(out2[ind_noisy_2], pseudo_lbl_2[ind_noisy_2])
-                beta = 1.0
-                loss = loss_ct_1 + loss_ct_2 + beta * loss_add + loss_pred 
+                beta = 0.8
+                loss = loss_ct_1 + loss_ct_2 + loss_pred + beta * loss_add
             else:
                 loss_1 = loss_ct_1
                 loss_2 = loss_ct_2
@@ -277,7 +253,6 @@ class PipelineH(object):
         train_loss_pred_hist = []
         train_loss_add_hist = []
 
-        best_test = 0.3
         for epoch in range(self.config['max_epochs']):
             train_loss_1, train_loss_2, train_acc_1, train_acc_2, train_acc_pl1, train_acc_pl2, pure_ratio_1_list, pure_ratio_2_list, train_loss_pred, train_loss_add = self.train_ct(self.train_loader, epoch, self.model1.network.to(self.device), self.model2.network.to(self.device), self.pseudo_gcn.to(self.device), self.optimizer)
 
@@ -294,15 +269,12 @@ class PipelineH(object):
             test_acc_1, test_acc_2 = self.test_ct(self.test_loader, self.model1.network.to(self.device), self.model2.network.to(self.device))
             test_acc_1_hist.append(test_acc_1), test_acc_2_hist.append(test_acc_2)
             self.logger.info('   Train epoch {}/{} --- acc t1: {:.3f} t2: {:.3f} v1: {:.3f} v2: {:.3f} tst1: {:.3f} tst2: {:.3f}'.format(epoch+1,self.config['max_epochs'],train_acc_1,train_acc_2,val_acc_1,val_acc_2,test_acc_1,test_acc_2))
-            if (test_acc_1 > best_test):
-                best_test = test_acc_1
-            if (test_acc_2 > best_test):
-                best_test = test_acc_2
+        
             
         print('Done training')
         self.logger.info('Done training')
 
-        self.logger.info('Best test acc: {:.3f}'.format(best_test))
+        self.logger.info('Best test acc1: {:.3f}   acc2: {:.3f}'.format(max(test_acc_1_hist),max(test_acc_2_hist)))
         print('Done')
 
         if self.config['do_plot']:
