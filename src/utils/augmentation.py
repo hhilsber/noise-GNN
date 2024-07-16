@@ -12,25 +12,25 @@ def topk_rewire(h, edge_index, device, k_percent=0.1, directed=True):
         k = int(nbr_nodes * k_percent)
         normalized_h = F.normalize(h, dim=1)
         sim_mat = torch.mm(normalized_h, torch.transpose(normalized_h,dim0=0,dim1=1))
-        
+        #print("a")
         adj = torch.zeros((nbr_nodes,nbr_nodes))
         adj[edge_index[0],edge_index[1]] = 1
         adj_remove = adj - torch.eye(nbr_nodes)
         adj_remove[(adj - torch.eye(nbr_nodes)) <= 0] = 1000
         adj_remove = adj_remove.to(device)
-        
+        #print("b")
         # Remove
         values, indices = torch.topk((torch.mul(sim_mat,adj_remove)).view(-1), k=k, largest=False)
         delete_mask = torch.ones((nbr_nodes,nbr_nodes))
         delete_mask.view(-1)[indices] = 0
         adj_removed = (adj * delete_mask).to(device)
-
+        #print("c")
         # Add
         values, indices = torch.topk((sim_mat - adj_removed * 100 - torch.eye(nbr_nodes).to(device) * 100).view(-1), k=k)
         adj_add = torch.zeros((nbr_nodes,nbr_nodes))
         adj_add.view(-1)[indices] = 1
         adj_new = adj_removed + adj_add.to(device)
-        
+        #print("d")
         indexes = torch.nonzero(adj_new, as_tuple=True)
         edge_new = torch.stack(indexes)
     else:

@@ -89,6 +89,11 @@ class PipelineH(object):
             persistent_workers=True
         )
 
+        #print(self.data.x[self.split_idx['train']].shape)
+        #new_edge = topk_rewire(self.data.x[self.split_idx['train']], self.data.edge_index, self.device, k_percent=0.2)
+        #print(a)
+        #########################################################################################
+
 
     def train_ct(self, train_loader, epoch, model1, model2, pseudo_gcn, optimizer):
         if not((epoch+1)%5) or ((epoch+1)==1):
