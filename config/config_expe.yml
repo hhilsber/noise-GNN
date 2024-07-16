@@ -1,8 +1,8 @@
 # Data
-batch_id: 4
+batch_id: 5
 aaa_spec: "beta 0.8, new_edge1 = topk_rewire(batch.x, batch.edge_index, self.device, k_percent=0.2), pseudo_lbl_2 = pseudo_lbl_1   pred_2 = pred_1"
 aaa_spec2: "self.pseudo_gcn = NGNN(sage"
-
+aaa_spec3: "loss_pred = F.cross_entropy(pseudo_lbl_1, yhn) "
 data_type: 'network'
 data_dir: '../data'
 dataset_name: 'ogbn-arxiv'

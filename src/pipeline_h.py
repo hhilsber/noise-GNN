@@ -130,9 +130,9 @@ class PipelineH(object):
 
                 pseudo_lbl_1 = pseudo_gcn(batch.x, new_edge1)[:batch.batch_size]
                 pred_1 = F.softmax(pseudo_lbl_1,dim=1).detach()
-                pseudo_lbl_2 = pseudo_lbl_1
-                pred_2 = pred_1
-
+                pseudo_lbl_2 = pseudo_lbl_1.clone()
+                pred_2 = pred_1.clone()
+ 
                 #pseudo_lbl_1 = pseudo_gcn(h1, new_edge1)[:batch.batch_size]
                 #pred_1 = F.softmax(pseudo_lbl_1,dim=1).detach()
                 #pseudo_lbl_2 = pseudo_gcn(h2, new_edge2)[:batch.batch_size]
@@ -144,9 +144,11 @@ class PipelineH(object):
                 loss_add = (-torch.sum(pred_1[ind_noisy_1] * torch.log(pred_model_1[ind_noisy_1]), dim=1)).mean() \
                              + (-torch.sum(pred_2[ind_noisy_2] * torch.log(pred_model_2[ind_noisy_2]), dim=1)).mean()
 
-                
-                loss_pred = F.cross_entropy(pseudo_lbl_1[ind_1_update], yhn[ind_1_update]) \
-                             + F.cross_entropy(pseudo_lbl_2[ind_2_update], yhn[ind_2_update])
+                 
+                #loss_pred = F.cross_entropy(pseudo_lbl_1[ind_1_update], yhn[ind_1_update]) \
+                #             + F.cross_entropy(pseudo_lbl_2[ind_2_update], yhn[ind_2_update])
+                loss_pred = F.cross_entropy(pseudo_lbl_1, yhn) \
+                             + F.cross_entropy(pseudo_lbl_2, yhn)
 
                 #loss_pseudo_1 = F.cross_entropy(out1[ind_noisy_1], pseudo_lbl_1[ind_noisy_1])
                 #loss_pseudo_2 = F.cross_entropy(out2[ind_noisy_2], pseudo_lbl_2[ind_noisy_2])
