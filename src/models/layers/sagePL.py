@@ -30,11 +30,11 @@ class SAGEPL(torch.nn.Module):
         for conv in self.convs:
             conv.reset_parameters()
 
-    def forward(self, x, edge_index, noisy_rate=0.1, n_id=None):
+    def forward(self, x, edge_index, edge_rewire, noisy_rate=0.1, n_id=None):
 
         x_pure, y_pure, z_pure = self.forward_pure(x, edge_index)
         noisy_x = self.adding_noise(x, noisy_rate=noisy_rate, n_id=n_id)
-        x_noisy, y_noisy, z_noisy  = self.forward_noisy(noisy_x, edge_index)
+        x_noisy, y_noisy, z_noisy  = self.forward_noisy(noisy_x, edge_rewire)
 
         return x_pure, y_pure, z_pure, x_noisy, y_noisy, z_noisy
 

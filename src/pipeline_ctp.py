@@ -99,9 +99,12 @@ class PipelineCTP(object):
 
         for batch in train_loader:
             batch = batch.to(self.device)
+            # Rewire 
+            new_edge = topk_rewire(batch.x, batch.edge_index, self.device, k_percent=0.1)
+
             # Only consider predictions and labels of seed nodes
-            x_pure1, y_pure1, z_pure1, x_noisy1, y_noisy1, z_noisy1 = model1(batch.x, batch.edge_index, n_id=batch.n_id)
-            x_pure2, y_pure2, z_pure2, x_noisy2, y_noisy2, z_noisy2 = model2(batch.x, batch.edge_index, n_id=batch.n_id)
+            x_pure1, y_pure1, z_pure1, x_noisy1, y_noisy1, z_noisy1 = model1(batch.x, batch.edge_index, new_edge, n_id=batch.n_id)
+            x_pure2, y_pure2, z_pure2, x_noisy2, y_noisy2, z_noisy2 = model2(batch.x, batch.edge_index, new_edge, n_id=batch.n_id)
             out1 = z_pure1[:batch.batch_size]
             out2 = z_pure2[:batch.batch_size]
             y = batch.y[:batch.batch_size].squeeze()
