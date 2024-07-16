@@ -262,7 +262,7 @@ class PipelineH(object):
         train_loss_add_hist = []
 
         for epoch in range(self.config['max_epochs']):
-            train_loss_1, train_loss_2, train_acc_1, train_acc_2, train_acc_pl1, train_acc_pl2, pure_ratio_1_list, pure_ratio_2_list, train_loss_pred, train_loss_add = self.train_ct(self.train_loader, epoch, self.model1.network.to(self.device), self.model2.network.to(self.device), self.pseudo_gcn.to(self.device), self.optimizer)
+            train_loss_1, train_loss_2, train_acc_1, train_acc_2, train_acc_pl1, train_acc_pl2, pure_ratio_1_list, pure_ratio_2_list, train_loss_pred, train_loss_add = self.train_ct(self.train_loader, epoch, self.model1.network.to(self.device), self.model2.network.to(self.device), self.pseudo_gcn.network.to(self.device), self.optimizer)
 
             train_loss_1_hist.append(train_loss_1), train_loss_2_hist.append(train_loss_2)
             train_acc_1_hist.append(train_acc_1), train_acc_2_hist.append(train_acc_2)
