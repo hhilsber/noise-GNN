@@ -50,7 +50,6 @@ class PipelineH(object):
         self.rate_schedule = np.ones(self.config['max_epochs'])*self.config['noise_rate']*self.config['ct_tau']
         self.rate_schedule[:self.config['ct_tk']] = np.linspace(0, self.config['noise_rate']**self.config['ct_exp'], self.config['ct_tk'])
 
-        print(self.rate_schedule)
         # Split data set
         self.split_idx = self.dataset.get_idx_split()
 
@@ -89,9 +88,6 @@ class PipelineH(object):
             persistent_workers=True
         )
 
-        #print(self.data.x[self.split_idx['train']].shape)
-        #new_edge = topk_rewire(self.data.x[self.split_idx['train']], self.data.edge_index, self.device, k_percent=0.2)
-        #print(a)
         #########################################################################################
 
 
@@ -128,8 +124,8 @@ class PipelineH(object):
             loss_ct_1, loss_ct_2, pure_ratio_1, pure_ratio_2, ind_1_update, ind_2_update, ind_noisy_1, ind_noisy_2  = self.criterion(out1, out2, yhn, self.rate_schedule[epoch], batch.n_id, self.noise_or_not)
             
             if (epoch > 0):
-                new_edge1 = topk_rewire(h1, batch.edge_index, self.device, k_percent=0.2)
-                new_edge2 = topk_rewire(h2, batch.edge_index, self.device, k_percent=0.2)
+                new_edge1 = topk_rewire(batch.x, batch.edge_index, self.device, k_percent=0.2)
+                new_edge2 = new_edge1 #topk_rewire(batch.x, batch.edge_index, self.device, k_percent=0.2)
 
                 pseudo_lbl_1 = pseudo_gcn(h1, new_edge1)[:batch.batch_size]
                 pred_1 = F.softmax(pseudo_lbl_1,dim=1).detach()

@@ -1,7 +1,6 @@
 # Data
-batch_id: 1
-aaa_spec: "pl, beta = 0.8, k_percent=0.2, pred_1 = F.softmax(pseudo_lbl_1,dim=1).detach()"
-aaa_spec2: "je crois que ca marche, avant push + nouveau test, branch main"
+batch_id: 2
+aaa_spec: "beta 0.8, new_edge1 = topk_rewire(batch.x, batch.edge_index, self.device, k_percent=0.2)"
 
 data_type: 'network'
 data_dir: '../data'
