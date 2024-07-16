@@ -152,7 +152,7 @@ class PipelineH(object):
 
                 #loss_pseudo_1 = F.cross_entropy(out1[ind_noisy_1], pseudo_lbl_1[ind_noisy_1])
                 #loss_pseudo_2 = F.cross_entropy(out2[ind_noisy_2], pseudo_lbl_2[ind_noisy_2])
-                beta = 0.8
+                beta = 1.0
                 loss = loss_ct_1 + loss_ct_2 + loss_pred + beta * loss_add
             else:
                 loss_1 = loss_ct_1
