@@ -41,10 +41,11 @@ class PipelineH(object):
         # Initialize the model
         self.model1 = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module'],self.config['weight_decay'])
         self.model2 = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module'],self.config['weight_decay'])
-        self.pseudo_gcn = GCN(self.config['hidden_size'],self.config['nbr_classes'])
-        #self.pseudo_optim = torch.optim.Adam(self.pseudo_gcn.parameters(),lr=config['learning_rate'])
-
-        self.optimizer = torch.optim.Adam(list(self.model1.network.parameters()) + list(self.model2.network.parameters())+ list(self.pseudo_gcn.parameters()),lr=config['learning_rate'],weight_decay=config['weight_decay'])
+        
+        #self.pseudo_gcn = GCN(self.config['hidden_size'],self.config['nbr_classes'])
+        #self.optimizer = torch.optim.Adam(list(self.model1.network.parameters()) + list(self.model2.network.parameters())+ list(self.pseudo_gcn.parameters()),lr=config['learning_rate'],weight_decay=config['weight_decay'])
+        self.pseudo_gcn = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],"sage",self.config['weight_decay'])
+        self.optimizer = torch.optim.Adam(list(self.model1.network.parameters()) + list(self.model2.network.parameters())+ list(self.pseudo_gcn.network.parameters()),lr=config['learning_rate'],weight_decay=config['weight_decay'])
 
         self.criterion = CTLoss(self.device)
         self.rate_schedule = np.ones(self.config['max_epochs'])*self.config['noise_rate']*self.config['ct_tau']
@@ -125,12 +126,17 @@ class PipelineH(object):
             
             if (epoch > 0):
                 new_edge1 = topk_rewire(batch.x, batch.edge_index, self.device, k_percent=0.2)
-                new_edge2 = new_edge1 #topk_rewire(batch.x, batch.edge_index, self.device, k_percent=0.2)
+                #new_edge2 = topk_rewire(batch.x, batch.edge_index, self.device, k_percent=0.2)
 
-                pseudo_lbl_1 = pseudo_gcn(h1, new_edge1)[:batch.batch_size]
+                pseudo_lbl_1 = pseudo_gcn(batch.x, new_edge1)[:batch.batch_size]
                 pred_1 = F.softmax(pseudo_lbl_1,dim=1).detach()
-                pseudo_lbl_2 = pseudo_gcn(h2, new_edge2)[:batch.batch_size]
-                pred_2 = F.softmax(pseudo_lbl_2,dim=1).detach()
+                pseudo_lbl_2 = pseudo_lbl_1
+                pred_2 = pred_1
+
+                #pseudo_lbl_1 = pseudo_gcn(h1, new_edge1)[:batch.batch_size]
+                #pred_1 = F.softmax(pseudo_lbl_1,dim=1).detach()
+                #pseudo_lbl_2 = pseudo_gcn(h2, new_edge2)[:batch.batch_size]
+                #pred_2 = F.softmax(pseudo_lbl_2,dim=1).detach()
                 
                 pred_model_1 = F.softmax(out1,dim=1)
                 pred_model_2 = F.softmax(out2,dim=1)
@@ -138,6 +144,7 @@ class PipelineH(object):
                 loss_add = (-torch.sum(pred_1[ind_noisy_1] * torch.log(pred_model_1[ind_noisy_1]), dim=1)).mean() \
                              + (-torch.sum(pred_2[ind_noisy_2] * torch.log(pred_model_2[ind_noisy_2]), dim=1)).mean()
 
+                
                 loss_pred = F.cross_entropy(pseudo_lbl_1[ind_1_update], yhn[ind_1_update]) \
                              + F.cross_entropy(pseudo_lbl_2[ind_2_update], yhn[ind_2_update])
 
