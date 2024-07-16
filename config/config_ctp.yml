@@ -1,7 +1,7 @@
 # Data
-batch_id: 1
+batch_id: 2
 aaa_spec: "reproduire ca : y_pure = y_pure[:batch_size],            pseudo_pure = pseudo_pure.detach(), beta = 1.0"
-aaa_spec2: "use_hard_labels=True"
+aaa_spec2: "use_hard_labels=False"
 data_type: 'network'
 data_dir: '../data'
 dataset_name: 'ogbn-arxiv'

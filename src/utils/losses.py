@@ -38,7 +38,7 @@ def ce_loss(logits, targets, use_hard_labels=True, reduction='none'):
         nll_loss = torch.sum(-targets*log_pred, dim=1)
         return nll_loss
 
-def fix_cr(y_pure, y_noisy, ind_noisy, batch_size=512, name='ce', T=1.0, p_cutoff=0.0, use_hard_labels=True, w=None):
+def fix_cr(y_pure, y_noisy, ind_noisy, batch_size=512, name='ce', T=1.0, p_cutoff=0.0, use_hard_labels=False, w=None):
     assert name in ['ce', 'l2']
 
     num_nodes = y_pure.shape[0]
