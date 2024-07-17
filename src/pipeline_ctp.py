@@ -100,7 +100,7 @@ class PipelineCTP(object):
         for batch in train_loader:
             batch = batch.to(self.device)
             # Rewire 
-            new_edge = topk_rewire(batch.x, batch.edge_index, self.device, k_percent=0.1)
+            new_edge = topk_rewire(batch.x, batch.edge_index, self.device, k_percent=0.2)
 
             # Only consider predictions and labels of seed nodes
             x_pure1, y_pure1, z_pure1, x_noisy1, y_noisy1, z_noisy1 = model1(batch.x, batch.edge_index, new_edge, n_id=batch.n_id)
@@ -183,7 +183,7 @@ class PipelineCTP(object):
         for batch in valid_loader:
             batch = batch.to(self.device)
             #
-            new_edge = topk_rewire(batch.x, batch.edge_index, self.device, k_percent=0.1)
+            new_edge = topk_rewire(batch.x, batch.edge_index, self.device, k_percent=0.2)
 
             # Only consider predictions and labels of seed nodes
             #out1 = model1(batch.x, batch.edge_index)[:batch.batch_size]
@@ -210,7 +210,7 @@ class PipelineCTP(object):
         for batch in test_loader:
             batch = batch.to(self.device)
             #
-            new_edge = topk_rewire(batch.x, batch.edge_index, self.device, k_percent=0.1)
+            new_edge = topk_rewire(batch.x, batch.edge_index, self.device, k_percent=0.2)
 
             # Only consider predictions and labels of seed nodes
             #out1 = model1(batch.x, batch.edge_index)[:batch.batch_size]

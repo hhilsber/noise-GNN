@@ -1,7 +1,7 @@
 # Data
-batch_id: 3
-aaa_spec: "reproduire ca : y_pure = y_pure[:batch_size],            pseudo_pure = pseudo_pure.detach(), beta = 1.0"
-aaa_spec2: "use_hard_labels=False"
+batch_id: 6
+aaa_spec: "beta = 1.0, noisy_rate=0.3    # pseudo_pure = pseudo_pure.detach()"
+aaa_spec2: "use_hard_labels=False, new_edge = topk_rewire(batch.x, batch.edge_index, self.device, k_percent=0.2)"
 data_type: 'network'
 data_dir: '../data'
 dataset_name: 'ogbn-arxiv'

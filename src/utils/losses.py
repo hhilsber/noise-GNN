@@ -51,7 +51,7 @@ def fix_cr(y_pure, y_noisy, ind_noisy, batch_size=512, name='ce', T=1.0, p_cutof
     pseudo_pure = torch.exp(y_pure)
     pseudo_noisy = torch.exp(y_noisy)
 
-    pseudo_pure = pseudo_pure.detach()
+    #pseudo_pure = pseudo_pure.detach()
     if name == 'l2':
         assert y_pure.size() == y_noisy.size()
         return F.mse_loss(y_noisy, y_pure, reduction='mean')
