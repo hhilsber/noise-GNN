@@ -1,7 +1,8 @@
 # Data
-batch_id: 6
-aaa_spec: "beta = 1.0, noisy_rate=0.3    # pseudo_pure = pseudo_pure.detach()"
-aaa_spec2: "use_hard_labels=False, new_edge = topk_rewire(batch.x, batch.edge_index, self.device, k_percent=0.2)"
+batch_id: 5
+aaa_spec: "beta = 1.0, noisy_rate=0.1    # pseudo_pure = pseudo_pure.detach()"
+aaa_spec2: "use_hard_labels=True, new_edge = topk_rewire(batch.x, batch.edge_index, self.device, k_percent=0.1)"
+
 data_type: 'network'
 data_dir: '../data'
 dataset_name: 'ogbn-arxiv'
@@ -18,7 +19,7 @@ num_layers: 3
 nbr_neighbors: [15,10,5]
 
 # Compare network
-train_type: 'nalgo' # nalgo   baseline   both
+train_type: 'both' # nalgo   baseline   both
 
 # Regularization
 dropout: 0.5
@@ -40,7 +41,7 @@ do_train: True
 do_plot: True
 
 # Noise
-noise_rate: 0.3
+noise_rate: 0.4
 noise_type: 'next_pair' # pair   sym
 
 # Algo 
