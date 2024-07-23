@@ -3,7 +3,7 @@ import torch
 import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
-from torch_geometric.loader import NeighborLoader
+from torch_geometric.loader import NeighborLoader, NeighborSampler
 import matplotlib.pyplot as plt
 from ogb.nodeproppred import Evaluator
 import datetime as dt
@@ -54,6 +54,8 @@ class PipelineCO(object):
             self.model_c = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module'])
         self.evaluator = Evaluator(name=config['dataset_name'])
         
+        self.split_idx = self.dataset.get_idx_split()
+        """
         # Split data set
         if config['original_split']:
             #self.split_idx = self.dataset.get_idx_split()
@@ -78,15 +80,15 @@ class PipelineCO(object):
             new_train_idx = torch.cat([train_idx, indices_to_move])
             # Create the new split_idx dictionary
             self.split_idx = {'train': new_train_idx, 'valid': split_idx['valid'], 'test': remaining_test_idx}
-
+        """
         print('train: {}, valid: {}, test: {}'.format(self.split_idx['train'].shape[0],self.split_idx['valid'].shape[0],self.split_idx['test'].shape[0]))
 
         # Logger and data loader
         date = dt.datetime.date(dt.datetime.now())
-        self.output_name = 'dt{}{}_{}_id{}_{}_{}_{}_algo_{}_split_{}_noise_{}{}_lay{}_hid{}_lr{}_epo{}_bs{}_drop{}_tk{}_cttau{}_neigh{}{}{}'.format(date.month,date.day,self.config['dataset_name'],self.config['batch_id'],self.config['train_type'],self.config['algo_type'],self.config['module'],self.config['compare_loss'],self.config['original_split'],self.config['noise_type'],self.config['noise_rate'],self.config['num_layers'],self.config['hidden_size'],self.config['learning_rate'],self.config['max_epochs'],self.config['batch_size'],self.config['dropout'],self.config['ct_tk'],self.config['ct_tau'],self.config['nbr_neighbors'][0],self.config['nbr_neighbors'][1],self.config['nbr_neighbors'][2])
+        self.output_name = 'dt{}{}_{}_id{}_{}_{}_{}_algo_{}_split_{}_noise_{}{}_lay{}_hid{}_lr{}_epo{}_bs{}_drop{}_tk{}_cttau{}_neigh{}{}'.format(date.month,date.day,self.config['dataset_name'],self.config['batch_id'],self.config['train_type'],self.config['algo_type'],self.config['module'],self.config['compare_loss'],self.config['original_split'],self.config['noise_type'],self.config['noise_rate'],self.config['num_layers'],self.config['hidden_size'],self.config['learning_rate'],self.config['max_epochs'],self.config['batch_size'],self.config['dropout'],self.config['ct_tk'],self.config['ct_tau'],self.config['nbr_neighbors'][0],self.config['nbr_neighbors'][1])#,self.config['nbr_neighbors'][2])
         self.logger = initialize_logger(self.config, self.output_name)
         #np.save('../out_nmat/' + self.output_name + '.npy', noise_mat)
-
+        
         self.train_loader = NeighborLoader(
             self.data,
             input_nodes=self.split_idx['train'],
@@ -96,6 +98,7 @@ class PipelineCO(object):
             num_workers=self.config['num_workers'],
             persistent_workers=True
         )
+
         self.valid_loader = NeighborLoader(
             self.data,
             input_nodes=self.split_idx['valid'],
@@ -165,39 +168,6 @@ class PipelineCO(object):
         
         return train_loss_1, train_loss_2, train_acc_1, train_acc_2, pure_ratio_1_list, pure_ratio_2_list
     
-    def train(self, train_loader, epoch, model, optimizer):
-        if not((epoch+1)%5) or ((epoch+1)==1):
-            print('   Train epoch {}/{}'.format(epoch+1, self.config['max_epochs']))
-            #print('     loss = F.cross_entropy(out, y)')
-        model.train()
-
-        total_loss = 0
-        total_correct = 0
-        
-        for batch in train_loader:
-            batch = batch.to(self.device)
-            # Only consider predictions and labels of seed nodes
-            out = model(batch.x, batch.edge_index)[:batch.batch_size]
-            y = batch.y[:batch.batch_size].squeeze()
-            yhn = batch.yhn[:batch.batch_size].squeeze()
-            
-            if self.config['compare_loss'] == 'normal':
-                loss = F.cross_entropy(out, yhn)
-                #loss = F.cross_entropy(out, y)
-            else:
-                loss = backward_correction(out, yhn, self.noise_mat, self.config['nbr_classes'], self.device)
-            
-            total_loss += float(loss)
-            total_correct += int(out.argmax(dim=-1).eq(y).sum())
-
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-        train_loss = total_loss / len(train_loader)
-        train_acc = total_correct / self.split_idx['train'].size(0)
-        #train_acc = total_correct / self.train_wo_noise.size(0)
-        return train_loss, train_acc
-
     def evaluate_ct(self, valid_loader, model1, model2):
         model1.eval()
         model2.eval()
@@ -238,19 +208,38 @@ class PipelineCO(object):
         test_acc_2 = total_correct_2 / self.split_idx['test'].size(0)
         return test_acc_1, test_acc_2
 
-    def test(self, test_loader, model):
-        model.eval()
+    def train(self, train_loader, epoch, model, optimizer):
+        if not((epoch+1)%5) or ((epoch+1)==1):
+            print('   Train epoch {}/{}'.format(epoch+1, self.config['max_epochs']))
+            #print('     loss = F.cross_entropy(out, y)')
+        model.train()
 
+        total_loss = 0
         total_correct = 0
-        for batch in test_loader:
+        
+        for batch in train_loader:
             batch = batch.to(self.device)
             # Only consider predictions and labels of seed nodes
             out = model(batch.x, batch.edge_index)[:batch.batch_size]
             y = batch.y[:batch.batch_size].squeeze()
-
+            yhn = batch.yhn[:batch.batch_size].squeeze()
+            
+            if self.config['compare_loss'] == 'normal':
+                loss = F.cross_entropy(out, yhn)
+                #loss = F.cross_entropy(out, y)
+            else:
+                loss = backward_correction(out, yhn, self.noise_mat, self.config['nbr_classes'], self.device)
+            
+            total_loss += float(loss)
             total_correct += int(out.argmax(dim=-1).eq(y).sum())
-        test_acc = total_correct / self.split_idx['test'].size(0) #self.test_size #
-        return test_acc
+
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+        train_loss = total_loss / len(train_loader)
+        train_acc = total_correct / self.split_idx['train'].size(0)
+        #train_acc = total_correct / self.train_wo_noise.size(0)
+        return train_loss, train_acc
 
     def evaluate(self, valid_loader, model):
         model.eval()
@@ -266,6 +255,22 @@ class PipelineCO(object):
             total_correct += int(out.argmax(dim=-1).eq(y).sum())
         val_acc = total_correct / self.split_idx['valid'].size(0)
         return val_acc
+    
+    def test(self, test_loader, model):
+        model.eval()
+
+        total_correct = 0
+        for batch in test_loader:
+            batch = batch.to(self.device)
+            # Only consider predictions and labels of seed nodes
+            out = model(batch.x, batch.edge_index)[:batch.batch_size]
+            y = batch.y[:batch.batch_size].squeeze()
+
+            total_correct += int(out.argmax(dim=-1).eq(y).sum())
+        test_acc = total_correct / self.split_idx['test'].size(0) #self.test_size #
+        return test_acc
+
+
 
     def loop(self):
         print('loop')
@@ -364,31 +369,35 @@ class PipelineCO(object):
                 line2, = axs[0].plot(train_acc_2_hist, 'darkgreen', label="train_acc_2_hist")
                 line3, = axs[0].plot(val_acc_1_hist, 'purple', label="val_acc_1_hist")
                 line4, = axs[0].plot(val_acc_2_hist, 'darkseagreen', label="val_acc_2_hist")
-                line5, = axs[0].plot(test_acc_1_hist, 'deepskyblue', label="test_acc_1_hist")
-                line6, = axs[0].plot(test_acc_2_hist, 'chartreuse', label="test_acc_2_hist")
-                axs[1].plot(pure_ratio_1_hist, 'blue', label="pure_ratio_1_hist")
-                axs[1].plot(pure_ratio_2_hist, 'darkgreen', label="pure_ratio_2_hist")
-                axs[1].legend()
+                line5, = axs[1].plot(test_acc_1_hist, 'deepskyblue', label="test_acc_1_hist")
+                line6, = axs[1].plot(test_acc_2_hist, 'chartreuse', label="test_acc_2_hist")
+                axs[2].plot(pure_ratio_1_hist, 'blue', label="pure_ratio_1_hist")
+                axs[2].plot(pure_ratio_2_hist, 'darkgreen', label="pure_ratio_2_hist")
+                axs[2].legend()
 
-                axs[2].plot(train_loss_1_hist, 'blue', label="train_loss_1_hist")
-                axs[2].plot(train_loss_2_hist, 'darkgreen', label="train_loss_2_hist")
+                axs[3].plot(train_loss_1_hist, 'blue', label="train_loss_1_hist")
+                axs[3].plot(train_loss_2_hist, 'darkgreen', label="train_loss_2_hist")
                 
             if self.config['train_type'] in ['baseline','both']:
                 line7, = axs[0].plot(train_acc_hist, 'red', label="train_acc_hist")
                 line8, = axs[0].plot(val_acc_hist, 'tomato', label="val_acc_hist")
-                line9, = axs[0].plot(test_acc_hist, 'deeppink', label="test_acc_hist")
+                line9, = axs[1].plot(test_acc_hist, 'deeppink', label="test_acc_hist")
 
-                axs[2].plot(train_loss_hist, 'red', label="train_loss_hist")
+                axs[3].plot(train_loss_hist, 'red', label="train_loss_hist")
             
             if self.config['train_type'] in ['nalgo']:
-                axs[0].legend(handles=[line1, line2, line3, line4, line5, line6], loc='upper left', bbox_to_anchor=(1.05, 1))
+                axs[0].legend(handles=[line1, line2, line3, line4], loc='upper left', bbox_to_anchor=(1.05, 1))
+                axs[1].legend(handles=[line5, line6], loc='upper left', bbox_to_anchor=(1.05, 1))
             elif self.config['train_type'] in ['baseline']:
-                axs[0].legend(handles=[line7, line8, line9], loc='upper left', bbox_to_anchor=(1.05, 1))
+                axs[0].legend(handles=[line7, line8], loc='upper left', bbox_to_anchor=(1.05, 1))
+                axs[1].legend(handles=[line9], loc='upper left', bbox_to_anchor=(1.05, 1))
             else:
-                axs[0].legend(handles=[line1, line2, line3, line4, line5, line6, line7, line8, line9], loc='upper left', bbox_to_anchor=(1.05, 1))
+                axs[0].legend(handles=[line1, line2, line3, line4, line7, line8], loc='upper left', bbox_to_anchor=(1.05, 1))
+                axs[1].legend(handles=[line5, line6, line9], loc='upper left', bbox_to_anchor=(1.05, 1))
             
             axs[0].set_title('Plot 1')
             axs[1].set_title('Plot 2')
+            axs[1].set_title('Plot 3')
             axs[2].legend()
             axs[2].set_title('Plot 3')
 
@@ -397,39 +406,3 @@ class PipelineCO(object):
             plot_name = '../out_plots/coteaching2/' + self.output_name + '.png'
             plt.savefig(plot_name)
 
-
-
-"""
-
-        self.subgraph_loader = NeighborLoader(
-            self.data,
-            input_nodes=None,
-            num_neighbors=self.config['nbr_neighbors'],
-            batch_size=self.config['batch_size'],
-            num_workers=self.config['num_workers'],
-            persistent_workers=True
-        )
-
-def test(self, model, data, split_idx):
-        model.eval()
-
-        out = model.inference(data.x, self.subgraph_loader, self.device)
-
-        y_true = data.y.cpu()
-        y_pred = out.argmax(dim=-1, keepdim=True)
-
-        train_acc = evaluator.eval({
-            'y_true': y_true[split_idx['train']],
-            'y_pred': y_pred[split_idx['train']],
-        })['acc']
-        val_acc = evaluator.eval({
-            'y_true': y_true[split_idx['valid']],
-            'y_pred': y_pred[split_idx['valid']],
-        })['acc']
-        test_acc = evaluator.eval({
-            'y_true': y_true[split_idx['test']],
-            'y_pred': y_pred[split_idx['test']],
-        })['acc']
-
-        return train_acc, val_acc, test_acc
-        """

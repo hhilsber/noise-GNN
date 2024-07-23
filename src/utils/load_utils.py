@@ -23,7 +23,8 @@ def load_network(config):
     elif dataset_name in ['ogbn-arxiv']:
         #dataset = PygNodePropPredDataset(dataset_name, root, transform=T.ToSparseTensor())
         #dataset = PygNodePropPredDataset(dataset_name, root, T.Compose([T.ToUndirected(),T.ToSparseTensor()]))
-        dataset = PygNodePropPredDataset(name = dataset_name, root = root)
+        transforms = T.ToUndirected()
+        dataset = PygNodePropPredDataset(name = dataset_name, transform=transforms, root = root)
     elif dataset_name == 'cora':
         dataset = pkl.load(open(f'{data_dir}/{dataset_name}/dataset.pkl', 'rb'))
         
