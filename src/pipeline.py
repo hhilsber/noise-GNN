@@ -360,7 +360,7 @@ class PipelineCO(object):
         print('Done')
 
         if self.config['do_plot']:
-            fig, axs = plt.subplots(3, 1, figsize=(10, 15))
+            fig, axs = plt.subplots(4, 1, figsize=(10, 15))
             
             #axs[0].axhline(y=0.80, color='grey', linestyle='--')
             #axs[0].axhline(y=0.75, color='grey', linestyle='--')
@@ -397,12 +397,12 @@ class PipelineCO(object):
             
             axs[0].set_title('Plot 1')
             axs[1].set_title('Plot 2')
-            axs[1].set_title('Plot 3')
-            axs[2].legend()
             axs[2].set_title('Plot 3')
+            axs[3].legend()
+            axs[3].set_title('Plot 4')
 
             plt.tight_layout()
             #plt.show()
-            plot_name = '../out_plots/coteaching3/' + self.output_name + '.png'
+            plot_name = '../out_plots/' + self.config['algo_type'] + self.config['what'] + '/' + self.output_name + '.png'
             plt.savefig(plot_name)
 
