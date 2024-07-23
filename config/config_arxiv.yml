@@ -6,7 +6,7 @@ data_type: 'network'
 data_dir: '../data'
 dataset_name: 'ogbn-arxiv'
 task_type: 'classification'
-what: '2'
+what: '3'
 
 # Seed
 seed: 1232

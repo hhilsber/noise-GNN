@@ -338,7 +338,7 @@ class PipelineCO(object):
                     val_acc_hist.append(val_acc)
                     test_acc = self.test(self.test_loader, self.model_c.network.to(self.device))
                     test_acc_hist.append(test_acc)
-                    self.logger.info('   Train epoch {}/{} --- acc t: {:.4f} v: {:.4f} tst: {:.4f}'.format(epoch+1,self.config['max_epochs'],train_acc,val_acc,test_acc))
+                    self.logger.info('   Train epoch {}/{} --- acc t: {:.3f} v: {:.3f} tst: {:.3f}'.format(epoch+1,self.config['max_epochs'],train_acc,val_acc,test_acc))
 
             print('Done training')
             self.logger.info('Done training')
@@ -350,7 +350,7 @@ class PipelineCO(object):
             self.model2.network.load_state_dict(torch.load('../out_model/coteaching/dt624_id2_both_coteaching_sage_algo_normal_noise_next_pair0.45_lay2_hid128_lr0.001_epo25_bs1024_drop0.5_tk5_colambda0.1_neigh15105_m2.pth'))
 
             val_acc_1, val_acc_2 = self.evaluate_ct(self.valid_loader, self.model1.network.to(self.device), self.model2.network.to(self.device))
-            self.logger.info('   Load eval v1: {:.4f} v2: {:.4f}'.format(val_acc_1,val_acc_2))
+            self.logger.info('   Load eval v1: {:.3f} v2: {:.3f}'.format(val_acc_1,val_acc_2))
 
         if self.config['train_type'] in ['nalgo','both']:
             self.logger.info('Best test acc1: {:.3f}   acc2: {:.3f}'.format(max(test_acc_1_hist),max(test_acc_2_hist)))
@@ -403,6 +403,6 @@ class PipelineCO(object):
 
             plt.tight_layout()
             #plt.show()
-            plot_name = '../out_plots/coteaching2/' + self.output_name + '.png'
+            plot_name = '../out_plots/coteaching3/' + self.output_name + '.png'
             plt.savefig(plot_name)
 
