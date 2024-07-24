@@ -3,7 +3,7 @@ import torch
 import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
-from torch_geometric.loader import NeighborLoader
+from torch_geometric.loader import NeighborLoader, NeighborSampler
 import matplotlib.pyplot as plt
 from ogb.nodeproppred import Evaluator
 import datetime as dt
@@ -49,44 +49,21 @@ class PipelineTE(object):
                 self.criterion = CoDiLoss(self.device, self.config['co_lambda'])
             self.rate_schedule = np.ones(self.config['max_epochs'])*self.config['noise_rate']*self.config['ct_tau']
             self.rate_schedule[:self.config['ct_tk']] = np.linspace(0, self.config['noise_rate']**self.config['ct_exp'], self.config['ct_tk'])
+        self.optimizer = torch.optim.Adam(list(self.model1.network.parameters()) + list(self.model2.network.parameters()),lr=config['learning_rate'])
 
         if self.config['train_type'] in ['baseline','both']:
             self.model_c = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module'])
-        #self.evaluator = Evaluator(name=config['dataset_name'])
-
-        # Split data set
-        if config['original_split']:
-            #self.split_idx = self.dataset.get_idx_split()
-            split_idx = self.dataset.get_idx_split()
-            test_idx = split_idx['test']
-            shuffled_test_idx = test_idx[torch.randperm(test_idx.size(0))]
-
-            self.config['test_set_percent'] = 0.2
-            num_test_samples = int(self.config['test_set_percent'] * test_idx.size(0))
-            remaining_test_idx = shuffled_test_idx[:num_test_samples]
-            self.split_idx = {'train': split_idx['train'], 'valid': split_idx['valid'], 'test': remaining_test_idx}
-        else:
-            split_idx = self.dataset.get_idx_split()
-            train_idx = split_idx['train']
-            test_idx = split_idx['test']
-            
-            self.config['add_test_samples_to_train'] = 0.15
-            num_samples_to_move = int(self.config['add_test_samples_to_train'] * config['nbr_nodes'])
-            shuffled_test_idx = test_idx[torch.randperm(test_idx.size(0))]
-            indices_to_move = shuffled_test_idx[:num_samples_to_move]
-            remaining_test_idx = shuffled_test_idx[num_samples_to_move:]
-            new_train_idx = torch.cat([train_idx, indices_to_move])
-            # Create the new split_idx dictionary
-            self.split_idx = {'train': new_train_idx, 'valid': split_idx['valid'], 'test': remaining_test_idx}
-
+        self.evaluator = Evaluator(name=config['dataset_name'])
+        
+        self.split_idx = self.dataset.get_idx_split()
         print('train: {}, valid: {}, test: {}'.format(self.split_idx['train'].shape[0],self.split_idx['valid'].shape[0],self.split_idx['test'].shape[0]))
 
         # Logger and data loader
         date = dt.datetime.date(dt.datetime.now())
-        self.output_name = 'dt{}{}_{}_id{}_{}_{}_{}_algo_{}_split_{}_noise_{}{}_lay{}_hid{}_lr{}_epo{}_bs{}_drop{}_tk{}_cttau{}_neigh{}{}{}'.format(date.month,date.day,self.config['dataset_name'],self.config['batch_id'],self.config['train_type'],self.config['algo_type'],self.config['module'],self.config['compare_loss'],self.config['original_split'],self.config['noise_type'],self.config['noise_rate'],self.config['num_layers'],self.config['hidden_size'],self.config['learning_rate'],self.config['max_epochs'],self.config['batch_size'],self.config['dropout'],self.config['ct_tk'],self.config['ct_tau'],self.config['nbr_neighbors'][0],self.config['nbr_neighbors'][1],self.config['nbr_neighbors'][2])
+        self.output_name = 'dt{}{}_{}_id{}_{}_{}_{}_algo_{}_split_{}_noise_{}{}_lay{}_hid{}_lr{}_epo{}_bs{}_drop{}_tk{}_cttau{}_neigh{}{}'.format(date.month,date.day,self.config['dataset_name'],self.config['batch_id'],self.config['train_type'],self.config['algo_type'],self.config['module'],self.config['compare_loss'],self.config['original_split'],self.config['noise_type'],self.config['noise_rate'],self.config['num_layers'],self.config['hidden_size'],self.config['learning_rate'],self.config['max_epochs'],self.config['batch_size'],self.config['dropout'],self.config['ct_tk'],self.config['ct_tau'],self.config['nbr_neighbors'][0],self.config['nbr_neighbors'][1])#,self.config['nbr_neighbors'][2])
         self.logger = initialize_logger(self.config, self.output_name)
         #np.save('../out_nmat/' + self.output_name + '.npy', noise_mat)
-
+        
         self.train_loader = NeighborLoader(
             self.data,
             input_nodes=self.split_idx['train'],
@@ -96,6 +73,7 @@ class PipelineTE(object):
             num_workers=self.config['num_workers'],
             persistent_workers=True
         )
+
         self.valid_loader = NeighborLoader(
             self.data,
             input_nodes=self.split_idx['valid'],
@@ -116,7 +94,7 @@ class PipelineTE(object):
         print(len(self.test_loader))
 
 
-    def train_ct(self, train_loader, epoch, model1, optimizer1, model2, optimizer2):
+    def train_ct(self, train_loader, epoch, model1, model2, optimizer):
         if not((epoch+1)%5) or ((epoch+1)==1):
             print('   Train epoch {}/{}'.format(epoch+1, self.config['max_epochs']))
         model1.train()
@@ -130,28 +108,27 @@ class PipelineTE(object):
         total_correct_2=0
         total_ratio_1=0
         total_ratio_2=0
-        # quick estimate of remaining noise mat
-        nbr_classes = self.config["nbr_classes"]
-        rate_schedule2 = np.ones(self.config["max_epochs"])*0.1
-        rate_schedule2[:self.config["ct_tk"]] = np.linspace((1-self.config["noise_rate"]), 0.1, self.config["ct_tk"])
-        prob = rate_schedule2[epoch]
-        noise_mat = np.diag(np.array([prob] * nbr_classes), k=0) + np.diag(np.array([1-prob] * (nbr_classes-1)), k=1) + np.diag(np.array([1-prob]), k=-(nbr_classes-1))
-        #print(noise_mat)
 
         for batch in train_loader:
             batch = batch.to(self.device)
+            # Rewire 
+            new_edge = topk_rewire(batch.x, batch.edge_index, self.device, k_percent=self.config['rewire_rate'])
+
             # Only consider predictions and labels of seed nodes
-            out1 = model1(batch.x, batch.edge_index)[:batch.batch_size]
-            out2 = model2(batch.x, batch.edge_index)[:batch.batch_size]
+            _, _, z_pure1, _, _, z_noisy1 = model1(batch.x, batch.edge_index, noisy_rate=self.config['spl_noise'], n_id=batch.n_id)
+            _, _, z_pure2, _, _, z_noisy2 = model2(batch.x, batch.edge_index, noisy_rate=self.config['spl_noise'], n_id=batch.n_id)
+            out1 = z_pure1[:batch.batch_size]
+            out2 = z_pure2[:batch.batch_size]
+            noisy1 = z_noisy1[:batch.batch_size]
+            noisy2 = z_noisy2[:batch.batch_size]
             y = batch.y[:batch.batch_size].squeeze()
             yhn = batch.yhn[:batch.batch_size].squeeze()
             
-            loss_1, loss_2, pure_ratio_1, pure_ratio_2, _, _, ind_noisy_1, ind_noisy_2  = self.criterion(out1, out2, yhn, self.rate_schedule[epoch], batch.n_id, self.noise_or_not)
-            
-            loss_bc1 = backward_correction(out1[ind_noisy_1], yhn[ind_noisy_1], noise_mat, self.config['nbr_classes'], self.device)
-            loss_bc2 = backward_correction(out2[ind_noisy_2], yhn[ind_noisy_2], noise_mat, self.config['nbr_classes'], self.device)
-            loss_1 += loss_bc1
-            loss_2 += loss_bc2
+            loss_1, loss_2, pure_ratio_1, pure_ratio_2, _, _, _, _  = self.criterion(out1, out2, yhn, self.rate_schedule[epoch], batch.n_id, self.noise_or_not)
+            loss = loss_1 + loss_2
+
+            hedge_pure1, _, _, hedge_noisy1, _, _ = model1(batch.x, new_edge, noisy_rate=self.config['spl_noise'], n_id=batch.n_id)
+            hedge_pure2, _, _, hedge_noisy2, _, _ = model2(batch.x, new_edge, noisy_rate=self.config['spl_noise'], n_id=batch.n_id)
 
             total_loss_1 += float(loss_1)
             total_loss_2 += float(loss_2)
@@ -160,13 +137,9 @@ class PipelineTE(object):
             total_ratio_1 += (100*pure_ratio_1)
             total_ratio_2 += (100*pure_ratio_2)
             
-            optimizer1.zero_grad()
-            loss_1.backward()
-            optimizer1.step()
-
-            optimizer2.zero_grad()
-            loss_2.backward()
-            optimizer2.step()
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
 
         train_loss_1 = total_loss_1 / len(train_loader)
         train_loss_2 = total_loss_2 / len(train_loader)
@@ -177,39 +150,6 @@ class PipelineTE(object):
         
         return train_loss_1, train_loss_2, train_acc_1, train_acc_2, pure_ratio_1_list, pure_ratio_2_list
     
-    def train(self, train_loader, epoch, model, optimizer):
-        if not((epoch+1)%5) or ((epoch+1)==1):
-            print('   Train epoch {}/{}'.format(epoch+1, self.config['max_epochs']))
-            #print('     loss = F.cross_entropy(out, y)')
-        model.train()
-
-        total_loss = 0
-        total_correct = 0
-        
-        for batch in train_loader:
-            batch = batch.to(self.device)
-            # Only consider predictions and labels of seed nodes
-            out = model(batch.x, batch.edge_index)[:batch.batch_size]
-            y = batch.y[:batch.batch_size].squeeze()
-            yhn = batch.yhn[:batch.batch_size].squeeze()
-            
-            if self.config['compare_loss'] == 'normal':
-                loss = F.cross_entropy(out, yhn)
-                #loss = F.cross_entropy(out, y)
-            else:
-                loss = backward_correction(out, yhn, self.noise_mat, self.device, self.config['nbr_classes'])
-            
-            total_loss += float(loss)
-            total_correct += int(out.argmax(dim=-1).eq(y).sum()) 
-
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-        train_loss = total_loss / len(train_loader)
-        train_acc = total_correct / self.split_idx['train'].size(0)
-        #train_acc = total_correct / self.train_wo_noise.size(0)
-        return train_loss, train_acc
-
     def evaluate_ct(self, valid_loader, model1, model2):
         model1.eval()
         model2.eval()
@@ -250,19 +190,38 @@ class PipelineTE(object):
         test_acc_2 = total_correct_2 / self.split_idx['test'].size(0)
         return test_acc_1, test_acc_2
 
-    def test(self, test_loader, model):
-        model.eval()
+    def train(self, train_loader, epoch, model, optimizer):
+        if not((epoch+1)%5) or ((epoch+1)==1):
+            print('   Train epoch {}/{}'.format(epoch+1, self.config['max_epochs']))
+            #print('     loss = F.cross_entropy(out, y)')
+        model.train()
 
+        total_loss = 0
         total_correct = 0
-        for batch in test_loader:
+        
+        for batch in train_loader:
             batch = batch.to(self.device)
             # Only consider predictions and labels of seed nodes
             out = model(batch.x, batch.edge_index)[:batch.batch_size]
             y = batch.y[:batch.batch_size].squeeze()
-
+            yhn = batch.yhn[:batch.batch_size].squeeze()
+            
+            if self.config['compare_loss'] == 'normal':
+                loss = F.cross_entropy(out, yhn)
+                #loss = F.cross_entropy(out, y)
+            else:
+                loss = backward_correction(out, yhn, self.noise_mat, self.config['nbr_classes'], self.device)
+            
+            total_loss += float(loss)
             total_correct += int(out.argmax(dim=-1).eq(y).sum())
-        test_acc = total_correct / self.split_idx['test'].size(0) #self.test_size #
-        return test_acc
+
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+        train_loss = total_loss / len(train_loader)
+        train_acc = total_correct / self.split_idx['train'].size(0)
+        #train_acc = total_correct / self.train_wo_noise.size(0)
+        return train_loss, train_acc
 
     def evaluate(self, valid_loader, model):
         model.eval()
@@ -278,6 +237,22 @@ class PipelineTE(object):
             total_correct += int(out.argmax(dim=-1).eq(y).sum())
         val_acc = total_correct / self.split_idx['valid'].size(0)
         return val_acc
+    
+    def test(self, test_loader, model):
+        model.eval()
+
+        total_correct = 0
+        for batch in test_loader:
+            batch = batch.to(self.device)
+            # Only consider predictions and labels of seed nodes
+            out = model(batch.x, batch.edge_index)[:batch.batch_size]
+            y = batch.y[:batch.batch_size].squeeze()
+
+            total_correct += int(out.argmax(dim=-1).eq(y).sum())
+        test_acc = total_correct / self.split_idx['test'].size(0) #self.test_size #
+        return test_acc
+
+
 
     def loop(self):
         print('loop')
@@ -286,6 +261,8 @@ class PipelineTE(object):
             if self.config['train_type'] in ['nalgo','both']:
                 print('Train nalgo')
                 self.logger.info('Train nalgo')
+                #self.model1.network.reset_parameters()
+                #self.model2.network.reset_parameters()
 
                 train_loss_1_hist = []
                 train_loss_2_hist = []
@@ -300,7 +277,7 @@ class PipelineTE(object):
 
                 best_test = 0.3
                 for epoch in range(self.config['max_epochs']):
-                    train_loss_1, train_loss_2, train_acc_1, train_acc_2, pure_ratio_1_list, pure_ratio_2_list = self.train_ct(self.train_loader, epoch, self.model1.network.to(self.device), self.model1.optimizer, self.model2.network.to(self.device), self.model2.optimizer)
+                    train_loss_1, train_loss_2, train_acc_1, train_acc_2, pure_ratio_1_list, pure_ratio_2_list = self.train_ct(self.train_loader, epoch, self.model1.network.to(self.device), self.model2.network.to(self.device), self.optimizer)
 
                     train_loss_1_hist.append(train_loss_1), train_loss_2_hist.append(train_loss_2)
                     train_acc_1_hist.append(train_acc_1), train_acc_2_hist.append(train_acc_2)
@@ -312,7 +289,19 @@ class PipelineTE(object):
                     test_acc_1, test_acc_2 = self.test_ct(self.test_loader, self.model1.network.to(self.device), self.model2.network.to(self.device))
                     test_acc_1_hist.append(test_acc_1), test_acc_2_hist.append(test_acc_2)
                     self.logger.info('   Train epoch {}/{} --- acc t1: {:.3f} t2: {:.3f} v1: {:.3f} v2: {:.3f} tst1: {:.3f} tst2: {:.3f}'.format(epoch+1,self.config['max_epochs'],train_acc_1,train_acc_2,val_acc_1,val_acc_2,test_acc_1,test_acc_2))
-
+                    """
+                    if (test_acc_1 > best_test):
+                        best_test = test_acc_1
+                    elif (test_acc_2 > best_test):
+                        best_test = test_acc_2
+                    
+                    if (val_acc_1 > best_val):
+                        print("saved model, val acc {:.3f}".format(val_acc_1))
+                        self.logger.info('   Saved  model')
+                        best_val = val_acc_1
+                        torch.save(self.model1.network.state_dict(), '../out_model/' + self.config['algo_type'] + '/' + self.output_name + '_m1.pth')
+                        torch.save(self.model2.network.state_dict(), '../out_model/' + self.config['algo_type'] + '/' + self.output_name + '_m2.pth')
+                    """
             if self.config['train_type'] in ['baseline','both']:
                 print('Train baseline')
                 self.logger.info('Train baseline')
@@ -343,7 +332,7 @@ class PipelineTE(object):
             self.model2.network.load_state_dict(torch.load('../out_model/coteaching/dt624_id2_both_coteaching_sage_algo_normal_noise_next_pair0.45_lay2_hid128_lr0.001_epo25_bs1024_drop0.5_tk5_colambda0.1_neigh15105_m2.pth'))
 
             val_acc_1, val_acc_2 = self.evaluate_ct(self.valid_loader, self.model1.network.to(self.device), self.model2.network.to(self.device))
-            self.logger.info('   Load eval v1: {:.4f} v2: {:.4f}'.format(val_acc_1,val_acc_2))
+            self.logger.info('   Load eval v1: {:.3f} v2: {:.3f}'.format(val_acc_1,val_acc_2))
 
         if self.config['train_type'] in ['nalgo','both']:
             self.logger.info('Best test acc1: {:.3f}   acc2: {:.3f}'.format(max(test_acc_1_hist),max(test_acc_2_hist)))
@@ -353,7 +342,7 @@ class PipelineTE(object):
         print('Done')
 
         if self.config['do_plot']:
-            fig, axs = plt.subplots(3, 1, figsize=(10, 15))
+            fig, axs = plt.subplots(4, 1, figsize=(10, 15))
             
             #axs[0].axhline(y=0.80, color='grey', linestyle='--')
             #axs[0].axhline(y=0.75, color='grey', linestyle='--')
@@ -362,35 +351,40 @@ class PipelineTE(object):
                 line2, = axs[0].plot(train_acc_2_hist, 'darkgreen', label="train_acc_2_hist")
                 line3, = axs[0].plot(val_acc_1_hist, 'purple', label="val_acc_1_hist")
                 line4, = axs[0].plot(val_acc_2_hist, 'darkseagreen', label="val_acc_2_hist")
-                line5, = axs[0].plot(test_acc_1_hist, 'deepskyblue', label="test_acc_1_hist")
-                line6, = axs[0].plot(test_acc_2_hist, 'chartreuse', label="test_acc_2_hist")
-                axs[1].plot(pure_ratio_1_hist, 'blue', label="pure_ratio_1_hist")
-                axs[1].plot(pure_ratio_2_hist, 'darkgreen', label="pure_ratio_2_hist")
-                axs[1].legend()
+                line5, = axs[1].plot(test_acc_1_hist, 'deepskyblue', label="test_acc_1_hist")
+                line6, = axs[1].plot(test_acc_2_hist, 'chartreuse', label="test_acc_2_hist")
+                axs[2].plot(pure_ratio_1_hist, 'blue', label="pure_ratio_1_hist")
+                axs[2].plot(pure_ratio_2_hist, 'darkgreen', label="pure_ratio_2_hist")
+                axs[2].legend()
 
-                axs[2].plot(train_loss_1_hist, 'blue', label="train_loss_1_hist")
-                axs[2].plot(train_loss_2_hist, 'darkgreen', label="train_loss_2_hist")
+                axs[3].plot(train_loss_1_hist, 'blue', label="train_loss_1_hist")
+                axs[3].plot(train_loss_2_hist, 'darkgreen', label="train_loss_2_hist")
                 
             if self.config['train_type'] in ['baseline','both']:
                 line7, = axs[0].plot(train_acc_hist, 'red', label="train_acc_hist")
                 line8, = axs[0].plot(val_acc_hist, 'tomato', label="val_acc_hist")
-                line9, = axs[0].plot(test_acc_hist, 'deeppink', label="test_acc_hist")
+                line9, = axs[1].plot(test_acc_hist, 'deeppink', label="test_acc_hist")
 
-                axs[2].plot(train_loss_hist, 'red', label="train_loss_hist")
+                axs[3].plot(train_loss_hist, 'red', label="train_loss_hist")
             
             if self.config['train_type'] in ['nalgo']:
-                axs[0].legend(handles=[line1, line2, line3, line4, line5, line6], loc='upper left', bbox_to_anchor=(1.05, 1))
+                axs[0].legend(handles=[line1, line2, line3, line4], loc='upper left', bbox_to_anchor=(1.05, 1))
+                axs[1].legend(handles=[line5, line6], loc='upper left', bbox_to_anchor=(1.05, 1))
             elif self.config['train_type'] in ['baseline']:
-                axs[0].legend(handles=[line7, line8, line9], loc='upper left', bbox_to_anchor=(1.05, 1))
+                axs[0].legend(handles=[line7, line8], loc='upper left', bbox_to_anchor=(1.05, 1))
+                axs[1].legend(handles=[line9], loc='upper left', bbox_to_anchor=(1.05, 1))
             else:
-                axs[0].legend(handles=[line1, line2, line3, line4, line5, line6, line7, line8, line9], loc='upper left', bbox_to_anchor=(1.05, 1))
+                axs[0].legend(handles=[line1, line2, line3, line4, line7, line8], loc='upper left', bbox_to_anchor=(1.05, 1))
+                axs[1].legend(handles=[line5, line6, line9], loc='upper left', bbox_to_anchor=(1.05, 1))
             
             axs[0].set_title('Plot 1')
             axs[1].set_title('Plot 2')
-            axs[2].legend()
             axs[2].set_title('Plot 3')
+            axs[3].legend()
+            axs[3].set_title('Plot 4')
 
             plt.tight_layout()
             #plt.show()
             plot_name = '../out_plots/coteaching_expe/' + self.output_name + '.png'
             plt.savefig(plot_name)
+

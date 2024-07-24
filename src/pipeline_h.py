@@ -39,13 +39,13 @@ class PipelineH(object):
         self.config = config
 
         # Initialize the model
-        self.model1 = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module'],self.config['weight_decay'])
-        self.model2 = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module'],self.config['weight_decay'])
+        self.model1 = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module'])
+        self.model2 = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module'])
         
         #self.pseudo_gcn = GCN(self.config['hidden_size'],self.config['nbr_classes'])
         #self.optimizer = torch.optim.Adam(list(self.model1.network.parameters()) + list(self.model2.network.parameters())+ list(self.pseudo_gcn.parameters()),lr=config['learning_rate'],weight_decay=config['weight_decay'])
-        self.pseudo_gcn = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],"sage",self.config['weight_decay'])
-        self.optimizer = torch.optim.Adam(list(self.model1.network.parameters()) + list(self.model2.network.parameters())+ list(self.pseudo_gcn.network.parameters()),lr=config['learning_rate'],weight_decay=config['weight_decay'])
+        self.pseudo_gcn = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],"sage")
+        self.optimizer = torch.optim.Adam(list(self.model1.network.parameters()) + list(self.model2.network.parameters())+ list(self.pseudo_gcn.network.parameters()),lr=config['learning_rate'])
 
         self.criterion = CTLoss(self.device)
         self.rate_schedule = np.ones(self.config['max_epochs'])*self.config['noise_rate']*self.config['ct_tau']
@@ -58,7 +58,7 @@ class PipelineH(object):
 
         # Logger and data loader
         date = dt.datetime.date(dt.datetime.now())
-        self.output_name = 'dt{}{}_{}_id{}_{}_{}_{}_algo_{}_split_{}_noise_{}{}_lay{}_hid{}_lr{}_epo{}_bs{}_drop{}_tk{}_cttau{}_neigh{}{}{}'.format(date.month,date.day,self.config['dataset_name'],self.config['batch_id'],self.config['train_type'],self.config['algo_type'],self.config['module'],self.config['compare_loss'],self.config['original_split'],self.config['noise_type'],self.config['noise_rate'],self.config['num_layers'],self.config['hidden_size'],self.config['learning_rate'],self.config['max_epochs'],self.config['batch_size'],self.config['dropout'],self.config['ct_tk'],self.config['ct_tau'],self.config['nbr_neighbors'][0],self.config['nbr_neighbors'][1],self.config['nbr_neighbors'][2])
+        self.output_name = 'dt{}{}_{}_id{}_{}_{}_{}_algo_{}_split_{}_noise_{}{}_lay{}_hid{}_lr{}_epo{}_bs{}_drop{}_tk{}_cttau{}_neigh{}{}'.format(date.month,date.day,self.config['dataset_name'],self.config['batch_id'],self.config['train_type'],self.config['algo_type'],self.config['module'],self.config['compare_loss'],self.config['original_split'],self.config['noise_type'],self.config['noise_rate'],self.config['num_layers'],self.config['hidden_size'],self.config['learning_rate'],self.config['max_epochs'],self.config['batch_size'],self.config['dropout'],self.config['ct_tk'],self.config['ct_tau'],self.config['nbr_neighbors'][0],self.config['nbr_neighbors'][1])
         self.logger = initialize_logger(self.config, self.output_name)
         #np.save('../out_nmat/' + self.output_name + '.npy', noise_mat)
 
@@ -144,7 +144,7 @@ class PipelineH(object):
                 loss_add = (-torch.sum(pred_1[ind_noisy_1] * torch.log(pred_model_1[ind_noisy_1]), dim=1)).mean() \
                              + (-torch.sum(pred_2[ind_noisy_2] * torch.log(pred_model_2[ind_noisy_2]), dim=1)).mean()
 
-                 
+                
                 #loss_pred = F.cross_entropy(pseudo_lbl_1[ind_1_update], yhn[ind_1_update]) \
                 #             + F.cross_entropy(pseudo_lbl_2[ind_2_update], yhn[ind_2_update])
                 loss_pred = F.cross_entropy(pseudo_lbl_1, yhn) \

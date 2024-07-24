@@ -1,5 +1,5 @@
 # Data
-batch_id: 7
+batch_id: 1
 aaa_spec: "beta = 1.0, noisy_rate=0.1    # pseudo_pure = pseudo_pure.detach()"
 aaa_spec2: "use_hard_labels=True, new_edge = topk_rewire(batch.x, batch.edge_index, self.device, k_percent=0.2)"
 
@@ -14,9 +14,9 @@ seed: 1232
 
 # Graph model
 module: 'sagePL'
-hidden_size: 512
-num_layers: 4
-nbr_neighbors: [15,10,5]
+hidden_size: 256
+num_layers: 3
+nbr_neighbors: [10,5]
 
 # Compare network
 train_type: 'both' # nalgo   baseline   both

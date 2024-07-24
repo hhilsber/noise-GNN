@@ -52,7 +52,7 @@ class PipelineCTP(object):
 
         # Logger and data loader
         date = dt.datetime.date(dt.datetime.now())
-        self.output_name = 'dt{}{}_{}_id{}_{}_{}_{}_noise_{}{}_lay{}_hid{}_lr{}_epo{}_bs{}_drop{}_tk{}_cttau{}_neigh{}{}{}'.format(date.month,date.day,self.config['dataset_name'],self.config['batch_id'],self.config['algo_type'],self.config['train_type'],self.config['module'],self.config['noise_type'],self.config['noise_rate'],self.config['num_layers'],self.config['hidden_size'],self.config['learning_rate'],self.config['max_epochs'],self.config['batch_size'],self.config['dropout'],self.config['ct_tk'],self.config['ct_tau'],self.config['nbr_neighbors'][0],self.config['nbr_neighbors'][1],self.config['nbr_neighbors'][2])
+        self.output_name = 'dt{}{}_{}_id{}_{}_{}_{}_noise_{}{}_lay{}_hid{}_lr{}_epo{}_bs{}_drop{}_tk{}_cttau{}_neigh{}{}'.format(date.month,date.day,self.config['dataset_name'],self.config['batch_id'],self.config['algo_type'],self.config['train_type'],self.config['module'],self.config['noise_type'],self.config['noise_rate'],self.config['num_layers'],self.config['hidden_size'],self.config['learning_rate'],self.config['max_epochs'],self.config['batch_size'],self.config['dropout'],self.config['ct_tk'],self.config['ct_tau'],self.config['nbr_neighbors'][0],self.config['nbr_neighbors'][1])
         self.logger = initialize_logger(self.config, self.output_name)
 
         self.train_loader = NeighborLoader(
@@ -106,8 +106,8 @@ class PipelineCTP(object):
             new_edge = topk_rewire(batch.x, batch.edge_index, self.device, k_percent=0.1)
 
             # Only consider predictions and labels of seed nodes
-            x_pure1, y_pure1, z_pure1, x_noisy1, y_noisy1, z_noisy1 = model1(batch.x, batch.edge_index, new_edge, n_id=batch.n_id)
-            x_pure2, y_pure2, z_pure2, x_noisy2, y_noisy2, z_noisy2 = model2(batch.x, batch.edge_index, new_edge, n_id=batch.n_id)
+            x_pure1, y_pure1, z_pure1, x_noisy1, y_noisy1, z_noisy1 = model1(batch.x, batch.edge_index, new_edge, noisy_rate=self.config['spl_noise'], n_id=batch.n_id)
+            x_pure2, y_pure2, z_pure2, x_noisy2, y_noisy2, z_noisy2 = model2(batch.x, batch.edge_index, new_edge, noisy_rate=self.config['spl_noise'], n_id=batch.n_id)
             out1 = z_pure1[:batch.batch_size]
             out2 = z_pure2[:batch.batch_size]
             y = batch.y[:batch.batch_size].squeeze()

@@ -1,22 +1,25 @@
 # Data
-batch_id: 7
-aaa_spec: "beta 1.0, new_edge1 = topk_rewire(batch.x, batch.edge_index, self.device, k_percent=0.2), pseudo_lbl_2 = pseudo_lbl_1   pred_2 = pred_1"
-aaa_spec2: "self.pseudo_gcn = NGNN(sage"
-aaa_spec3: "loss_pred = F.cross_entropy(pseudo_lbl_1, yhn) "
+batch_id: 1
+aaa_spec: "a"
+
 data_type: 'network'
 data_dir: '../data'
 dataset_name: 'ogbn-arxiv'
 task_type: 'classification'
-what: '_expe'
+what: '_test'
 
 # Seed
 seed: 1232
 
 # Graph model
-module: 'sageH'
+module: 'sagePL'
+spl_noise: 0.1
+rewire_rate: 0.1
+
 hidden_size: 256
-num_layers: 3
-nbr_neighbors: [15,10,5]
+num_layers: 3 
+#nbr_neighbors: [15,10,5]
+nbr_neighbors: [10,5]
 
 # Compare network
 train_type: 'nalgo' # nalgo   baseline   both
@@ -28,10 +31,10 @@ dropout: 0.5
 # Training
 optimizer: 'adam'
 learning_rate: 0.001
-weight_decay: 0.0005
+#weight_decay: 0.0005
 
-max_epochs: 25
-batch_size: 256
+max_epochs: 2
+batch_size: 512
 num_workers: 1
 
 # Device
@@ -48,6 +51,6 @@ noise_type: 'next_pair' # pair   sym
 
 # Algo Co-teaching or CNCLU
 algo_type: 'coteaching' # ct codi cn_soft cn_hard
-ct_tk: 15
+ct_tk: 1
 ct_exp: 1
 ct_tau: 1.2
