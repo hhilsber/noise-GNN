@@ -1,6 +1,6 @@
 # Data
 batch_id: 1
-aaa_spec: "a"
+aaa_spec: "try contrastive with sage PL"
 
 data_type: 'network'
 data_dir: '../data'

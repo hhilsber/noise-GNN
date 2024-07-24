@@ -9,7 +9,7 @@ from ogb.nodeproppred import Evaluator
 import datetime as dt
 
 from .utils.load_utils import load_network
-from .utils.data_utils import topk_accuracy
+from .utils.augmentation import topk_rewire
 from .utils.utils import initialize_logger
 from .utils.noise import flip_label
 from .models.model import NGNN
@@ -123,7 +123,7 @@ class PipelineTE(object):
             noisy2 = z_noisy2[:batch.batch_size]
             y = batch.y[:batch.batch_size].squeeze()
             yhn = batch.yhn[:batch.batch_size].squeeze()
-            
+            print(out1[:10])
             loss_1, loss_2, pure_ratio_1, pure_ratio_2, _, _, _, _  = self.criterion(out1, out2, yhn, self.rate_schedule[epoch], batch.n_id, self.noise_or_not)
             loss = loss_1 + loss_2
 
@@ -140,7 +140,7 @@ class PipelineTE(object):
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-
+        print(hedge_pure1.shape)
         train_loss_1 = total_loss_1 / len(train_loader)
         train_loss_2 = total_loss_2 / len(train_loader)
         train_acc_1 = total_correct_1 / self.split_idx['train'].size(0)
