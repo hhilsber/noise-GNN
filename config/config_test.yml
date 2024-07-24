@@ -1,6 +1,6 @@
 # Data
-batch_id: 1
-aaa_spec: "try contrastive with sage PL"
+batch_id: 7
+aaa_spec: ""
 
 data_type: 'network'
 data_dir: '../data'
@@ -13,9 +13,6 @@ seed: 1232
 
 # Graph model
 module: 'sagePL'
-spl_noise: 0.1
-rewire_rate: 0.1
-
 hidden_size: 256
 num_layers: 3 
 #nbr_neighbors: [15,10,5]
@@ -33,7 +30,7 @@ optimizer: 'adam'
 learning_rate: 0.001
 #weight_decay: 0.0005
 
-max_epochs: 2
+max_epochs: 30
 batch_size: 512
 num_workers: 1
 
@@ -51,6 +48,10 @@ noise_type: 'next_pair' # pair   sym
 
 # Algo Co-teaching or CNCLU
 algo_type: 'coteaching' # ct codi cn_soft cn_hard
-ct_tk: 1
+ct_tk: 15
 ct_exp: 1
 ct_tau: 1.2
+
+spl_cont_beta: 1.0
+spl_noise: 0.3
+spl_rewire_rate: 0.2
