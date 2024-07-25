@@ -1,5 +1,5 @@
 # Data
-batch_id: 3
+batch_id: 6
 aaa_spec: "transforms = T.ToUndirected()"
 
 data_type: 'network'
@@ -23,7 +23,7 @@ train_type: 'both' # nalgo   baseline   both
 compare_loss : 'normal' # normal back
 
 # Regularization
-dropout: 0.5
+dropout: 0.1
 
 # Training
 optimizer: 'adam'
@@ -43,8 +43,8 @@ do_train: True
 do_plot: True
 
 # Noise
-noise_rate: 0.45
-noise_type: 'next_pair' # pair   sym
+noise_rate: 0.3
+noise_type: 'sym' # pair   sym
 
 # Algo Co-teaching or CNCLU
 algo_type: 'coteaching' # ct codi cn_soft cn_hard
