@@ -1,6 +1,6 @@
 # Data
-batch_id: 5
-aaa_spec: "zeros like for cont loss neg"
+batch_id: 7
+aaa_spec: "new neg augmenation with shuffle_pos"
 
 data_type: 'network'
 data_dir: '../data'
@@ -52,7 +52,7 @@ ct_tk: 15
 ct_exp: 1
 ct_tau: 1.2
 
-spl_cont_beta: 0.05
+spl_cont_beta: 0.1
 spl_noise_rate_pos: 0.05
-spl_noise_rate_neg: 0.2
+spl_noise_rate_neg: 0.9
 spl_rewire_rate: 0.2

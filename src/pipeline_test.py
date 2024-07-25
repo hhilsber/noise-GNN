@@ -10,7 +10,7 @@ import datetime as dt
 
 from .utils.load_utils import load_network
 from .utils.data_utils import Jensen_Shannon, Discriminator_innerprod, BCEExeprtLoss
-from .utils.augmentation import topk_rewire
+from .utils.augmentation import *
 from .utils.utils import initialize_logger
 from .utils.noise import flip_label
 from .models.model import NGNN
@@ -131,19 +131,27 @@ class PipelineTE(object):
             loss_1, loss_2, pure_ratio_1, pure_ratio_2, ind_1_update, ind_2_update, ind_noisy_1, ind_noisy_2  = self.criterion(out1, out2, yhn, self.rate_schedule[epoch], batch.n_id, self.noise_or_not)
             
             if epoch > 0:
-                # Rewire 
+                # Rewire
                 new_edge = topk_rewire(batch.x, batch.edge_index, self.device, k_percent=self.config['spl_rewire_rate'])
 
                 hedge_pure1, _, _, hedge_noisy1, _, _ = model1(batch.x, new_edge, noise_rate=self.config['spl_noise_rate_pos'], n_id=batch.n_id)
                 hedge_pure2, _, _, hedge_noisy2, _, _ = model2(batch.x, new_edge, noise_rate=self.config['spl_noise_rate_pos'], n_id=batch.n_id)
-                hneg_pure1, _, _, hneg_noisy1, _, _ = model1(batch.x, batch.edge_index, noise_rate=self.config['spl_noise_rate_neg'], n_id=batch.n_id)
-                hneg_pure2, _, _, hneg_noisy2, _, _ = model2(batch.x, batch.edge_index, noise_rate=self.config['spl_noise_rate_neg'], n_id=batch.n_id)
+                #hneg_pure1, _, _, hneg_noisy1, _, _ = model1(batch.x, batch.edge_index, noise_rate=self.config['spl_noise_rate_neg'], n_id=batch.n_id)
+                #hneg_pure2, _, _, hneg_noisy2, _, _ = model2(batch.x, batch.edge_index, noise_rate=self.config['spl_noise_rate_neg'], n_id=batch.n_id)
+                new_x = shuffle_pos(batch.x, device=self.device, prob=self.config['spl_noise_rate_neg'])
+                hneg_pure1, _, _, hneg_noisy1, _, _ = model1(new_x, batch.edge_index, noise_rate=self.config['spl_noise_rate_neg'], n_id=batch.n_id)
+                hneg_pure2, _, _, hneg_noisy2, _, _ = model2(new_x, batch.edge_index, noise_rate=self.config['spl_noise_rate_neg'], n_id=batch.n_id)
                 # Contrastive
-                logits_pa1, logits_pb1, logits_n1 = self.discriminator(h_pure1[ind_noisy_2], hedge_pure1[ind_noisy_2], hedge_noisy1[ind_noisy_2], hneg_noisy1[ind_noisy_2])
-                logits_pa2, logits_pb2, logits_n2 = self.discriminator(h_pure2[ind_noisy_1], hedge_pure2[ind_noisy_1], hedge_noisy2[ind_noisy_1], hneg_noisy2[ind_noisy_1])
+                """
+                logits_pa1, logits_pb1, logits_n1 = self.discriminator(h_pure1[ind_noisy_2], hedge_pure1[ind_noisy_2], hneg_noisy1[ind_noisy_2])
+                logits_pa2, logits_pb2, logits_n2 = self.discriminator(h_pure2[ind_noisy_1], hedge_pure2[ind_noisy_1], hneg_noisy2[ind_noisy_1])
                 loss_cont1 = self.cont_criterion(logits_pa1, logits_pb1, logits_n1)
-                loss_cont2 = self.cont_criterion(logits_pa2, logits_pb2, logits_n2)
-                
+                loss_cont2 = self.cont_criterion(logits_pa2, logits_pb2, logits_n2)"""
+                logits_pa1, logits_n1 = self.discriminator(h_pure1[ind_noisy_2], hedge_pure1[ind_noisy_2], hneg_noisy1[ind_noisy_2])
+                logits_pa2, logits_n2 = self.discriminator(h_pure2[ind_noisy_1], hedge_pure2[ind_noisy_1], hneg_noisy2[ind_noisy_1])
+                loss_cont1 = self.cont_criterion(logits_pa1, logits_n1)
+                loss_cont2 = self.cont_criterion(logits_pa2, logits_n2)
+
                 loss = loss_1 + loss_2 + self.config['spl_cont_beta'] * loss_cont1 + self.config['spl_cont_beta'] * loss_cont2
             else:
                 loss = loss_1 + loss_2

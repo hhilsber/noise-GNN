@@ -42,6 +42,38 @@ class BCEExeprtLoss(nn.Module):
         #self.lbl_neg = torch.ones(nbr_nodes*1)
         self.criterion = nn.BCEWithLogitsLoss()
     
+    def forward(self, logits_p1, logits_n):
+        #logits_pos = torch.squeeze(torch.cat((logits_p1, logits_p2), dim=0))
+        logits_pos = torch.squeeze(logits_p1)
+        logits_neg = torch.squeeze(logits_n)
+        loss = self.criterion(logits_pos, torch.ones_like(logits_pos)) + self.criterion(logits_neg, torch.zeros_like(logits_neg))
+        return loss
+
+
+class Discriminator_innerprod(nn.Module):
+    """
+    https://github.com/TaiHasegawa/DEGNN/blob/main/models/degnn_layers.py
+    Discriminator defined by inner product function.
+    """
+    def __init__(self):
+        super(Discriminator_innerprod, self).__init__()
+
+    def forward(self, H, Hp1, Hn):
+        logits_pa = torch.sum(torch.mul(H, Hp1), dim=1, keepdim=True)
+        logits_n = torch.sum(torch.mul(H, Hn), dim=1, keepdim=True)
+        return logits_pa, logits_n
+
+class BCEExeprtLoss2(nn.Module):
+    """
+    https://github.com/TaiHasegawa/DEGNN/blob/main/models/degnn_layers.py
+    Binary cross-entropy loss for the expert.
+    """
+    def __init__(self, nbr_nodes):
+        super(BCEExeprtLoss, self).__init__()
+        #self.lbl_pos = torch.ones(nbr_nodes*1)
+        #self.lbl_neg = torch.ones(nbr_nodes*1)
+        self.criterion = nn.BCEWithLogitsLoss()
+    
     def forward(self, logits_p1, logits_p2, logits_n):
         logits_pos = torch.squeeze(torch.cat((logits_p1, logits_p2), dim=0))
         #logits_pos = torch.squeeze(logits_p)
@@ -50,7 +82,7 @@ class BCEExeprtLoss(nn.Module):
         return loss
 
 
-class Discriminator_innerprod(nn.Module):
+class Discriminator_innerprod2(nn.Module):
     """
     https://github.com/TaiHasegawa/DEGNN/blob/main/models/degnn_layers.py
     Discriminator defined by inner product function.
