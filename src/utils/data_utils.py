@@ -46,7 +46,7 @@ class BCEExeprtLoss(nn.Module):
         logits_pos = torch.squeeze(torch.cat((logits_p1, logits_p2), dim=0))
         #logits_pos = torch.squeeze(logits_p)
         logits_neg = torch.squeeze(logits_n)
-        loss = self.criterion(logits_pos, torch.ones_like(logits_pos)) + self.criterion(logits_neg, torch.ones_like(logits_neg))
+        loss = self.criterion(logits_pos, torch.ones_like(logits_pos)) + self.criterion(logits_neg, torch.zeros_like(logits_neg))
         return loss
 
 
@@ -59,7 +59,7 @@ class Discriminator_innerprod(nn.Module):
         super(Discriminator_innerprod, self).__init__()
 
     def forward(self, H, Hp1, Hp2, Hn):
-        logits_p1 = torch.sum(torch.mul(H, Hp1), dim=1, keepdim=True)
-        logits_p2 = torch.sum(torch.mul(H, Hp2), dim=1, keepdim=True)
+        logits_pa = torch.sum(torch.mul(H, Hp1), dim=1, keepdim=True)
+        logits_pb = torch.sum(torch.mul(H, Hp2), dim=1, keepdim=True)
         logits_n = torch.sum(torch.mul(H, Hn), dim=1, keepdim=True)
-        return logits_p1, logits_p2, logits_n
+        return logits_pa, logits_pb, logits_n

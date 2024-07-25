@@ -30,20 +30,22 @@ class SAGEPL(torch.nn.Module):
         for conv in self.convs:
             conv.reset_parameters()
 
-    def forward(self, x, edge_index, noisy_rate=0.1, n_id=None):
+    def forward(self, x, edge_index, noise_rate=0.1, n_id=None):
 
         x_pure, y_pure, z_pure = self.forward_pure(x, edge_index)
-        noisy_x = self.adding_noise(x, noisy_rate=noisy_rate, n_id=n_id)
+        noisy_x = self.adding_noise(x, noise_rate=noise_rate, n_id=n_id)
         x_noisy, y_noisy, z_noisy  = self.forward_noisy(noisy_x, edge_index)
 
         return x_pure, y_pure, z_pure, x_noisy, y_noisy, z_noisy
  
-    def adding_noise(self, x, noisy_rate, n_id=None):
+    def adding_noise(self, x, noise_rate, n_id=None):
         noisy_x = x.clone()
         if n_id is None:
-            noisy_x += torch.sign(noisy_x) * F.normalize(self.noise) * noisy_rate
+            noisy_x += torch.sign(noisy_x) * F.normalize(self.noise) * noise_rate
         else:
-            noisy_x += torch.sign(noisy_x) * F.normalize(self.noise[n_id]) * noisy_rate
+            #noisy_x += torch.sign(noisy_x) * F.normalize(self.noise[n_id]) * noise_rate
+            noisy_x += F.normalize(self.noise[n_id]) * noise_rate
+            
         return noisy_x
 
     def forward_pure(self, x, edge_index):
@@ -55,8 +57,9 @@ class SAGEPL(torch.nn.Module):
                 x = x.relu()
                 if self.use_bn:
                     x = self.bn2(x)
-                x = F.dropout(x, p=self.dropout, training=self.training)
                 h = x
+                x = F.dropout(x, p=self.dropout, training=self.training)
+                
         return h, torch.log_softmax(x, dim=1), x
 
     def forward_noisy(self, x, edge_index):
@@ -68,7 +71,7 @@ class SAGEPL(torch.nn.Module):
                 x = x.relu()
                 if self.use_bn:
                     x = self.bn2(x)
-                x = F.dropout(x, p=self.dropout, training=self.training)
                 h = x
+                x = F.dropout(x, p=self.dropout, training=self.training)
         return h, torch.log_softmax(x, dim=1), x
     

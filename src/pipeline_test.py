@@ -116,12 +116,10 @@ class PipelineTE(object):
 
         for batch in train_loader:
             batch = batch.to(self.device)
-            # Rewire 
-            new_edge = topk_rewire(batch.x, batch.edge_index, self.device, k_percent=self.config['spl_rewire_rate'])
 
             # Only consider predictions and labels of seed nodes
-            h_pure1, _, z_pure1, h_noisy1, _, z_noisy1 = model1(batch.x, batch.edge_index, noisy_rate=self.config['spl_noise'], n_id=batch.n_id)
-            h_pure2, _, z_pure2, h_noisy2, _, z_noisy2 = model2(batch.x, batch.edge_index, noisy_rate=self.config['spl_noise'], n_id=batch.n_id)
+            h_pure1, _, z_pure1, h_noisy1, _, z_noisy1 = model1(batch.x, batch.edge_index, noise_rate=self.config['spl_noise_rate_pos'], n_id=batch.n_id)
+            h_pure2, _, z_pure2, h_noisy2, _, z_noisy2 = model2(batch.x, batch.edge_index, noise_rate=self.config['spl_noise_rate_pos'], n_id=batch.n_id)
             
             out1 = z_pure1[:batch.batch_size]
             out2 = z_pure2[:batch.batch_size]
@@ -133,11 +131,16 @@ class PipelineTE(object):
             loss_1, loss_2, pure_ratio_1, pure_ratio_2, ind_1_update, ind_2_update, ind_noisy_1, ind_noisy_2  = self.criterion(out1, out2, yhn, self.rate_schedule[epoch], batch.n_id, self.noise_or_not)
             
             if epoch > 0:
-                hedge_pure1, _, _, hedge_noisy1, _, _ = model1(batch.x, new_edge, noisy_rate=self.config['spl_noise'], n_id=batch.n_id)
-                hedge_pure2, _, _, hedge_noisy2, _, _ = model2(batch.x, new_edge, noisy_rate=self.config['spl_noise'], n_id=batch.n_id)
+                # Rewire 
+                new_edge = topk_rewire(batch.x, batch.edge_index, self.device, k_percent=self.config['spl_rewire_rate'])
+
+                hedge_pure1, _, _, hedge_noisy1, _, _ = model1(batch.x, new_edge, noise_rate=self.config['spl_noise_rate_pos'], n_id=batch.n_id)
+                hedge_pure2, _, _, hedge_noisy2, _, _ = model2(batch.x, new_edge, noise_rate=self.config['spl_noise_rate_pos'], n_id=batch.n_id)
+                hneg_pure1, _, _, hneg_noisy1, _, _ = model1(batch.x, batch.edge_index, noise_rate=self.config['spl_noise_rate_neg'], n_id=batch.n_id)
+                hneg_pure2, _, _, hneg_noisy2, _, _ = model2(batch.x, batch.edge_index, noise_rate=self.config['spl_noise_rate_neg'], n_id=batch.n_id)
                 # Contrastive
-                logits_pa1, logits_pb1, logits_n1 = self.discriminator(h_pure1[ind_noisy_2], hedge_pure1[ind_noisy_2], hedge_noisy1[ind_noisy_2], h_noisy1[ind_noisy_2])
-                logits_pa2, logits_pb2, logits_n2 = self.discriminator(h_pure2[ind_noisy_1], hedge_pure2[ind_noisy_1], hedge_noisy2[ind_noisy_1], h_noisy2[ind_noisy_1])
+                logits_pa1, logits_pb1, logits_n1 = self.discriminator(h_pure1[ind_noisy_2], hedge_pure1[ind_noisy_2], hedge_noisy1[ind_noisy_2], hneg_noisy1[ind_noisy_2])
+                logits_pa2, logits_pb2, logits_n2 = self.discriminator(h_pure2[ind_noisy_1], hedge_pure2[ind_noisy_1], hedge_noisy2[ind_noisy_1], hneg_noisy2[ind_noisy_1])
                 loss_cont1 = self.cont_criterion(logits_pa1, logits_pb1, logits_n1)
                 loss_cont2 = self.cont_criterion(logits_pa2, logits_pb2, logits_n2)
                 
@@ -158,7 +161,7 @@ class PipelineTE(object):
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-        
+            
         train_loss_1 = total_loss_1 / len(train_loader)
         train_loss_2 = total_loss_2 / len(train_loader)
         train_loss_cont_1 = total_loss_cont_1 / len(train_loader)
@@ -180,8 +183,8 @@ class PipelineTE(object):
         for batch in valid_loader:
             batch = batch.to(self.device)
             # Only consider predictions and labels of seed nodes
-            _, _, z_pure1, _, _, _ = model1(batch.x, batch.edge_index, noisy_rate=self.config['spl_noise'], n_id=batch.n_id)
-            _, _, z_pure2, _, _, _ = model2(batch.x, batch.edge_index, noisy_rate=self.config['spl_noise'], n_id=batch.n_id)
+            _, _, z_pure1, _, _, _ = model1(batch.x, batch.edge_index, n_id=batch.n_id)
+            _, _, z_pure2, _, _, _ = model2(batch.x, batch.edge_index, n_id=batch.n_id)
             out1 = z_pure1[:batch.batch_size]
             out2 = z_pure2[:batch.batch_size]
             y = batch.y[:batch.batch_size].squeeze()
@@ -202,8 +205,8 @@ class PipelineTE(object):
         for batch in test_loader:
             batch = batch.to(self.device)
             # Only consider predictions and labels of seed nodes
-            _, _, z_pure1, _, _, _ = model1(batch.x, batch.edge_index, noisy_rate=self.config['spl_noise'], n_id=batch.n_id)
-            _, _, z_pure2, _, _, _ = model2(batch.x, batch.edge_index, noisy_rate=self.config['spl_noise'], n_id=batch.n_id)
+            _, _, z_pure1, _, _, _ = model1(batch.x, batch.edge_index, n_id=batch.n_id)
+            _, _, z_pure2, _, _, _ = model2(batch.x, batch.edge_index, n_id=batch.n_id)
             out1 = z_pure1[:batch.batch_size]
             out2 = z_pure2[:batch.batch_size]
             y = batch.y[:batch.batch_size].squeeze()
