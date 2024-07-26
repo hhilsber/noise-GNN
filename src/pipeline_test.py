@@ -132,15 +132,15 @@ class PipelineTE(object):
             
             if epoch > self.config['ct_tk']:
                 # Rewire
-                new_edge = topk_rewire(batch.x, batch.edge_index, self.device, k_percent=self.config['spl_rewire_rate'])
+                pos_edge, neg_edge = topk_rewire(batch.x, batch.edge_index, self.device, k_percent=self.config['spl_rewire_rate'])
 
-                hedge_pure1, _, _, hedge_noisy1, _, _ = model1(batch.x, new_edge, noise_rate=self.config['spl_noise_rate_pos'], n_id=batch.n_id)
-                hedge_pure2, _, _, hedge_noisy2, _, _ = model2(batch.x, new_edge, noise_rate=self.config['spl_noise_rate_pos'], n_id=batch.n_id)
+                hedge_pure1, _, _, hedge_noisy1, _, _ = model1(batch.x, pos_edge, noise_rate=self.config['spl_noise_rate_pos'], n_id=batch.n_id)
+                hedge_pure2, _, _, hedge_noisy2, _, _ = model2(batch.x, pos_edge, noise_rate=self.config['spl_noise_rate_pos'], n_id=batch.n_id)
                 #hneg_pure1, _, _, hneg_noisy1, _, _ = model1(batch.x, batch.edge_index, noise_rate=self.config['spl_noise_rate_neg'], n_id=batch.n_id)
                 #hneg_pure2, _, _, hneg_noisy2, _, _ = model2(batch.x, batch.edge_index, noise_rate=self.config['spl_noise_rate_neg'], n_id=batch.n_id)
                 new_x = shuffle_pos(batch.x, device=self.device, prob=self.config['spl_noise_rate_neg'])
-                hneg_pure1, _, _, hneg_noisy1, _, _ = model1(new_x, batch.edge_index, noise_rate=self.config['spl_noise_rate_neg'], n_id=batch.n_id)
-                hneg_pure2, _, _, hneg_noisy2, _, _ = model2(new_x, batch.edge_index, noise_rate=self.config['spl_noise_rate_neg'], n_id=batch.n_id)
+                hneg_pure1, _, _, hneg_noisy1, _, _ = model1(new_x, neg_edge, noise_rate=self.config['spl_noise_rate_neg'], n_id=batch.n_id)
+                hneg_pure2, _, _, hneg_noisy2, _, _ = model2(new_x, neg_edge, noise_rate=self.config['spl_noise_rate_neg'], n_id=batch.n_id)
                 # Contrastive
                 """
                 logits_pa1, logits_pb1, logits_n1 = self.discriminator(h_pure1[ind_noisy_2], hedge_pure1[ind_noisy_2], hneg_noisy1[ind_noisy_2])

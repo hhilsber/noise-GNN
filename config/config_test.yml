@@ -1,8 +1,9 @@
 # Data
-batch_id: 11
+batch_id: 15
 aaa_spec: "new neg augmenation with shuffle_pos"
 aaa_spec2: "contrast if epoch > self.config['ct_tk']:"
 aaa_spec3: "dont exchange ind_noisy_ for contrast"
+aaa_spec4: "neg rewire"
 
 data_type: 'network'
 data_dir: '../data'
@@ -25,7 +26,7 @@ train_type: 'both' # nalgo   baseline   both
 compare_loss : 'normal' # normal back
 
 # Regularization
-dropout: 0.1
+dropout: 0.2
 
 # Training
 optimizer: 'adam'

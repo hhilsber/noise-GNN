@@ -6,7 +6,7 @@ import torch.nn.functional as F
 from .utils import *
 
 
-def topk_rewire(h, edge_index, device, k_percent=0.1, directed=True):
+def topk_rewire(h, edge_index, device='cpu', k_percent=0.1, directed=False):
     if directed:
         nbr_nodes,_ = h.shape
         k = int(nbr_nodes * k_percent)
@@ -34,8 +34,56 @@ def topk_rewire(h, edge_index, device, k_percent=0.1, directed=True):
         indexes = torch.nonzero(adj_new, as_tuple=True)
         edge_new = torch.stack(indexes)
     else:
-        print('undirected graph rewire ?')
-    return edge_new
+        nbr_nodes,_ = h.shape
+        k = int(nbr_nodes * k_percent)
+        normalized_h = F.normalize(h, dim=1)
+        sim_mat = torch.mm(normalized_h, torch.transpose(normalized_h,dim0=0,dim1=1))
+        
+        adj = torch.zeros((nbr_nodes,nbr_nodes))
+        adj[edge_index[0],edge_index[1]] = 1
+        adj_pot = adj - torch.eye(nbr_nodes)
+        adj_pot[adj_pot <= 0] = 1000
+        adj_pot = adj_pot.to(device)
+
+        # Pos edge matrix, remove worst edge
+        values, indices = torch.topk((torch.mul(sim_mat,adj_pot)).view(-1), k=2*k, largest=False)
+        delete_mask = torch.ones((nbr_nodes,nbr_nodes))
+        delete_mask.view(-1)[indices] = 0
+        adj_removed = (adj * delete_mask).to(device)
+        
+        # Pos edge matrix, add best edge
+        values, indices = torch.topk((sim_mat - adj_removed * 100 - torch.eye(nbr_nodes).to(device) * 100).view(-1), k=2*k)
+        adj_add = torch.zeros((nbr_nodes,nbr_nodes))
+        adj_add.view(-1)[indices] = 1
+        pos_adj = adj_removed + adj_add.to(device)
+
+        ####################################################################################
+        adj_pot = torch.zeros((nbr_nodes,nbr_nodes))
+        adj_pot[edge_index[0],edge_index[1]] = 1
+        adj_pot = adj_pot - torch.eye(nbr_nodes)*1000
+        adj_pot = adj_pot.to(device)
+        # Neg edge matrix, remove best edge
+        values, indices = torch.topk((torch.mul(sim_mat,adj_pot)).view(-1), k=2*k)
+        delete_mask = torch.ones((nbr_nodes,nbr_nodes))
+        delete_mask.view(-1)[indices] = 0
+        adj_removed = (adj * delete_mask).to(device)
+        
+        adj_pot = torch.ones((nbr_nodes,nbr_nodes))
+        adj_pot[edge_index[0],edge_index[1]] = 1000
+        adj_pot = adj_pot + torch.eye(nbr_nodes)*1000
+        adj_pot = adj_pot.to(device)
+        # Neg edge matrix, add worst edge
+        values, indices = torch.topk((torch.mul(sim_mat,adj_pot)).view(-1), k=2*k, largest=False)
+        adj_add = torch.zeros((nbr_nodes,nbr_nodes))
+        adj_add.view(-1)[indices] = 1
+        neg_adj = adj_removed + adj_add.to(device)
+
+        
+        indexes = torch.nonzero(pos_adj, as_tuple=True)
+        pos_edge = torch.stack(indexes)
+        indexes = torch.nonzero(neg_adj, as_tuple=True)
+        neg_edge = torch.stack(indexes)
+    return pos_edge, neg_edge
 
 def shuffle_pos(features, device='cpu', prob=0.1):
     """
