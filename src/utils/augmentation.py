@@ -50,7 +50,7 @@ def shuffle_pos(features, device='cpu', prob=0.1):
         # shuffle selected element
         selected_elements = features_shuffled[i, indices]
         features_shuffled[i, indices] = selected_elements[torch.randperm(selected_elements.shape[0])]
-    print('pos feature shuffled: {}'.format(num_elements_to_shuffle))
+    #print('pos feature shuffled: {}'.format(num_elements_to_shuffle))
     return features_shuffled.to(device)
     
 def shuffle_neg(features, device='cpu'):

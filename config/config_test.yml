@@ -1,6 +1,8 @@
 # Data
-batch_id: 7
+batch_id: 11
 aaa_spec: "new neg augmenation with shuffle_pos"
+aaa_spec2: "contrast if epoch > self.config['ct_tk']:"
+aaa_spec3: "dont exchange ind_noisy_ for contrast"
 
 data_type: 'network'
 data_dir: '../data'
@@ -19,18 +21,18 @@ num_layers: 3
 nbr_neighbors: [10,5]
 
 # Compare network
-train_type: 'nalgo' # nalgo   baseline   both
+train_type: 'both' # nalgo   baseline   both
 compare_loss : 'normal' # normal back
 
 # Regularization
-dropout: 0.5
+dropout: 0.1
 
 # Training
 optimizer: 'adam'
 learning_rate: 0.001
 #weight_decay: 0.0005
 
-max_epochs: 20
+max_epochs: 30
 batch_size: 512
 num_workers: 1
 
@@ -52,7 +54,7 @@ ct_tk: 15
 ct_exp: 1
 ct_tau: 1.2
 
-spl_cont_beta: 0.1
-spl_noise_rate_pos: 0.05
+spl_cont_beta: 0.01
 spl_noise_rate_neg: 0.9
-spl_rewire_rate: 0.2
+spl_noise_rate_pos: 0.05
+spl_rewire_rate: 0.1

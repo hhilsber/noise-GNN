@@ -130,7 +130,7 @@ class PipelineTE(object):
             
             loss_1, loss_2, pure_ratio_1, pure_ratio_2, ind_1_update, ind_2_update, ind_noisy_1, ind_noisy_2  = self.criterion(out1, out2, yhn, self.rate_schedule[epoch], batch.n_id, self.noise_or_not)
             
-            if epoch > 0:
+            if epoch > self.config['ct_tk']:
                 # Rewire
                 new_edge = topk_rewire(batch.x, batch.edge_index, self.device, k_percent=self.config['spl_rewire_rate'])
 
@@ -147,8 +147,8 @@ class PipelineTE(object):
                 logits_pa2, logits_pb2, logits_n2 = self.discriminator(h_pure2[ind_noisy_1], hedge_pure2[ind_noisy_1], hneg_noisy2[ind_noisy_1])
                 loss_cont1 = self.cont_criterion(logits_pa1, logits_pb1, logits_n1)
                 loss_cont2 = self.cont_criterion(logits_pa2, logits_pb2, logits_n2)"""
-                logits_pa1, logits_n1 = self.discriminator(h_pure1[ind_noisy_2], hedge_pure1[ind_noisy_2], hneg_noisy1[ind_noisy_2])
-                logits_pa2, logits_n2 = self.discriminator(h_pure2[ind_noisy_1], hedge_pure2[ind_noisy_1], hneg_noisy2[ind_noisy_1])
+                logits_pa1, logits_n1 = self.discriminator(h_pure1[ind_noisy_1], hedge_pure1[ind_noisy_1], hneg_noisy1[ind_noisy_1])
+                logits_pa2, logits_n2 = self.discriminator(h_pure2[ind_noisy_2], hedge_pure2[ind_noisy_2], hneg_noisy2[ind_noisy_2])
                 loss_cont1 = self.cont_criterion(logits_pa1, logits_n1)
                 loss_cont2 = self.cont_criterion(logits_pa2, logits_n2)
 
