@@ -1,9 +1,10 @@
 # Data
-batch_id: 15
+batch_id: 3
 aaa_spec: "new neg augmenation with shuffle_pos"
 aaa_spec2: "contrast if epoch > self.config['ct_tk']:"
 aaa_spec3: "dont exchange ind_noisy_ for contrast"
 aaa_spec4: "neg rewire"
+aaa_spec5: "pos_edge, neg_edge = topk_rewire(h_pure1,"
 
 data_type: 'network'
 data_dir: '../data'
@@ -17,7 +18,7 @@ seed: 1232
 # Graph model
 module: 'sagePL'
 hidden_size: 256
-num_layers: 3 
+num_layers: 3
 #nbr_neighbors: [15,10,5]
 nbr_neighbors: [10,5]
 
@@ -33,9 +34,11 @@ optimizer: 'adam'
 learning_rate: 0.001
 #weight_decay: 0.0005
 
-max_epochs: 30
+num_runs: 1
+max_epochs: 40
 batch_size: 512
 num_workers: 1
+
 
 # Device
 cuda: True
@@ -43,10 +46,10 @@ cuda: True
 # Bool
 original_split: True
 do_train: True
-do_plot: True
+do_plot: False
 
 # Noise
-noise_rate: 0.3
+noise_rate: 0.4
 noise_type: 'next_pair' # pair   sym
 
 # Algo Co-teaching or CNCLU
@@ -55,7 +58,7 @@ ct_tk: 15
 ct_exp: 1
 ct_tau: 1.2
 
-spl_cont_beta: 0.01
+spl_cont_beta: 0.05
 spl_noise_rate_neg: 0.9
 spl_noise_rate_pos: 0.05
-spl_rewire_rate: 0.1
+spl_rewire_rate: 0.2
