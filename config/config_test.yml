@@ -1,5 +1,5 @@
 # Data
-batch_id: 3
+batch_id: 1
 aaa_spec: "new neg augmenation with shuffle_pos"
 aaa_spec2: "contrast if epoch > self.config['ct_tk']:"
 aaa_spec3: "dont exchange ind_noisy_ for contrast"
@@ -24,7 +24,6 @@ nbr_neighbors: [10,5]
 
 # Compare network
 train_type: 'both' # nalgo   baseline   both
-compare_loss : 'normal' # normal back
 
 # Regularization
 dropout: 0.2
@@ -34,8 +33,8 @@ optimizer: 'adam'
 learning_rate: 0.001
 #weight_decay: 0.0005
 
-num_runs: 1
-max_epochs: 40
+num_runs: 3
+max_epochs: 3
 batch_size: 512
 num_workers: 1
 
@@ -49,16 +48,16 @@ do_train: True
 do_plot: False
 
 # Noise
-noise_rate: 0.4
-noise_type: 'next_pair' # pair   sym
+noise_rate: 0.5
+noise_type: 'sym' # pair   sym
 
 # Algo Co-teaching or CNCLU
 algo_type: 'coteaching' # ct codi cn_soft cn_hard
-ct_tk: 15
+ct_tk: 2
 ct_exp: 1
 ct_tau: 1.2
 
-spl_cont_beta: 0.05
+spl_cont_beta: 0.1
 spl_noise_rate_neg: 0.9
 spl_noise_rate_pos: 0.05
 spl_rewire_rate: 0.2

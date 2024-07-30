@@ -63,7 +63,7 @@ class PipelineTE(object):
         
         # Logger and data loader
         date = dt.datetime.date(dt.datetime.now())
-        self.output_name = 'dt{}{}_{}_id{}_{}_{}_{}_algo_{}_split_{}_noise_{}{}_lay{}_hid{}_lr{}_epo{}_bs{}_drop{}_tk{}_cttau{}_neigh{}{}'.format(date.month,date.day,self.config['dataset_name'],self.config['batch_id'],self.config['train_type'],self.config['algo_type'],self.config['module'],self.config['compare_loss'],self.config['original_split'],self.config['noise_type'],self.config['noise_rate'],self.config['num_layers'],self.config['hidden_size'],self.config['learning_rate'],self.config['max_epochs'],self.config['batch_size'],self.config['dropout'],self.config['ct_tk'],self.config['ct_tau'],self.config['nbr_neighbors'][0],self.config['nbr_neighbors'][1])#,self.config['nbr_neighbors'][2])
+        self.output_name = 'dt{}{}_{}_id{}_{}_{}_{}_split_{}_noise_{}{}_lay{}_hid{}_lr{}_epo{}_bs{}_drop{}_tk{}_cttau{}_neigh{}{}'.format(date.month,date.day,self.config['dataset_name'],self.config['batch_id'],self.config['train_type'],self.config['algo_type'],self.config['module'],self.config['original_split'],self.config['noise_type'],self.config['noise_rate'],self.config['num_layers'],self.config['hidden_size'],self.config['learning_rate'],self.config['max_epochs'],self.config['batch_size'],self.config['dropout'],self.config['ct_tk'],self.config['ct_tau'],self.config['nbr_neighbors'][0],self.config['nbr_neighbors'][1])#,self.config['nbr_neighbors'][2])
         self.logger = initialize_logger(self.config, self.output_name)
         #np.save('../out_nmat/' + self.output_name + '.npy', noise_mat)
         
@@ -291,6 +291,7 @@ class PipelineTE(object):
         if self.config['do_train']:
             self.logger.info('{} RUNS'.format(self.config['num_runs']))
             if self.config['train_type'] in ['nalgo','both']:
+                best_acc_ct = []
                 for i in range(self.config['num_runs']):
                     #self.logger.info('   Train nalgo')
                     self.model1.network.reset_parameters()
@@ -322,10 +323,15 @@ class PipelineTE(object):
                         
                         test_acc_1, test_acc_2 = self.test_ct(self.test_loader, self.model1.network.to(self.device), self.model2.network.to(self.device))
                         test_acc_1_hist.append(test_acc_1), test_acc_2_hist.append(test_acc_2)
-                        self.logger.info('   Train epoch {}/{} --- acc t1: {:.3f} t2: {:.3f} v1: {:.3f} v2: {:.3f} tst1: {:.3f} tst2: {:.3f}'.format(epoch+1,self.config['max_epochs'],train_acc_1,train_acc_2,val_acc_1,val_acc_2,test_acc_1,test_acc_2))
+                        #self.logger.info('   Train epoch {}/{} --- acc t1: {:.3f} t2: {:.3f} v1: {:.3f} v2: {:.3f} tst1: {:.3f} tst2: {:.3f}'.format(epoch+1,self.config['max_epochs'],train_acc_1,train_acc_2,val_acc_1,val_acc_2,test_acc_1,test_acc_2))
                     self.logger.info('   RUN {} - train nalgo test acc1: {:.3f}   acc2: {:.3f}'.format(i+1,max(test_acc_1_hist),max(test_acc_2_hist)))
+                    best_acc_ct.append(max(max(test_acc_1_hist),max(test_acc_2_hist)))
+
+                std, mean = torch.std_mean(best_acc_ct)
+                self.logger.info('   RUN nalgo mean {:.3f} +- {:.3f} std'.format(mean,std))
                
             if self.config['train_type'] in ['baseline','both']:
+                best_acc_bs = []
                 for i in range(self.config['num_runs']):
                     #self.logger.info('   Train baseline')
                     self.model_c.network.reset_parameters()
@@ -343,9 +349,13 @@ class PipelineTE(object):
                         val_acc_hist.append(val_acc)
                         test_acc = self.test(self.test_loader, self.model_c.network.to(self.device))
                         test_acc_hist.append(test_acc)
-                        self.logger.info('   Train epoch {}/{} --- acc t: {:.3f} v: {:.3f} tst: {:.3f}'.format(epoch+1,self.config['max_epochs'],train_acc,val_acc,test_acc))
+                        #self.logger.info('   Train epoch {}/{} --- acc t: {:.3f} v: {:.3f} tst: {:.3f}'.format(epoch+1,self.config['max_epochs'],train_acc,val_acc,test_acc))
                     self.logger.info('   RUN {} - train baseline test acc: {:.3f}'.format(i+1,max(test_acc_hist)))
-        
+                    best_acc_bs.append(max(test_acc_hist))
+                    
+                std, mean = torch.std_mean(best_acc_bs)
+                self.logger.info('   RUN baseline mean {:.3f} +- {:.3f} std'.format(mean,std))
+            
             print('Done training')
             self.logger.info('Done training')
 
