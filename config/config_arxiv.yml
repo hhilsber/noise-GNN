@@ -1,5 +1,5 @@
 # Data
-batch_id: 7
+batch_id: 1
 aaa_spec: "transforms = T.ToUndirected()"
 
 data_type: 'network'
@@ -30,7 +30,8 @@ optimizer: 'adam'
 learning_rate: 0.001
 #weight_decay: 0.0005
 
-max_epochs: 25
+num_runs: 5
+max_epochs: 40
 batch_size: 512
 num_workers: 1
 
@@ -40,14 +41,14 @@ cuda: True
 # Bool
 original_split: True
 do_train: True
-do_plot: True
+do_plot: False
 
 # Noise
-noise_rate: 0.5
+noise_rate: 0.3
 noise_type: 'next_pair' # pair   sym
 
 # Algo Co-teaching or CNCLU
 algo_type: 'coteaching' # ct codi cn_soft cn_hard
 ct_tk: 15
 ct_exp: 1
-ct_tau: 0.3
+ct_tau: 1.2

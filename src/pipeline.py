@@ -116,7 +116,15 @@ class PipelineCO(object):
             num_workers=self.config['num_workers'],
             persistent_workers=True
         )
-        print(len(self.test_loader))
+        
+        self.subgraph_loader = NeighborLoader(
+            self.data,
+            input_nodes=None,
+            num_neighbors=[-1],
+            batch_size=4096,
+            num_workers=4,
+            persistent_workers=True,
+        )
 
 
     def train_ct(self, train_loader, epoch, model1, optimizer1, model2, optimizer2):
@@ -270,76 +278,119 @@ class PipelineCO(object):
         test_acc = total_correct / self.split_idx['test'].size(0) #self.test_size #
         return test_acc
 
+    def new_test(self, subgraph_loader, model):
+        model.eval()
 
+        with torch.no_grad():
+            out = model.inference(self.data.x, subgraph_loader, self.device)
+            
+            y_true = self.data.y.cpu()
+            y_pred = out.argmax(dim=-1, keepdim=True)
+
+            train_acc = self.evaluator.eval({
+                'y_true': y_true[self.split_idx['train']],
+                'y_pred': y_pred[self.split_idx['train']],
+            })['acc']
+            val_acc = self.evaluator.eval({
+                'y_true': y_true[self.split_idx['valid']],
+                'y_pred': y_pred[self.split_idx['valid']],
+            })['acc']
+            test_acc = self.evaluator.eval({
+                'y_true': y_true[self.split_idx['test']],
+                'y_pred': y_pred[self.split_idx['test']],
+            })['acc']
+
+        return train_acc, val_acc, test_acc
 
     def loop(self):
         print('loop')
         
         if self.config['do_train']:
+            self.logger.info('{} RUNS'.format(self.config['num_runs']))
             if self.config['train_type'] in ['nalgo','both']:
-                print('Train nalgo')
-                self.logger.info('Train nalgo')
-                #self.model1.network.reset_parameters()
-                #self.model2.network.reset_parameters()
+                best_acc_ct = []
+                for i in range(self.config['num_runs']):
+                    #self.logger.info('   Train nalgo')
+                    self.model1.network.reset_parameters()
+                    self.model2.network.reset_parameters()
 
-                train_loss_1_hist = []
-                train_loss_2_hist = []
-                train_acc_1_hist = []
-                train_acc_2_hist = []
-                pure_ratio_1_hist = []
-                pure_ratio_2_hist = []
-                val_acc_1_hist = []
-                val_acc_2_hist = []
-                test_acc_1_hist = []
-                test_acc_2_hist = []
+                    train_loss_1_hist = []
+                    train_loss_2_hist = []
+                    train_acc_1_hist = []
+                    train_acc_2_hist = []
+                    pure_ratio_1_hist = []
+                    pure_ratio_2_hist = []
+                    val_acc_1_hist = []
+                    val_acc_2_hist = []
+                    test_acc_1_hist = []
+                    test_acc_2_hist = []
 
-                best_test = 0.3
-                for epoch in range(self.config['max_epochs']):
-                    train_loss_1, train_loss_2, train_acc_1, train_acc_2, pure_ratio_1_list, pure_ratio_2_list = self.train_ct(self.train_loader, epoch, self.model1.network.to(self.device), self.model1.optimizer, self.model2.network.to(self.device), self.model2.optimizer)
+                    best_test = 0.3
+                    for epoch in range(self.config['max_epochs']):
+                        #train_loss_1, train_loss_2, train_acc_1, train_acc_2, pure_ratio_1_list, pure_ratio_2_list = self.train_ct(self.train_loader, epoch, self.model1.network.to(self.device), self.model1.optimizer, self.model2.network.to(self.device), self.model2.optimizer)
+                        train_loss_1, train_loss_2, _, _, pure_ratio_1_list, pure_ratio_2_list = self.train_ct(self.train_loader, epoch, self.model1.network.to(self.device), self.model1.optimizer, self.model2.network.to(self.device), self.model2.optimizer)
+                        train_acc_1, val_acc_1, test_acc_1 = self.new_test(self.subgraph_loader, self.model1.network.to(self.device))
+                        train_acc_2, val_acc_2, test_acc_2 = self.new_test(self.subgraph_loader, self.model2.network.to(self.device))
 
-                    train_loss_1_hist.append(train_loss_1), train_loss_2_hist.append(train_loss_2)
-                    train_acc_1_hist.append(train_acc_1), train_acc_2_hist.append(train_acc_2)
-                    pure_ratio_1_hist.append(pure_ratio_1_list), pure_ratio_2_hist.append(pure_ratio_2_list)
-                    
-                    val_acc_1, val_acc_2 = self.evaluate_ct(self.valid_loader, self.model1.network.to(self.device), self.model2.network.to(self.device))
-                    val_acc_1_hist.append(val_acc_1), val_acc_2_hist.append(val_acc_2)
-                    
-                    test_acc_1, test_acc_2 = self.test_ct(self.test_loader, self.model1.network.to(self.device), self.model2.network.to(self.device))
-                    test_acc_1_hist.append(test_acc_1), test_acc_2_hist.append(test_acc_2)
-                    self.logger.info('   Train epoch {}/{} --- acc t1: {:.3f} t2: {:.3f} v1: {:.3f} v2: {:.3f} tst1: {:.3f} tst2: {:.3f}'.format(epoch+1,self.config['max_epochs'],train_acc_1,train_acc_2,val_acc_1,val_acc_2,test_acc_1,test_acc_2))
-                    """
-                    if (test_acc_1 > best_test):
-                        best_test = test_acc_1
-                    elif (test_acc_2 > best_test):
-                        best_test = test_acc_2
-                    
-                    if (val_acc_1 > best_val):
-                        print("saved model, val acc {:.3f}".format(val_acc_1))
-                        self.logger.info('   Saved  model')
-                        best_val = val_acc_1
-                        torch.save(self.model1.network.state_dict(), '../out_model/' + self.config['algo_type'] + '/' + self.output_name + '_m1.pth')
-                        torch.save(self.model2.network.state_dict(), '../out_model/' + self.config['algo_type'] + '/' + self.output_name + '_m2.pth')
-                    """
+                        train_loss_1_hist.append(train_loss_1), train_loss_2_hist.append(train_loss_2)
+                        train_acc_1_hist.append(train_acc_1), train_acc_2_hist.append(train_acc_2)
+                        pure_ratio_1_hist.append(pure_ratio_1_list), pure_ratio_2_hist.append(pure_ratio_2_list)
+                        
+                        #val_acc_1, val_acc_2 = self.evaluate_ct(self.valid_loader, self.model1.network.to(self.device), self.model2.network.to(self.device))
+                        val_acc_1_hist.append(val_acc_1), val_acc_2_hist.append(val_acc_2)
+                        
+                        #test_acc_1, test_acc_2 = self.test_ct(self.test_loader, self.model1.network.to(self.device), self.model2.network.to(self.device))
+                        test_acc_1_hist.append(test_acc_1), test_acc_2_hist.append(test_acc_2)
+                        #self.logger.info('   Train epoch {}/{} --- acc t1: {:.3f} t2: {:.3f} v1: {:.3f} v2: {:.3f} tst1: {:.3f} tst2: {:.3f}'.format(epoch+1,self.config['max_epochs'],train_acc_1,train_acc_2,val_acc_1,val_acc_2,test_acc_1,test_acc_2))
+                        """
+                        if (test_acc_1 > best_test):
+                            best_test = test_acc_1
+                        elif (test_acc_2 > best_test):
+                            best_test = test_acc_2
+                        
+                        if (val_acc_1 > best_val):
+                            print("saved model, val acc {:.3f}".format(val_acc_1))
+                            self.logger.info('   Saved  model')
+                            best_val = val_acc_1
+                            torch.save(self.model1.network.state_dict(), '../out_model/' + self.config['algo_type'] + '/' + self.output_name + '_m1.pth')
+                            torch.save(self.model2.network.state_dict(), '../out_model/' + self.config['algo_type'] + '/' + self.output_name + '_m2.pth')
+                        """
+                    self.logger.info('   RUN {} - best nalgo test acc1: {:.3f}   acc2: {:.3f}'.format(i+1,max(test_acc_1_hist),max(test_acc_2_hist)))
+                    best_acc_ct.append(max(max(test_acc_1_hist),max(test_acc_2_hist)))
+                
+                std, mean = torch.std_mean(torch.as_tensor(best_acc_ct))
+                self.logger.info('   RUN nalgo mean {:.3f} +- {:.3f} std'.format(mean,std))
+            
             if self.config['train_type'] in ['baseline','both']:
-                print('Train baseline')
-                self.logger.info('Train baseline')
-                #self.model_c.network.reset_parameters()
+                best_acc_bs = []
+                for i in range(self.config['num_runs']):
+                    #self.logger.info('   Train baseline')
+                    self.model_c.network.reset_parameters()
 
-                train_loss_hist = []
-                train_acc_hist = []
-                val_acc_hist = []
-                test_acc_hist = []
-                for epoch in range(self.config['max_epochs']):
-                    train_loss, train_acc = self.train(self.train_loader, epoch, self.model_c.network.to(self.device), self.model_c.optimizer)
-                    train_loss_hist.append(train_loss)
-                    train_acc_hist.append(train_acc)
+                    train_loss_hist = []
+                    train_acc_hist = []
+                    val_acc_hist = []
+                    test_acc_hist = []
+                    for epoch in range(self.config['max_epochs']):
+                        #train_loss, train_acc = self.train(self.train_loader, epoch, self.model_c.network.to(self.device), self.model_c.optimizer)
+                        train_loss, _ = self.train(self.train_loader, epoch, self.model_c.network.to(self.device), self.model_c.optimizer)
+                        #inf_train_acc, inf_val_acc, inf_test_acc = self.new_test(self.subgraph_loader, self.model_c.network.to(self.device))
+                        train_acc, val_acc, test_acc = self.new_test(self.subgraph_loader, self.model_c.network.to(self.device))
+                        train_loss_hist.append(train_loss)
+                        train_acc_hist.append(train_acc)
 
-                    val_acc = self.evaluate(self.valid_loader, self.model_c.network.to(self.device))
-                    val_acc_hist.append(val_acc)
-                    test_acc = self.test(self.test_loader, self.model_c.network.to(self.device))
-                    test_acc_hist.append(test_acc)
-                    self.logger.info('   Train epoch {}/{} --- acc t: {:.3f} v: {:.3f} tst: {:.3f}'.format(epoch+1,self.config['max_epochs'],train_acc,val_acc,test_acc))
-
+                        
+                        #val_acc = self.evaluate(self.valid_loader, self.model_c.network.to(self.device))
+                        val_acc_hist.append(val_acc)
+                        #test_acc = self.test(self.test_loader, self.model_c.network.to(self.device))
+                        test_acc_hist.append(test_acc)
+                        #self.logger.info('   Train epoch {}/{} --- acc t: {:.3f} v: {:.3f} tst: {:.3f}'.format(epoch+1,self.config['max_epochs'],train_acc,val_acc,test_acc))
+                    self.logger.info('   RUN {} - best baseline test acc: {:.3f}'.format(i+1,max(test_acc_hist)))
+                    best_acc_bs.append(max(test_acc_hist))
+                    
+                std, mean = torch.std_mean(torch.as_tensor(best_acc_bs))
+                self.logger.info('   RUN baseline mean {:.3f} +- {:.3f} std'.format(mean,std))
+            
             print('Done training')
             self.logger.info('Done training')
         else:
@@ -351,13 +402,6 @@ class PipelineCO(object):
 
             val_acc_1, val_acc_2 = self.evaluate_ct(self.valid_loader, self.model1.network.to(self.device), self.model2.network.to(self.device))
             self.logger.info('   Load eval v1: {:.3f} v2: {:.3f}'.format(val_acc_1,val_acc_2))
-
-        if self.config['train_type'] in ['nalgo','both']:
-            self.logger.info('Best test acc1: {:.3f}   acc2: {:.3f}'.format(max(test_acc_1_hist),max(test_acc_2_hist)))
-        if self.config['train_type'] in ['baseline','both']:
-            self.logger.info('Best baseline test acc: {:.3f}'.format(max(test_acc_hist)))
-        
-        print('Done')
 
         if self.config['do_plot']:
             fig, axs = plt.subplots(4, 1, figsize=(10, 15))
