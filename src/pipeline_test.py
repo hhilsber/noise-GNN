@@ -52,7 +52,7 @@ class PipelineTE(object):
                 self.criterion = CoDiLoss(self.device, self.config['co_lambda'])
             self.rate_schedule = np.ones(self.config['max_epochs'])*self.config['noise_rate']*self.config['ct_tau']
             self.rate_schedule[:self.config['ct_tk']] = np.linspace(0, self.config['noise_rate']**self.config['ct_exp'], self.config['ct_tk'])
-        self.optimizer = torch.optim.Adam(list(self.model1.network.parameters()) + list(self.model2.network.parameters()),lr=config['learning_rate'])
+            self.optimizer = torch.optim.Adam(list(self.model1.network.parameters()) + list(self.model2.network.parameters()),lr=config['learning_rate'])
 
         if self.config['train_type'] in ['baseline','both']:
             self.model_c = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],"sage")
@@ -324,10 +324,10 @@ class PipelineTE(object):
                         test_acc_1, test_acc_2 = self.test_ct(self.test_loader, self.model1.network.to(self.device), self.model2.network.to(self.device))
                         test_acc_1_hist.append(test_acc_1), test_acc_2_hist.append(test_acc_2)
                         #self.logger.info('   Train epoch {}/{} --- acc t1: {:.3f} t2: {:.3f} v1: {:.3f} v2: {:.3f} tst1: {:.3f} tst2: {:.3f}'.format(epoch+1,self.config['max_epochs'],train_acc_1,train_acc_2,val_acc_1,val_acc_2,test_acc_1,test_acc_2))
-                    self.logger.info('   RUN {} - train nalgo test acc1: {:.3f}   acc2: {:.3f}'.format(i+1,max(test_acc_1_hist),max(test_acc_2_hist)))
+                    self.logger.info('   RUN {} - best nalgo test acc1: {:.3f}   acc2: {:.3f}'.format(i+1,max(test_acc_1_hist),max(test_acc_2_hist)))
                     best_acc_ct.append(max(max(test_acc_1_hist),max(test_acc_2_hist)))
 
-                std, mean = torch.std_mean(best_acc_ct)
+                std, mean = torch.std_mean(torch.as_tensor(best_acc_ct))
                 self.logger.info('   RUN nalgo mean {:.3f} +- {:.3f} std'.format(mean,std))
                
             if self.config['train_type'] in ['baseline','both']:
@@ -350,10 +350,10 @@ class PipelineTE(object):
                         test_acc = self.test(self.test_loader, self.model_c.network.to(self.device))
                         test_acc_hist.append(test_acc)
                         #self.logger.info('   Train epoch {}/{} --- acc t: {:.3f} v: {:.3f} tst: {:.3f}'.format(epoch+1,self.config['max_epochs'],train_acc,val_acc,test_acc))
-                    self.logger.info('   RUN {} - train baseline test acc: {:.3f}'.format(i+1,max(test_acc_hist)))
+                    self.logger.info('   RUN {} - best baseline test acc: {:.3f}'.format(i+1,max(test_acc_hist)))
                     best_acc_bs.append(max(test_acc_hist))
                     
-                std, mean = torch.std_mean(best_acc_bs)
+                std, mean = torch.std_mean(torch.as_tensor(best_acc_bs))
                 self.logger.info('   RUN baseline mean {:.3f} +- {:.3f} std'.format(mean,std))
             
             print('Done training')
