@@ -128,7 +128,7 @@ class PipelineCO(object):
 
 
     def train_ct(self, train_loader, epoch, model1, optimizer1, model2, optimizer2):
-        if not((epoch+1)%5) or ((epoch+1)==1):
+        if not((epoch+1)%10) or ((epoch+1)==1):
             print('   Train epoch {}/{}'.format(epoch+1, self.config['max_epochs']))
         model1.train()
         model2.train()
@@ -217,7 +217,7 @@ class PipelineCO(object):
         return test_acc_1, test_acc_2
 
     def train(self, train_loader, epoch, model, optimizer):
-        if not((epoch+1)%5) or ((epoch+1)==1):
+        if not((epoch+1)%10) or ((epoch+1)==1):
             print('   Train epoch {}/{}'.format(epoch+1, self.config['max_epochs']))
             #print('     loss = F.cross_entropy(out, y)')
         model.train()
@@ -341,7 +341,8 @@ class PipelineCO(object):
                         
                         #test_acc_1, test_acc_2 = self.test_ct(self.test_loader, self.model1.network.to(self.device), self.model2.network.to(self.device))
                         test_acc_1_hist.append(test_acc_1), test_acc_2_hist.append(test_acc_2)
-                        #self.logger.info('   Train epoch {}/{} --- acc t1: {:.3f} t2: {:.3f} v1: {:.3f} v2: {:.3f} tst1: {:.3f} tst2: {:.3f}'.format(epoch+1,self.config['max_epochs'],train_acc_1,train_acc_2,val_acc_1,val_acc_2,test_acc_1,test_acc_2))
+                        if self.config['epoch_logger']:
+                            self.logger.info('   Train epoch {}/{} --- acc t1: {:.3f} t2: {:.3f} v1: {:.3f} v2: {:.3f} tst1: {:.3f} tst2: {:.3f}'.format(epoch+1,self.config['max_epochs'],train_acc_1,train_acc_2,val_acc_1,val_acc_2,test_acc_1,test_acc_2))
                         """
                         if (test_acc_1 > best_test):
                             best_test = test_acc_1
@@ -384,7 +385,8 @@ class PipelineCO(object):
                         val_acc_hist.append(val_acc)
                         #test_acc = self.test(self.test_loader, self.model_c.network.to(self.device))
                         test_acc_hist.append(test_acc)
-                        #self.logger.info('   Train epoch {}/{} --- acc t: {:.3f} v: {:.3f} tst: {:.3f}'.format(epoch+1,self.config['max_epochs'],train_acc,val_acc,test_acc))
+                        if self.config['epoch_logger']:
+                            self.logger.info('   Train epoch {}/{} --- acc t: {:.3f} v: {:.3f} tst: {:.3f}'.format(epoch+1,self.config['max_epochs'],train_acc,val_acc,test_acc))
                     self.logger.info('   RUN {} - best baseline test acc: {:.3f}'.format(i+1,max(test_acc_hist)))
                     best_acc_bs.append(max(test_acc_hist))
                     
