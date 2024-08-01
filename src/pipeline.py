@@ -52,9 +52,18 @@ class PipelineCO(object):
 
         if self.config['train_type'] in ['baseline','both']:
             self.model_c = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module'])
-        self.evaluator = Evaluator(name=config['dataset_name'])
         
-        self.split_idx = self.dataset.get_idx_split()
+        if config['dataset_name'] in ['ogbn-arxiv']:
+            self.evaluator = Evaluator(name=config['dataset_name'])
+            self.split_idx = self.dataset.get_idx_split()
+        else:
+            self.train_mask = self.data.train_mask
+            print(self.data.x.shape)
+            print(self.data.edge_index.shape)
+            print(self.data.train_mask.shape)
+            print(self.data.val_mask.shape)
+            print(self.data.test_mask.shape)
+            print(a)
         """
         # Split data set
         if config['original_split']:

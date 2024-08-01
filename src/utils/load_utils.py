@@ -5,6 +5,7 @@ import pickle as pkl
 import torch
 import numpy as np
 from ogb.nodeproppred import PygNodePropPredDataset
+from torch_geometric.datasets import Planetoid
 import torch_geometric.transforms as T
 
 
@@ -25,6 +26,13 @@ def load_network(config):
         #dataset = PygNodePropPredDataset(dataset_name, root, T.Compose([T.ToUndirected(),T.ToSparseTensor()]))
         transforms = T.ToUndirected()
         dataset = PygNodePropPredDataset(name = dataset_name, transform=transforms, root = root)
+    elif dataset_name == 'pubmed':
+        transforms = T.NormalizeFeatures()
+        dataset = Planetoid(root = root, name = dataset_name,
+                            transform=transforms)
+        
+        #data = dataset[0]
+        #data.num_classes = dataset.num_classes
     elif dataset_name == 'cora':
         dataset = pkl.load(open(f'{data_dir}/{dataset_name}/dataset.pkl', 'rb'))
         
