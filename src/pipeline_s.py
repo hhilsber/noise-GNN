@@ -52,8 +52,7 @@ class PipelineS(object):
             self.rate_schedule[:self.config['ct_tk']] = np.linspace(0, self.config['noise_rate']**self.config['ct_exp'], self.config['ct_tk'])
 
         if self.config['train_type'] in ['baseline','both']:
-            self.model_c = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module'])
-        
+            self.model_c = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module'],self.config['use_bn'])
         
         train_idx = self.data.train_mask.nonzero().squeeze()
         val_idx = self.data.val_mask.nonzero().squeeze()
@@ -157,8 +156,8 @@ class PipelineS(object):
             """
             out = model(batch.x, batch.edge_index)[:batch.batch_size]
             y = batch.y[:batch.batch_size].squeeze()
-            yhn = batch.yhn[:batch.batch_size].squeeze()
-            loss = F.cross_entropy(out, yhn)"""
+            yhn = batch.yhn[:batch.batch_size].squeeze()"""
+            loss = F.cross_entropy(out, yhn)
                 
             
             total_loss += float(loss)

@@ -24,6 +24,7 @@ compare_loss : 'normal' # normal back
 
 # Regularization
 dropout: 0.5
+use_bn: True
 
 # Training
 optimizer: 'adam'

@@ -1,4 +1,5 @@
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 from torch_geometric.nn import SAGEConv
 
@@ -18,6 +19,7 @@ class SAGE(torch.nn.Module):
         self.convs.append(SAGEConv(hidden_size, out_size))
 
         self.use_bn = use_bn
+        print('use bn {}'.format(self.use_bn))
         if self.use_bn:
             self.bn1 = nn.BatchNorm1d(in_size)
             self.bn2 = nn.BatchNorm1d(hidden_size)

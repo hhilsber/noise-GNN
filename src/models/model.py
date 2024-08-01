@@ -11,7 +11,7 @@ class NGNN(object):
     """
     d
     """
-    def __init__(self, in_size=100, hidden_size=128, out_size=47, num_layers=2, dropout=0.5, lr=0.001, optimizer='adam', module='sage', wd=0.0005, nbr_nodes=1):
+    def __init__(self, in_size=100, hidden_size=128, out_size=47, num_layers=2, dropout=0.5, lr=0.001, optimizer='adam', module='sage', use_bn=False, wd=0.0005, nbr_nodes=1):
         #self.config = config
         
         self.criterion = None
@@ -29,6 +29,7 @@ class NGNN(object):
         self.wd = wd
         self.optimizer = optimizer
         self.module = module
+        self.use_bn = use_bn
 
         self.init_network()
         self.init_optimizer()
@@ -45,7 +46,8 @@ class NGNN(object):
                                     hidden_size=self.hidden_size,
                                     out_size=self.out_size,
                                     num_layers=self.num_layers,
-                                    dropout=self.dropout)
+                                    dropout=self.dropout,
+                                    use_bn=self.use_bn)
         elif self.module == 'sageH':
             self.network = SAGEH(in_size=self.in_size,
                                     hidden_size=self.hidden_size,
