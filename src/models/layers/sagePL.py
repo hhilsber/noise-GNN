@@ -75,3 +75,21 @@ class SAGEPL(torch.nn.Module):
                 x = F.dropout(x, p=self.dropout, training=self.training)
         return h, torch.log_softmax(x, dim=1), x
     
+    def inference(self, x_all, subgraph_loader, device):
+        # Compute representations of nodes layer by layer, using *all*
+        # available edges. This leads to faster computation in contrast to
+        # immediately computing the final representations of each batch.
+        for i in range(self.num_layers):
+            xs = []
+            for batch in subgraph_loader:
+                x = x_all[batch.n_id].to(device)
+                edge_index = batch.edge_index.to(device)
+                x = self.convs[i](x, edge_index)
+                x = x[:batch.batch_size]
+                if i != self.num_layers - 1:
+                    x = x.relu()
+                xs.append(x.cpu())
+
+            x_all = torch.cat(xs, dim=0)
+
+        return x_all

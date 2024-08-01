@@ -16,7 +16,7 @@ from src.pipeline_h import PipelineH
 ##################################### Main #####################################
 def main(config):
     if config['algo_type'] in ['codi', 'coteaching']:
-        if config['what'] == '_test':
+        if config['what'] == '_test2':
             model = PipelineTE(config)
         else:
             model = PipelineCO(config)

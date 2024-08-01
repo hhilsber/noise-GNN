@@ -56,7 +56,7 @@ class PipelineTE(object):
 
         if self.config['train_type'] in ['baseline','both']:
             self.model_c = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],"sage")
-        
+        self.evaluator = Evaluator(name=config['dataset_name'])
         # Contrastive
         self.discriminator = Discriminator_innerprod()
         self.cont_criterion = BCEExeprtLoss(self.config['batch_size'])
@@ -85,7 +85,7 @@ class PipelineTE(object):
             num_workers=self.config['num_workers'],
             persistent_workers=True
         )
-        
+        """
         self.test_loader = NeighborLoader(
             self.data,
             input_nodes=self.split_idx['test'],
@@ -93,8 +93,16 @@ class PipelineTE(object):
             batch_size=self.config['batch_size'],
             num_workers=self.config['num_workers'],
             persistent_workers=True
+        )"""
+
+        self.subgraph_loader = NeighborLoader(
+            self.data,
+            input_nodes=None,
+            num_neighbors=self.config['nbr_neighbors'],
+            batch_size=4096,
+            num_workers=4,
+            persistent_workers=True,
         )
-        print(len(self.test_loader))
 
 
     def train_ct(self, train_loader, epoch, model1, model2, optimizer):
@@ -283,7 +291,29 @@ class PipelineTE(object):
         test_acc = total_correct / self.split_idx['test'].size(0) #self.test_size #
         return test_acc
 
+    def new_test(self, subgraph_loader, model):
+        model.eval()
 
+        with torch.no_grad():
+            out = model.inference(self.data.x, subgraph_loader, self.device)
+            
+            y_true = self.data.y.cpu()
+            y_pred = out.argmax(dim=-1, keepdim=True)
+
+            train_acc = self.evaluator.eval({
+                'y_true': y_true[self.split_idx['train']],
+                'y_pred': y_pred[self.split_idx['train']],
+            })['acc']
+            val_acc = self.evaluator.eval({
+                'y_true': y_true[self.split_idx['valid']],
+                'y_pred': y_pred[self.split_idx['valid']],
+            })['acc']
+            test_acc = self.evaluator.eval({
+                'y_true': y_true[self.split_idx['test']],
+                'y_pred': y_pred[self.split_idx['test']],
+            })['acc']
+
+        return train_acc, val_acc, test_acc
 
     def loop(self):
         print('loop')
@@ -311,19 +341,22 @@ class PipelineTE(object):
                     test_acc_2_hist = []
 
                     for epoch in range(self.config['max_epochs']):
-                        train_loss_1, train_loss_2, train_acc_1, train_acc_2, pure_ratio_1_list, pure_ratio_2_list, train_loss_cont_1, train_loss_cont_2 = self.train_ct(self.train_loader, epoch, self.model1.network.to(self.device), self.model2.network.to(self.device), self.optimizer)
+                        train_loss_1, train_loss_2, _, _, pure_ratio_1_list, pure_ratio_2_list, train_loss_cont_1, train_loss_cont_2 = self.train_ct(self.train_loader, epoch, self.model1.network.to(self.device), self.model2.network.to(self.device), self.optimizer)
+                        train_acc_1, val_acc_1, test_acc_1 = self.new_test(self.subgraph_loader, self.model1.network.to(self.device))
+                        train_acc_2, val_acc_2, test_acc_2 = self.new_test(self.subgraph_loader, self.model2.network.to(self.device))
 
                         train_loss_1_hist.append(train_loss_1), train_loss_2_hist.append(train_loss_2)
                         train_loss_cont_1_hist.append(train_loss_cont_1), train_loss_cont_2_hist.append(train_loss_cont_2)
                         train_acc_1_hist.append(train_acc_1), train_acc_2_hist.append(train_acc_2)
                         pure_ratio_1_hist.append(pure_ratio_1_list), pure_ratio_2_hist.append(pure_ratio_2_list)
                         
-                        val_acc_1, val_acc_2 = self.evaluate_ct(self.valid_loader, self.model1.network.to(self.device), self.model2.network.to(self.device))
+                        #val_acc_1, val_acc_2 = self.evaluate_ct(self.valid_loader, self.model1.network.to(self.device), self.model2.network.to(self.device))
                         val_acc_1_hist.append(val_acc_1), val_acc_2_hist.append(val_acc_2)
                         
-                        test_acc_1, test_acc_2 = self.test_ct(self.test_loader, self.model1.network.to(self.device), self.model2.network.to(self.device))
+                        #test_acc_1, test_acc_2 = self.test_ct(self.test_loader, self.model1.network.to(self.device), self.model2.network.to(self.device))
                         test_acc_1_hist.append(test_acc_1), test_acc_2_hist.append(test_acc_2)
-                        #self.logger.info('   Train epoch {}/{} --- acc t1: {:.3f} t2: {:.3f} v1: {:.3f} v2: {:.3f} tst1: {:.3f} tst2: {:.3f}'.format(epoch+1,self.config['max_epochs'],train_acc_1,train_acc_2,val_acc_1,val_acc_2,test_acc_1,test_acc_2))
+                        if self.config['epoch_logger']:
+                            self.logger.info('   Train epoch {}/{} --- acc t1: {:.3f} t2: {:.3f} v1: {:.3f} v2: {:.3f} tst1: {:.3f} tst2: {:.3f}'.format(epoch+1,self.config['max_epochs'],train_acc_1,train_acc_2,val_acc_1,val_acc_2,test_acc_1,test_acc_2))
                     self.logger.info('   RUN {} - best nalgo test acc1: {:.3f}   acc2: {:.3f}'.format(i+1,max(test_acc_1_hist),max(test_acc_2_hist)))
                     best_acc_ct.append(max(max(test_acc_1_hist),max(test_acc_2_hist)))
 
@@ -342,14 +375,16 @@ class PipelineTE(object):
                     test_acc_hist = []
                     for epoch in range(self.config['max_epochs']):
                         train_loss, train_acc = self.train(self.train_loader, epoch, self.model_c.network.to(self.device), self.model_c.optimizer)
+                        train_acc, val_acc, test_acc = self.new_test(self.subgraph_loader, self.model_c.network.to(self.device))
                         train_loss_hist.append(train_loss)
                         train_acc_hist.append(train_acc)
 
-                        val_acc = self.evaluate(self.valid_loader, self.model_c.network.to(self.device))
+                        #val_acc = self.evaluate(self.valid_loader, self.model_c.network.to(self.device))
                         val_acc_hist.append(val_acc)
-                        test_acc = self.test(self.test_loader, self.model_c.network.to(self.device))
+                        #test_acc = self.test(self.test_loader, self.model_c.network.to(self.device))
                         test_acc_hist.append(test_acc)
-                        #self.logger.info('   Train epoch {}/{} --- acc t: {:.3f} v: {:.3f} tst: {:.3f}'.format(epoch+1,self.config['max_epochs'],train_acc,val_acc,test_acc))
+                        if self.config['epoch_logger']:
+                            self.logger.info('   Train epoch {}/{} --- acc t: {:.3f} v: {:.3f} tst: {:.3f}'.format(epoch+1,self.config['max_epochs'],train_acc,val_acc,test_acc))
                     self.logger.info('   RUN {} - best baseline test acc: {:.3f}'.format(i+1,max(test_acc_hist)))
                     best_acc_bs.append(max(test_acc_hist))
                     
@@ -405,6 +440,6 @@ class PipelineTE(object):
 
             plt.tight_layout()
             #plt.show()
-            plot_name = '../out_plots/coteaching_test/' + self.output_name + '.png'
+            plot_name = '../out_plots/coteaching_test2/' + self.output_name + '.png'
             plt.savefig(plot_name)
 
