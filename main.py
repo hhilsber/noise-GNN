@@ -12,6 +12,7 @@ from src.pipeline_ctp import PipelineCTP
 from src.pipeline_contrast import PipelineCT
 from src.pipeline_test import PipelineTE
 from src.pipeline_h import PipelineH
+from src.pipeline_s import PipelineS
 
 ##################################### Main #####################################
 def main(config):
@@ -19,7 +20,10 @@ def main(config):
         if config['what'] == '_test2':
             model = PipelineTE(config)
         else:
-            model = PipelineCO(config)
+            if config['dataset_name'] in ['ogbn-arxiv']:
+                model = PipelineCO(config)
+            else:
+                model = PipelineS(config)
     elif config['algo_type'] == 'ctp':
         model = PipelineCTP(config)
     elif config['algo_type'] == 'contrastive':

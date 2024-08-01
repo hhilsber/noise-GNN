@@ -3,7 +3,7 @@ import torch.nn.functional as F
 from torch_geometric.nn import SAGEConv
 
 class SAGE(torch.nn.Module):
-    def __init__(self, in_size, hidden_size, out_size, num_layers, dropout=0.5):
+    def __init__(self, in_size, hidden_size, out_size, num_layers, dropout=0.5, use_bn=False):
         super().__init__()
         """
         https://github.com/pyg-team/pytorch_geometric/blob/master/examples/ogbn_products_sage.py
@@ -17,15 +17,24 @@ class SAGE(torch.nn.Module):
             self.convs.append(SAGEConv(hidden_size, hidden_size))
         self.convs.append(SAGEConv(hidden_size, out_size))
 
+        self.use_bn = use_bn
+        if self.use_bn:
+            self.bn1 = nn.BatchNorm1d(in_size)
+            self.bn2 = nn.BatchNorm1d(hidden_size)
+
     def reset_parameters(self):
         for conv in self.convs:
             conv.reset_parameters()
 
     def forward(self, x, edge_index):
+        if self.use_bn:
+            x = self.bn1(x)
         for i, conv in enumerate(self.convs):
             x = conv(x, edge_index)
             if i != self.num_layers - 1:
                 x = x.relu()
+                if self.use_bn:
+                    x = self.bn2(x)
                 x = F.dropout(x, p=self.dropout, training=self.training)
         return x
     

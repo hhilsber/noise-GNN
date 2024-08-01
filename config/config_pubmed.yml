@@ -1,6 +1,6 @@
 # Data
-batch_id: 1
-aaa_spec: ""
+batch_id: 4
+aaa_spec: "faire des batchs"
 
 data_type: 'network'
 data_dir: '../data'
@@ -19,11 +19,11 @@ num_layers: 3
 nbr_neighbors: [10,5]
 
 # Compare network
-train_type: 'both' # nalgo   baseline   both
+train_type: 'baseline' # nalgo   baseline   both
 compare_loss : 'normal' # normal back
 
 # Regularization
-dropout: 0.2
+dropout: 0.5
 
 # Training
 optimizer: 'adam'
@@ -31,8 +31,8 @@ learning_rate: 0.001
 #weight_decay: 0.0005
 
 num_runs: 1
-max_epochs: 30
-batch_size: 256
+max_epochs: 250
+batch_size: 16
 num_workers: 1
 
 # Device
@@ -41,7 +41,7 @@ cuda: True
 # Bool
 original_split: True
 do_train: True
-do_plot: False
+do_plot: True
 epoch_logger: True
 
 # Noise
@@ -50,6 +50,6 @@ noise_type: 'sym' # pair   sym
 
 # Algo Co-teaching or CNCLU
 algo_type: 'coteaching' # ct codi cn_soft cn_hard
-ct_tk: 15
+ct_tk: 100
 ct_exp: 1
-ct_tau: 1.2
+ct_tau: 0.3

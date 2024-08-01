@@ -1,5 +1,5 @@
 # Data
-batch_id: 2
+batch_id: 5
 aaa_spec: "transforms = T.ToUndirected()"
 aaa_spec2: "use nodeproppred import Evaluator"
 aaa_spec2: "self.subgraph_loader = NeighborLoader(num_neighbors=self.config['nbr_neighbors'],"
@@ -32,8 +32,8 @@ optimizer: 'adam'
 learning_rate: 0.001
 #weight_decay: 0.0005
 
-num_runs: 5
-max_epochs: 40
+num_runs: 1
+max_epochs: 2
 batch_size: 512
 num_workers: 1
 
@@ -54,4 +54,4 @@ noise_type: 'sym' # pair   sym
 algo_type: 'coteaching' # ct codi cn_soft cn_hard
 ct_tk: 15
 ct_exp: 1
-ct_tau: 1.0
+ct_tau: 1.2
