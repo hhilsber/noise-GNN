@@ -116,7 +116,7 @@ class PipelineCO(object):
             num_workers=self.config['num_workers'],
             persistent_workers=True
         )
-        
+        """
         self.subgraph_loader = NeighborLoader(
             self.data,
             input_nodes=None,
@@ -125,7 +125,15 @@ class PipelineCO(object):
             num_workers=4,
             persistent_workers=True,
         )
-
+        """
+        self.subgraph_loader = NeighborLoader(
+            self.data,
+            input_nodes=None,
+            num_neighbors=self.config['nbr_neighbors'],
+            batch_size=4096,
+            num_workers=4,
+            persistent_workers=True,
+        )
 
     def train_ct(self, train_loader, epoch, model1, optimizer1, model2, optimizer2):
         if not((epoch+1)%10) or ((epoch+1)==1):

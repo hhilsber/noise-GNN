@@ -1,7 +1,8 @@
 # Data
-batch_id: 1
+batch_id: 2
 aaa_spec: "transforms = T.ToUndirected()"
 aaa_spec2: "use nodeproppred import Evaluator"
+aaa_spec2: "self.subgraph_loader = NeighborLoader(num_neighbors=self.config['nbr_neighbors'],"
 
 data_type: 'network'
 data_dir: '../data'
@@ -24,14 +25,14 @@ train_type: 'both' # nalgo   baseline   both
 compare_loss : 'normal' # normal back
 
 # Regularization
-dropout: 0.5
+dropout: 0.2
 
 # Training
 optimizer: 'adam'
 learning_rate: 0.001
 #weight_decay: 0.0005
 
-num_runs: 1
+num_runs: 5
 max_epochs: 40
 batch_size: 512
 num_workers: 1
@@ -43,11 +44,11 @@ cuda: True
 original_split: True
 do_train: True
 do_plot: False
-epoch_logger: True
+epoch_logger: False
 
 # Noise
-noise_rate: 0.4
-noise_type: 'next_pair' # pair   sym
+noise_rate: 0.3
+noise_type: 'sym' # pair   sym
 
 # Algo Co-teaching or CNCLU
 algo_type: 'coteaching' # ct codi cn_soft cn_hard
