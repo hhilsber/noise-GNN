@@ -25,15 +25,14 @@ class PipelineS(object):
         self.device = config['device']
 
         # Data prep
-        self.dataset = load_network(config)
-        self.data = self.dataset[0]
+        self.data, dataset = load_network(config)
         print('noise type and rate: {} {}'.format(config['noise_type'], config['noise_rate']))
-        self.data.yhn, self.noise_mat = flip_label(self.data.y, self.dataset.num_classes, config['noise_type'], config['noise_rate'])
+        self.data.yhn, self.noise_mat = flip_label(self.data.y, dataset.num_classes, config['noise_type'], config['noise_rate'])
         self.noise_or_not = (self.data.y.squeeze() == self.data.yhn) #.int() # true if same lbl
         
-        config['nbr_features'] = self.dataset.num_features #self.dataset.x.shape[-1]
-        config['nbr_classes'] = self.dataset.num_classes #dataset.y.max().item() + 1
-        config['nbr_nodes'] = self.dataset.x.shape[0]
+        config['nbr_features'] = dataset.num_features #self.dataset.x.shape[-1]
+        config['nbr_classes'] = dataset.num_classes #dataset.y.max().item() + 1
+        config['nbr_nodes'] = dataset.x.shape[0]
 
         # Config
         self.config = config
@@ -89,7 +88,7 @@ class PipelineS(object):
         
 
     def train_ct(self, train_loader, epoch, model1, optimizer1, model2, optimizer2):
-        if not((epoch+1)%10) or ((epoch+1)==1):
+        if not((epoch+1)%50) or ((epoch+1)==1):
             print('   Train epoch {}/{}'.format(epoch+1, self.config['max_epochs']))
         model1.train()
         model2.train()
@@ -138,7 +137,7 @@ class PipelineS(object):
         return train_loss_1, train_loss_2, train_acc_1, train_acc_2, pure_ratio_1_list, pure_ratio_2_list
 
     def train(self, train_loader, epoch, model, optimizer):
-        if not((epoch+1)%10) or ((epoch+1)==1):
+        if not((epoch+1)%50) or ((epoch+1)==1):
             print('   Train epoch {}/{}'.format(epoch+1, self.config['max_epochs']))
             #print('     loss = F.cross_entropy(out, y)')
         model.train()
@@ -221,7 +220,7 @@ class PipelineS(object):
                         val_acc_1_hist.append(val_acc_1), val_acc_2_hist.append(val_acc_2)
                         test_acc_1_hist.append(test_acc_1), test_acc_2_hist.append(test_acc_2)
                         
-                        if not((epoch+1)%25) and self.config['epoch_logger']:
+                        if not((epoch+1)%50) and self.config['epoch_logger']:
                             self.logger.info('   Train epoch {}/{} --- acc t1: {:.3f} t2: {:.3f} v1: {:.3f} v2: {:.3f} tst1: {:.3f} tst2: {:.3f}'.format(epoch+1,self.config['max_epochs'],train_acc_1,train_acc_2,val_acc_1,val_acc_2,test_acc_1,test_acc_2))
                     
                     self.logger.info('   RUN {} - best nalgo test acc1: {:.3f}   acc2: {:.3f}'.format(i+1,max(test_acc_1_hist),max(test_acc_2_hist)))
@@ -249,7 +248,7 @@ class PipelineS(object):
                         val_acc_hist.append(val_acc)
                         test_acc_hist.append(test_acc)
 
-                        if not((epoch+1)%25) and self.config['epoch_logger']:
+                        if not((epoch+1)%50) and self.config['epoch_logger']:
                             self.logger.info('   Train epoch {}/{} --- acc t: {:.3f} v: {:.3f} tst: {:.3f}'.format(epoch+1,self.config['max_epochs'],train_acc,val_acc,test_acc))
                     self.logger.info('   RUN {} - best baseline test acc: {:.3f}'.format(i+1,max(test_acc_hist)))
                     best_acc_bs.append(max(test_acc_hist))
