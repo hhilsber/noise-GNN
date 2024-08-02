@@ -53,4 +53,4 @@ noise_type: 'sym' # pair   sym
 algo_type: 'coteaching' # ct codi cn_soft cn_hard
 ct_tk: 50
 ct_exp: 1
-ct_tau: 0.5
+ct_tau: 0.8

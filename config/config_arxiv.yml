@@ -1,5 +1,5 @@
 # Data
-batch_id: 5
+batch_id: 1
 aaa_spec: "transforms = T.ToUndirected()"
 aaa_spec2: "use nodeproppred import Evaluator"
 aaa_spec2: "self.subgraph_loader = NeighborLoader(num_neighbors=self.config['nbr_neighbors'],"
@@ -14,7 +14,7 @@ what: '4'
 seed: 1232
 
 # Graph model
-module: 'sage'
+module: 'gcn'
 hidden_size: 256
 num_layers: 3
 #nbr_neighbors: [15,10,5]
@@ -25,15 +25,15 @@ train_type: 'both' # nalgo   baseline   both
 compare_loss : 'normal' # normal back
 
 # Regularization
-dropout: 0.2
+dropout: 0.5
 
 # Training
 optimizer: 'adam'
 learning_rate: 0.001
 #weight_decay: 0.0005
 
-num_runs: 1
-max_epochs: 2
+num_runs: 5
+max_epochs: 40
 batch_size: 512
 num_workers: 1
 

@@ -4,7 +4,7 @@ aaa_spec: "graph loader 10 5"
 
 data_type: 'network'
 data_dir: '../data'
-dataset_name: 'ogbn-arxiv'
+dataset_name: 'cora' #'ogbn-arxiv'
 task_type: 'classification'
 what: '_test2'
 
@@ -13,7 +13,7 @@ seed: 1232
 
 # Graph model
 module: 'sagePL'
-hidden_size: 256
+hidden_size: 512
 num_layers: 3
 #nbr_neighbors: [15,10,5]
 nbr_neighbors: [10,5]
@@ -29,8 +29,8 @@ optimizer: 'adam'
 learning_rate: 0.001
 #weight_decay: 0.0005
 
-num_runs: 5
-max_epochs: 40
+num_runs: 1
+max_epochs: 55
 batch_size: 512
 num_workers: 1
 
@@ -42,7 +42,7 @@ cuda: True
 original_split: True
 do_train: True
 do_plot: False
-epoch_logger: False
+epoch_logger: True
 
 # Noise
 noise_rate: 0.3
@@ -52,7 +52,7 @@ noise_type: 'sym' # pair   sym
 algo_type: 'coteaching' # ct codi cn_soft cn_hard
 ct_tk: 15
 ct_exp: 1
-ct_tau: 1.2
+ct_tau: 1.0
 
 spl_cont_beta: 0.1
 spl_noise_rate_neg: 0.9
