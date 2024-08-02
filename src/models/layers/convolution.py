@@ -5,8 +5,7 @@ from torch_geometric.nn import GCNConv
 from torch_geometric.nn import global_mean_pool
 
 class SimpleGCN(torch.nn.Module):
-    def __init__(self, in_size, hidden_size, out_size, num_layers,
-                 dropout):
+    def __init__(self, in_size, hidden_size, out_size, num_layers, dropout=0.5, use_bn=False):
         super(SimpleGCN, self).__init__()
         
         """
@@ -15,13 +14,11 @@ class SimpleGCN(torch.nn.Module):
         """
         self.num_layers = num_layers
         self.convs = torch.nn.ModuleList()
-        self.convs.append(
-            GCNConv(in_size, hidden_size, normalize=False))
+        self.convs.append(GCNConv(in_size, hidden_size, normalize=False))
         for _ in range(num_layers - 2):
             self.convs.append(
                 GCNConv(hidden_size, hidden_size, normalize=False))
-        self.convs.append(
-            GCNConv(hidden_size, out_size, normalize=False))
+        self.convs.append(GCNConv(hidden_size, out_size, normalize=False))
 
         self.dropout = dropout
 
@@ -29,9 +26,9 @@ class SimpleGCN(torch.nn.Module):
         for conv in self.convs:
             conv.reset_parameters()
 
-    def forward(self, x, adj_t):
+    def forward(self, x, edge_index):
         for i, conv in enumerate(self.convs):
-            x = conv(x, adj_t)
+            x = conv(x, edge_index)
             if i != self.num_layers - 1:
                 x = x.relu()
                 x = F.dropout(x, p=self.dropout, training=self.training)

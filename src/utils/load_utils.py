@@ -8,6 +8,13 @@ from ogb.nodeproppred import PygNodePropPredDataset
 from torch_geometric.datasets import Planetoid, CitationFull
 import torch_geometric.transforms as T
 
+def index_to_mask(index, size):
+    # https://github.com/eraseai/erase/blob/master/scripts/utils.py
+    """Convert index to mask."""
+    mask = torch.zeros(size, dtype=torch.bool, device=index.device)
+    mask[index] = 1
+    return mask
+
 def random_coauthor_amazon_splits(data, num_classes, lcc_mask=None):
     # https://github.com/eraseai/erase/blob/master/scripts/utils.py
     # Set random coauthor/co-purchase splits:
@@ -61,8 +68,8 @@ def load_network(config):
         transforms = T.NormalizeFeatures()
         dataset = Planetoid(root = root, name = dataset_name,transform=transforms)
         data = dataset[0]
-    elif dataset_name == 'citationfull':
-        dataset = CitationFull(path, name = "cora")
+    elif dataset_name == 'cora':
+        dataset = CitationFull(root = root, name = dataset_name)
         data = dataset[0]
         data.num_classes = dataset.num_classes
         data = random_coauthor_amazon_splits(
