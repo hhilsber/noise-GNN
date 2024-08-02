@@ -15,6 +15,7 @@ from .utils.utils import initialize_logger
 from .utils.noise import flip_label
 from .models.model import NGNN
 from .utils.losses import *
+from .utils.augmentation import *
 
 class PipelineTES(object):
     """
@@ -132,8 +133,10 @@ class PipelineTES(object):
                 hedge_pure2, _, _, _, _, _ = model2(batch.x, pos_edge, noise_rate=self.config['spl_noise_rate_pos'], n_id=batch.n_id)
                 # Neg samples
                 new_x = shuffle_pos(batch.x, device=self.device, prob=self.config['spl_noise_rate_neg'])
-                _, _, _, hneg_noisy1, _, _ = model1(new_x, neg_edge, noise_rate=self.config['spl_noise_rate_neg'], n_id=batch.n_id)
-                _, _, _, hneg_noisy2, _, _ = model2(new_x, neg_edge, noise_rate=self.config['spl_noise_rate_neg'], n_id=batch.n_id)
+                #_, _, _, hneg_noisy1, _, _ = model1(new_x, neg_edge, noise_rate=self.config['spl_noise_rate_neg'], n_id=batch.n_id)
+                #_, _, _, hneg_noisy2, _, _ = model2(new_x, neg_edge, noise_rate=self.config['spl_noise_rate_neg'], n_id=batch.n_id)
+                hneg_noisy1, _, _, _, _, _ = model1(new_x, neg_edge, noise_rate=self.config['spl_noise_rate_neg'], n_id=batch.n_id)
+                hneg_noisy2, _, _, _, _, _ = model2(new_x, neg_edge, noise_rate=self.config['spl_noise_rate_neg'], n_id=batch.n_id)
                 # Contrastive
                 reel_index_1 = self.split_idx['train'][ind_noisy_1]
                 reel_index_2 = self.split_idx['train'][ind_noisy_2]
