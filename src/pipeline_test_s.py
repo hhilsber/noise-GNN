@@ -113,7 +113,6 @@ class PipelineTES(object):
 
         for batch in train_loader:
             batch = batch.to(self.device)
-            print(batch.x.shape)
             # Only consider predictions and labels of seed nodes
             h_pure1, _, z_pure1, h_noisy1, _, _ = model1(batch.x, batch.edge_index, noise_rate=self.config['spl_noise_rate_pos'], n_id=batch.n_id)
             h_pure2, _, z_pure2, h_noisy2, _, _ = model2(batch.x, batch.edge_index, noise_rate=self.config['spl_noise_rate_pos'], n_id=batch.n_id)

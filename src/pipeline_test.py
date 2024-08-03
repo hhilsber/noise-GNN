@@ -76,7 +76,7 @@ class PipelineTE(object):
             num_workers=self.config['num_workers'],
             persistent_workers=True
         )
-
+        """
         self.valid_loader = NeighborLoader(
             self.data,
             input_nodes=self.split_idx['valid'],
@@ -85,7 +85,7 @@ class PipelineTE(object):
             num_workers=self.config['num_workers'],
             persistent_workers=True
         )
-        """
+        
         self.test_loader = NeighborLoader(
             self.data,
             input_nodes=self.split_idx['test'],
@@ -187,50 +187,6 @@ class PipelineTE(object):
         pure_ratio_2_list = total_ratio_2 / len(train_loader)
         
         return train_loss_1, train_loss_2, train_acc_1, train_acc_2, pure_ratio_1_list, pure_ratio_2_list, train_loss_cont_1, train_loss_cont_2
-    
-    def evaluate_ct(self, valid_loader, model1, model2):
-        model1.eval()
-        model2.eval()
-
-        total_correct_1 = 0
-        total_correct_2 = 0
-        
-        for batch in valid_loader:
-            batch = batch.to(self.device)
-            # Only consider predictions and labels of seed nodes
-            _, _, z_pure1, _, _, _ = model1(batch.x, batch.edge_index, n_id=batch.n_id)
-            _, _, z_pure2, _, _, _ = model2(batch.x, batch.edge_index, n_id=batch.n_id)
-            out1 = z_pure1[:batch.batch_size]
-            out2 = z_pure2[:batch.batch_size]
-            y = batch.y[:batch.batch_size].squeeze()
-
-            total_correct_1 += int(out1.argmax(dim=-1).eq(y).sum())
-            total_correct_2 += int(out2.argmax(dim=-1).eq(y).sum())
-        val_acc_1 = total_correct_1 / self.split_idx['valid'].size(0)
-        val_acc_2 = total_correct_2 / self.split_idx['valid'].size(0)
-        return val_acc_1, val_acc_2
-    
-    def test_ct(self, test_loader, model1, model2):
-        model1.eval()
-        model2.eval()
-
-        total_correct_1 = 0
-        total_correct_2 = 0
-
-        for batch in test_loader:
-            batch = batch.to(self.device)
-            # Only consider predictions and labels of seed nodes
-            _, _, z_pure1, _, _, _ = model1(batch.x, batch.edge_index, n_id=batch.n_id)
-            _, _, z_pure2, _, _, _ = model2(batch.x, batch.edge_index, n_id=batch.n_id)
-            out1 = z_pure1[:batch.batch_size]
-            out2 = z_pure2[:batch.batch_size]
-            y = batch.y[:batch.batch_size].squeeze()
-
-            total_correct_1 += int(out1.argmax(dim=-1).eq(y).sum())
-            total_correct_2 += int(out2.argmax(dim=-1).eq(y).sum())
-        test_acc_1 = total_correct_1 / self.split_idx['test'].size(0) #self.test_size
-        test_acc_2 = total_correct_2 / self.split_idx['test'].size(0)
-        return test_acc_1, test_acc_2
 
     def train(self, train_loader, epoch, model, optimizer):
         if not((epoch+1)%5) or ((epoch+1)==1):
@@ -262,34 +218,7 @@ class PipelineTE(object):
         #train_acc = total_correct / self.train_wo_noise.size(0)
         return train_loss, train_acc
 
-    def evaluate(self, valid_loader, model):
-        model.eval()
-
-        total_correct = 0
-        
-        for batch in valid_loader:
-            batch = batch.to(self.device)
-            # Only consider predictions and labels of seed nodes
-            out = model(batch.x, batch.edge_index)[:batch.batch_size]
-            y = batch.y[:batch.batch_size].squeeze()
-
-            total_correct += int(out.argmax(dim=-1).eq(y).sum())
-        val_acc = total_correct / self.split_idx['valid'].size(0)
-        return val_acc
     
-    def test(self, test_loader, model):
-        model.eval()
-
-        total_correct = 0
-        for batch in test_loader:
-            batch = batch.to(self.device)
-            # Only consider predictions and labels of seed nodes
-            out = model(batch.x, batch.edge_index)[:batch.batch_size]
-            y = batch.y[:batch.batch_size].squeeze()
-
-            total_correct += int(out.argmax(dim=-1).eq(y).sum())
-        test_acc = total_correct / self.split_idx['test'].size(0) #self.test_size #
-        return test_acc
 
     def new_test(self, subgraph_loader, model):
         model.eval()
@@ -443,3 +372,77 @@ class PipelineTE(object):
             plot_name = '../out_plots/coteaching_test2/' + self.output_name + '.png'
             plt.savefig(plot_name)
 
+"""
+def evaluate(self, valid_loader, model):
+        model.eval()
+
+        total_correct = 0
+        
+        for batch in valid_loader:
+            batch = batch.to(self.device)
+            # Only consider predictions and labels of seed nodes
+            out = model(batch.x, batch.edge_index)[:batch.batch_size]
+            y = batch.y[:batch.batch_size].squeeze()
+
+            total_correct += int(out.argmax(dim=-1).eq(y).sum())
+        val_acc = total_correct / self.split_idx['valid'].size(0)
+        return val_acc
+    
+    def test(self, test_loader, model):
+        model.eval()
+
+        total_correct = 0
+        for batch in test_loader:
+            batch = batch.to(self.device)
+            # Only consider predictions and labels of seed nodes
+            out = model(batch.x, batch.edge_index)[:batch.batch_size]
+            y = batch.y[:batch.batch_size].squeeze()
+
+            total_correct += int(out.argmax(dim=-1).eq(y).sum())
+        test_acc = total_correct / self.split_idx['test'].size(0) #self.test_size #
+        return test_acc
+        
+def evaluate_ct(self, valid_loader, model1, model2):
+        model1.eval()
+        model2.eval()
+
+        total_correct_1 = 0
+        total_correct_2 = 0
+        
+        for batch in valid_loader:
+            batch = batch.to(self.device)
+            # Only consider predictions and labels of seed nodes
+            _, _, z_pure1, _, _, _ = model1(batch.x, batch.edge_index, n_id=batch.n_id)
+            _, _, z_pure2, _, _, _ = model2(batch.x, batch.edge_index, n_id=batch.n_id)
+            out1 = z_pure1[:batch.batch_size]
+            out2 = z_pure2[:batch.batch_size]
+            y = batch.y[:batch.batch_size].squeeze()
+
+            total_correct_1 += int(out1.argmax(dim=-1).eq(y).sum())
+            total_correct_2 += int(out2.argmax(dim=-1).eq(y).sum())
+        val_acc_1 = total_correct_1 / self.split_idx['valid'].size(0)
+        val_acc_2 = total_correct_2 / self.split_idx['valid'].size(0)
+        return val_acc_1, val_acc_2
+    
+    def test_ct(self, test_loader, model1, model2):
+        model1.eval()
+        model2.eval()
+
+        total_correct_1 = 0
+        total_correct_2 = 0
+
+        for batch in test_loader:
+            batch = batch.to(self.device)
+            # Only consider predictions and labels of seed nodes
+            _, _, z_pure1, _, _, _ = model1(batch.x, batch.edge_index, n_id=batch.n_id)
+            _, _, z_pure2, _, _, _ = model2(batch.x, batch.edge_index, n_id=batch.n_id)
+            out1 = z_pure1[:batch.batch_size]
+            out2 = z_pure2[:batch.batch_size]
+            y = batch.y[:batch.batch_size].squeeze()
+
+            total_correct_1 += int(out1.argmax(dim=-1).eq(y).sum())
+            total_correct_2 += int(out2.argmax(dim=-1).eq(y).sum())
+        test_acc_1 = total_correct_1 / self.split_idx['test'].size(0) #self.test_size
+        test_acc_2 = total_correct_2 / self.split_idx['test'].size(0)
+        return test_acc_1, test_acc_2
+    """

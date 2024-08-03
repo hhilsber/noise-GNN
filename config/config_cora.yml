@@ -1,5 +1,5 @@
 # Data
-batch_id: 4
+batch_id: 1
 #aaa_spec: "faire des batchs"
 
 data_type: 'network'
@@ -46,7 +46,7 @@ do_plot: True
 epoch_logger: True
 
 # Noise
-noise_rate: 0.4
+noise_rate: 0.3
 noise_type: 'sym' # pair   sym
 
 # Algo Co-teaching or CNCLU
