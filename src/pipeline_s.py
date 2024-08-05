@@ -83,7 +83,7 @@ class PipelineS(object):
             num_workers=4,
             persistent_workers=True,
         )
-        print('length train_loader: {}, subgraph_loader: {}'.format(len(self.train_loader),len(self.subgraph_loader)))
+        #print('length train_loader: {}, subgraph_loader: {}'.format(len(self.train_loader),len(self.subgraph_loader)))
 
     def train_ct(self, train_loader, epoch, model1, optimizer1, model2, optimizer2):
         if not((epoch+1)%50) or ((epoch+1)==1):
@@ -223,13 +223,23 @@ class PipelineS(object):
             
             if self.config['train_type'] in ['baseline','both']:
                 best_acc_bs = []
-                for bs in [32,64,128,256]:
-                    for dp in [0.1,0.25,0.5]:
+                for bs in [64,256,512]:
+                    self.config['batch_size'] = bs
+                    self.train_loader = NeighborLoader(
+                                self.data,
+                                input_nodes=self.split_idx['train'],
+                                num_neighbors=self.config['nbr_neighbors'],
+                                batch_size=self.config['batch_size'],
+                                shuffle=True,
+                                num_workers=self.config['num_workers'],
+                                persistent_workers=True)
+                    for dp in [0.2,0.5]:
                         for hid in [128,256,1024]:
-                            config['batch_size'] = bs
-                            config['dropout'] = dp
-                            config['hidden_size'] = hid
+                            self.config['dropout'] = dp
+                            self.config['hidden_size'] = hid
                             ##
+                            self.model_c = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module'])
+                            print('length train_loader: {}, subgraph_loader: {}'.format(len(self.train_loader),len(self.subgraph_loader)))
                             self.model_c.network.reset_parameters()
 
                             train_loss_hist = []
@@ -247,6 +257,8 @@ class PipelineS(object):
 
                                 if not((epoch+1)%10) and self.config['epoch_logger']:
                                     self.logger.info('   Train epoch {}/{} --- acc t: {:.3f} v: {:.3f} tst: {:.3f} --- a {:.3f}'.format(epoch+1,self.config['max_epochs'],train_acc,val_acc,test_acc, a))
+                                    
+                        self.logger.info('   bs {}, dp {}, hid {} - best baseline test acc: {:.3f}'.format(bs,dp,hid,max(test_acc_hist)))
                     #self.logger.info('   RUN {} - best baseline test acc: {:.3f}'.format(i+1,max(test_acc_hist)))
                     #best_acc_bs.append(max(test_acc_hist))
                     

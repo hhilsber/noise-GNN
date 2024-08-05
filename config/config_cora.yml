@@ -1,11 +1,9 @@
 # Data
 batch_id: 1
-#aaa_spec: "faire des batchs"
+aaa_spec: "grid"
 
-data_type: 'network'
 data_dir: '../data'
 dataset_name: 'cora'
-task_type: 'classification'
 what: '4'
 
 # Seed
@@ -15,11 +13,11 @@ seed: 1232
 module: 'sage'
 hidden_size: 1024
 num_layers: 3
-#nbr_neighbors: [15,10,5]
-nbr_neighbors: [10,5]
+nbr_neighbors: [15,10,5]
+#nbr_neighbors: [10,5]
 
 # Compare network
-train_type: 'both' # nalgo   baseline   both
+train_type: 'baseline' # nalgo   baseline   both
 compare_loss : 'normal' # normal back
 
 # Regularization
@@ -32,7 +30,7 @@ learning_rate: 0.001
 #weight_decay: 0.0005
 
 num_runs: 1
-max_epochs: 150
+max_epochs: 40
 batch_size: 60
 num_workers: 1
 
@@ -42,8 +40,8 @@ cuda: True
 # Bool
 original_split: True
 do_train: True
-do_plot: True
-epoch_logger: True
+do_plot: False
+epoch_logger: False
 
 # Noise
 noise_rate: 0.3
