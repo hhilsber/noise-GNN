@@ -1,5 +1,5 @@
 # Data
-batch_id: 2
+batch_id: 1
 #aaa_spec: "faire des batchs"
 
 data_type: 'network'
@@ -28,12 +28,12 @@ use_bn: False
 
 # Training
 optimizer: 'adam'
-learning_rate: 0.005
+learning_rate: 0.001
 #weight_decay: 0.0005
 
 num_runs: 1
 max_epochs: 150
-batch_size: 256
+batch_size: 60
 num_workers: 1
 
 # Device

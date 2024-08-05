@@ -1,11 +1,10 @@
 # Data
-batch_id: 4
-#aaa_spec: "faire des batchs"
+batch_id: 2
+aaa_spec: "with real train loader"
+aaa_spec2: "grid search"
 
-data_type: 'network'
 data_dir: '../data'
 dataset_name: 'pubmed'
-task_type: 'classification'
 what: '4'
 
 # Seed
@@ -15,25 +14,21 @@ seed: 1232
 module: 'sage'
 hidden_size: 1024
 num_layers: 3
-#nbr_neighbors: [15,10,5]
-nbr_neighbors: [10,5]
+nbr_neighbors: [25,10,5]
 
 # Compare network
-train_type: 'both' # nalgo   baseline   both
-compare_loss : 'normal' # normal back
+train_type: 'baseline' # nalgo   baseline   both
 
 # Regularization
-dropout: 0.3
-use_bn: False
+dropout: 0.2
 
 # Training
 optimizer: 'adam'
-learning_rate: 0.005
-#weight_decay: 0.0005
+learning_rate: 0.001
 
-num_runs: 5
-max_epochs: 250
-batch_size: 256
+num_runs: 1
+max_epochs: 100
+batch_size: 64
 num_workers: 1
 
 # Device
@@ -42,8 +37,8 @@ cuda: True
 # Bool
 original_split: True
 do_train: True
-do_plot: False
-epoch_logger: False
+do_plot: True
+epoch_logger: True
 
 # Noise
 noise_rate: 0.3
@@ -51,6 +46,6 @@ noise_type: 'sym' # pair   sym
 
 # Algo Co-teaching or CNCLU
 algo_type: 'coteaching' # ct codi cn_soft cn_hard
-ct_tk: 100
+ct_tk: 50
 ct_exp: 1
 ct_tau: 0.2

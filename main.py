@@ -17,25 +17,32 @@ from src.pipeline_test_s import PipelineTES
 
 ##################################### Main #####################################
 def main(config):
-    if config['algo_type'] in ['codi', 'coteaching']:
-        if config['what'] == '_test2':
-            if config['dataset_name'] in ['ogbn-arxiv']:
-                model = PipelineTE(config)
-            else:
-                print('pipeline TES')
-                model = PipelineTES(config)
-        else:
-            if config['dataset_name'] in ['ogbn-arxiv']:
-                model = PipelineCO(config)
-            else:
-                model = PipelineS(config)
-    elif config['algo_type'] == 'ctp':
-        model = PipelineCTP(config)
-    elif config['algo_type'] == 'contrastive':
-        model = PipelineCT(config)
-    else:
-        print('wrong algo type')
-    model.loop()
+    for bs in [32,64,128,256]:
+        for dp in [0.1,0.25,0.5]:
+            for hid in [128,256,1024]:
+                config['batch_size'] = bs
+                config['dropout'] = dp
+                config['hidden_size'] = hid
+                ##
+                if config['algo_type'] in ['codi', 'coteaching']:
+                    if config['what'] == '_test2':
+                        if config['dataset_name'] in ['ogbn-arxiv']:
+                            model = PipelineTE(config)
+                        else:
+                            print('pipeline TES')
+                            model = PipelineTES(config)
+                    else:
+                        if config['dataset_name'] in ['ogbn-arxiv']:
+                            model = PipelineCO(config)
+                        else:
+                            model = PipelineS(config)
+                elif config['algo_type'] == 'ctp':
+                    model = PipelineCTP(config)
+                elif config['algo_type'] == 'contrastive':
+                    model = PipelineCT(config)
+                else:
+                    print('wrong algo type')
+                model.loop()
 
 
 ##################################### Fcts #####################################
