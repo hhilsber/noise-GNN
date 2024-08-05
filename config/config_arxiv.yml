@@ -14,7 +14,7 @@ what: '4'
 seed: 1232
 
 # Graph model
-module: 'gcn'
+module: 'sage'
 hidden_size: 256
 num_layers: 3
 #nbr_neighbors: [15,10,5]
@@ -25,7 +25,7 @@ train_type: 'both' # nalgo   baseline   both
 compare_loss : 'normal' # normal back
 
 # Regularization
-dropout: 0.5
+dropout: 0.2
 
 # Training
 optimizer: 'adam'
@@ -47,7 +47,7 @@ do_plot: False
 epoch_logger: False
 
 # Noise
-noise_rate: 0.3
+noise_rate: 0.4
 noise_type: 'sym' # pair   sym
 
 # Algo Co-teaching or CNCLU

@@ -4,7 +4,7 @@ aaa_spec: "graph loader 10 5"
 
 data_type: 'network'
 data_dir: '../data'
-dataset_name: 'cora' #'cora' #'ogbn-arxiv'
+dataset_name: 'pubmed' #'cora' #'ogbn-arxiv'
 task_type: 'classification'
 what: '_test2'
 
@@ -26,10 +26,10 @@ dropout: 0.2
 
 # Training
 optimizer: 'adam'
-learning_rate: 0.001
+learning_rate: 0.005
 #weight_decay: 0.0005
 
-num_runs: 5
+num_runs: 1
 max_epochs: 200
 batch_size: 512
 num_workers: 1
@@ -42,15 +42,15 @@ cuda: True
 original_split: True
 do_train: True
 do_plot: False
-epoch_logger: False
+epoch_logger: True
 
 # Noise
 noise_rate: 0.3
-noise_type: 'sym' # pair   sym
+noise_type: 'next_pair' # pair   sym
 
 # Algo Co-teaching or CNCLU
 algo_type: 'coteaching' # ct codi cn_soft cn_hard
-ct_tk: 50
+ct_tk: 1
 ct_exp: 1
 ct_tau: 1.0
 

@@ -85,7 +85,6 @@ class PipelineS(object):
             persistent_workers=True,
         )
         print('length train_loader: {}, subgraph_loader: {}'.format(len(self.train_loader),len(self.subgraph_loader)))
-        
 
     def train_ct(self, train_loader, epoch, model1, optimizer1, model2, optimizer2):
         if not((epoch+1)%50) or ((epoch+1)==1):

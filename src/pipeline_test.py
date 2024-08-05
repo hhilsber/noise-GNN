@@ -25,17 +25,16 @@ class PipelineTE(object):
         self.device = config['device']
 
         # Data prep
-        self.dataset = load_network(config)
-        self.data = self.dataset[0]
+        self.data, dataset = load_network(config)
         print('noise type and rate: {} {}'.format(config['noise_type'], config['noise_rate']))
-        self.data.yhn, self.noise_mat = flip_label(self.data.y, self.dataset.num_classes, config['noise_type'], config['noise_rate'])
+        self.data.yhn, self.noise_mat = flip_label(self.data.y, dataset.num_classes, config['noise_type'], config['noise_rate'])
         self.noise_or_not = (self.data.y.squeeze() == self.data.yhn) #.int() # true if same lbl
-        self.split_idx = self.dataset.get_idx_split()
+        self.split_idx = dataset.get_idx_split()
         print('train: {}, valid: {}, test: {}'.format(self.split_idx['train'].shape[0],self.split_idx['valid'].shape[0],self.split_idx['test'].shape[0]))
 
-        config['nbr_features'] = self.dataset.num_features #self.dataset.x.shape[-1]
-        config['nbr_classes'] = self.dataset.num_classes #dataset.y.max().item() + 1
-        config['nbr_nodes'] = self.dataset.x.shape[0]
+        config['nbr_features'] = dataset.num_features #dataset.x.shape[-1]
+        config['nbr_classes'] = dataset.num_classes #dataset.y.max().item() + 1
+        config['nbr_nodes'] = dataset.x.shape[0]
 
         # Config
         self.config = config
@@ -126,13 +125,11 @@ class PipelineTE(object):
             batch = batch.to(self.device)
 
             # Only consider predictions and labels of seed nodes
-            h_pure1, _, z_pure1, h_noisy1, _, z_noisy1 = model1(batch.x, batch.edge_index, noise_rate=self.config['spl_noise_rate_pos'], n_id=batch.n_id)
-            h_pure2, _, z_pure2, h_noisy2, _, z_noisy2 = model2(batch.x, batch.edge_index, noise_rate=self.config['spl_noise_rate_pos'], n_id=batch.n_id)
+            h_pure1, _, z_pure1, _, _, _ = model1(batch.x, batch.edge_index, noise_rate=self.config['spl_noise_rate_pos'], n_id=batch.n_id)
+            h_pure2, _, z_pure2, _, _, _ = model2(batch.x, batch.edge_index, noise_rate=self.config['spl_noise_rate_pos'], n_id=batch.n_id)
             
             out1 = z_pure1[:batch.batch_size]
             out2 = z_pure2[:batch.batch_size]
-            noisy1 = z_noisy1[:batch.batch_size]
-            noisy2 = z_noisy2[:batch.batch_size]
             y = batch.y[:batch.batch_size].squeeze()
             yhn = batch.yhn[:batch.batch_size].squeeze()
             
@@ -401,7 +398,7 @@ def evaluate(self, valid_loader, model):
             total_correct += int(out.argmax(dim=-1).eq(y).sum())
         test_acc = total_correct / self.split_idx['test'].size(0) #self.test_size #
         return test_acc
-        
+
 def evaluate_ct(self, valid_loader, model1, model2):
         model1.eval()
         model2.eval()

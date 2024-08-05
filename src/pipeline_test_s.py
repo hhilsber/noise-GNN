@@ -114,8 +114,8 @@ class PipelineTES(object):
         for batch in train_loader:
             batch = batch.to(self.device)
             # Only consider predictions and labels of seed nodes
-            h_pure1, _, z_pure1, h_noisy1, _, _ = model1(batch.x, batch.edge_index, noise_rate=self.config['spl_noise_rate_pos'], n_id=batch.n_id)
-            h_pure2, _, z_pure2, h_noisy2, _, _ = model2(batch.x, batch.edge_index, noise_rate=self.config['spl_noise_rate_pos'], n_id=batch.n_id)
+            h_pure1, _, z_pure1, _, _, _ = model1(batch.x, batch.edge_index, noise_rate=self.config['spl_noise_rate_pos'], n_id=batch.n_id)
+            h_pure2, _, z_pure2, _, _, _ = model2(batch.x, batch.edge_index, noise_rate=self.config['spl_noise_rate_pos'], n_id=batch.n_id)
             
             out1 = z_pure1[self.split_idx['train']]
             out2 = z_pure2[self.split_idx['train']]
@@ -126,6 +126,8 @@ class PipelineTES(object):
             
             if epoch > self.config['ct_tk']:
                 # Rewire
+                print(h_pure1.shape)
+                print(a)
                 pos_edge, neg_edge = topk_rewire(h_pure1, batch.edge_index, self.device, k_percent=self.config['spl_rewire_rate'], directed=False)
                 # Pos samples
                 hedge_pure1, _, _, _, _, _ = model1(batch.x, pos_edge, noise_rate=self.config['spl_noise_rate_pos'], n_id=batch.n_id)

@@ -72,8 +72,7 @@ def load_network(config):
         dataset = CitationFull(root = root, name = dataset_name)
         data = dataset[0]
         data.num_classes = dataset.num_classes
-        data = random_coauthor_amazon_splits(
-            data, dataset.num_classes, lcc_mask=None)
+        data = random_coauthor_amazon_splits(data, dataset.num_classes, lcc_mask=None)
     else:
         print('wrong dataset name')
     
