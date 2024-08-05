@@ -1,5 +1,5 @@
 # Data
-batch_id: 1
+batch_id: 2
 #aaa_spec: "faire des batchs"
 
 data_type: 'network'
@@ -53,4 +53,4 @@ noise_type: 'sym' # pair   sym
 algo_type: 'coteaching' # ct codi cn_soft cn_hard
 ct_tk: 50
 ct_exp: 1
-ct_tau: 0.8
+ct_tau: 1.0

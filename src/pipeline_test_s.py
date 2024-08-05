@@ -73,16 +73,25 @@ class PipelineTES(object):
         self.logger = initialize_logger(self.config, self.output_name)
         #np.save('../out_nmat/' + self.output_name + '.npy', noise_mat)
         
+        """
         self.train_loader = NeighborLoader(
             self.data,
             input_nodes=None,
             num_neighbors=self.config['nbr_neighbors'],
             batch_size=self.config['nbr_nodes'],
-            shuffle=True,
+            shuffle=False,
+            num_workers=self.config['num_workers'],
+            persistent_workers=True
+        )"""
+        self.train_loader = NeighborLoader(
+            self.data,
+            input_nodes=self.split_idx['train'],
+            num_neighbors=self.config['nbr_neighbors'],
+            batch_size=self.split_idx['train'].shape[0],
+            shuffle=False,
             num_workers=self.config['num_workers'],
             persistent_workers=True
         )
-        
         self.subgraph_loader = NeighborLoader(
             self.data,
             input_nodes=None,
@@ -99,6 +108,7 @@ class PipelineTES(object):
             print('   Train epoch {}/{}'.format(epoch+1, self.config['max_epochs']))
         model1.train()
         model2.train()
+        #train_idx = self.split_idx['train'].to(self.device)
 
         pure_ratio_1_list=[]
         pure_ratio_2_list=[]
@@ -117,17 +127,16 @@ class PipelineTES(object):
             h_pure1, _, z_pure1, _, _, _ = model1(batch.x, batch.edge_index, noise_rate=self.config['spl_noise_rate_pos'], n_id=batch.n_id)
             h_pure2, _, z_pure2, _, _, _ = model2(batch.x, batch.edge_index, noise_rate=self.config['spl_noise_rate_pos'], n_id=batch.n_id)
             
-            out1 = z_pure1[self.split_idx['train']]
-            out2 = z_pure2[self.split_idx['train']]
-            y = batch.y[self.split_idx['train']].squeeze()
-            yhn = batch.yhn[self.split_idx['train']].squeeze()
+            out1 = z_pure1[:batch.batch_size]
+            out2 = z_pure2[:batch.batch_size]
+
+            y = batch.y[:batch.batch_size].squeeze()
+            yhn = batch.yhn[:batch.batch_size].squeeze()
             
             loss_1, loss_2, pure_ratio_1, pure_ratio_2, ind_1_update, ind_2_update, ind_noisy_1, ind_noisy_2  = self.criterion(out1, out2, yhn, self.rate_schedule[epoch], batch.n_id, self.noise_or_not)
-            
+            print(a)
             if epoch > self.config['ct_tk']:
                 # Rewire
-                print(h_pure1.shape)
-                print(a)
                 pos_edge, neg_edge = topk_rewire(h_pure1, batch.edge_index, self.device, k_percent=self.config['spl_rewire_rate'], directed=False)
                 # Pos samples
                 hedge_pure1, _, _, _, _, _ = model1(batch.x, pos_edge, noise_rate=self.config['spl_noise_rate_pos'], n_id=batch.n_id)
