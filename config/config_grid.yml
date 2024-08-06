@@ -1,10 +1,9 @@
 # Data
-batch_id: 13
+batch_id: 15
 data_dir: '../data'
 dataset_name: 'cora'
 what: '4'
 
-aaa_spec: 'new rate_schedule'
 
 # Seed
 seed: 1232
@@ -24,7 +23,7 @@ dropout: 0.5
 # Training
 optimizer: 'adam'
 learning_rate: 0.001
-num_runs: 3
+num_runs: 4
 max_epochs: 50
 batch_size: 1
 

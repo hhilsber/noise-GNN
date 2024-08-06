@@ -1,5 +1,5 @@
 # Data
-batch_id: 13
+batch_id: 14
 data_dir: '../data'
 dataset_name: 'cora'
 what: '4'
@@ -13,7 +13,7 @@ seed: 1232
 module: 'sage'
 hidden_size: 512
 num_layers: 3
-nbr_neighbors: [10,5]
+nbr_neighbors: [15,10]
 
 # Compare network
 train_type: 'nalgo' # nalgo   baseline   both
@@ -36,7 +36,7 @@ do_train: True
 do_plot: False
 epoch_logger: False
 # Bool data
-undirected: True
+undirected: False
 batch_size_full: True
 
 # Noise
@@ -46,4 +46,4 @@ noise_type: 'sym' # pair   sym
 # Algo Co-teaching or CNCLU
 algo_type: 'coteaching' # ct codi cn_soft cn_hard
 ct_tk: 15
-ct_tau: 0.2
+ct_tau: 0.25
