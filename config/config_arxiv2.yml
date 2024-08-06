@@ -18,7 +18,7 @@ train_type: 'baseline' # nalgo   baseline   both
 compare_loss : 'normal' # normal back
 
 # Regularization
-dropout: 0.5
+dropout: 0.2
 
 # Training
 optimizer: 'adam'
