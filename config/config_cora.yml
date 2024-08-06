@@ -1,6 +1,7 @@
 # Data
-batch_id: 3
+batch_id: 5
 aaa_spec: "UNdirected graph"
+aaa_spec2: "one batch, size train split"
 
 data_dir: '../data'
 dataset_name: 'cora'
@@ -13,8 +14,8 @@ seed: 1232
 module: 'sage'
 hidden_size: 512
 num_layers: 3
-nbr_neighbors: [15,10,1]
-#nbr_neighbors: [10,5]
+#nbr_neighbors: [10,5,1]
+nbr_neighbors: [10,5]
 
 # Compare network
 train_type: 'baseline' # nalgo   baseline   both
@@ -27,9 +28,9 @@ optimizer: 'adam'
 learning_rate: 0.001
 #weight_decay: 0.0005
 
-num_runs: 3
-max_epochs: 150
-batch_size: 1
+num_runs: 5
+max_epochs: 50
+batch_size: 512
 num_workers: 1
 
 # Device

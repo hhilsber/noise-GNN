@@ -35,7 +35,7 @@ class PipelineS(object):
         config['nbr_features'] = dataset.num_features #self.dataset.x.shape[-1]
         config['nbr_classes'] = dataset.num_classes #dataset.y.max().item() + 1
         config['nbr_nodes'] = dataset.x.shape[0]
-
+        
         # Config
         self.config = config
 
@@ -59,14 +59,15 @@ class PipelineS(object):
         val_idx = self.data.val_mask.nonzero().squeeze()
         test_idx = self.data.test_mask.nonzero().squeeze()
         self.split_idx = {'train': train_idx, 'valid': val_idx, 'test': test_idx}
-        
+        self.config['batch_size'] = self.split_idx['train'].shape[0]
+
         print('train: {}, valid: {}, test: {}'.format(self.split_idx['train'].shape[0],self.split_idx['valid'].shape[0],self.split_idx['test'].shape[0]))
 
         # Logger and data loader
         date = dt.datetime.date(dt.datetime.now())
-        self.output_name = 'dt{}{}_{}_id{}_{}_{}_{}_split_{}_noise_{}{}_lay{}_hid{}_lr{}_epo{}_bs{}_drop{}_tk{}_cttau{}_neigh{}{}{}_grid'.format(date.month,date.day,self.config['dataset_name'],self.config['batch_id'],self.config['train_type'],self.config['algo_type'],self.config['module'],self.config['original_split'],self.config['noise_type'],self.config['noise_rate'],self.config['num_layers'],self.config['hidden_size'],self.config['learning_rate'],self.config['max_epochs'],self.config['batch_size'],self.config['dropout'],self.config['ct_tk'],self.config['ct_tau'],self.config['nbr_neighbors'][0],self.config['nbr_neighbors'][1],self.config['nbr_neighbors'][2])
+        self.output_name = 'dt{}{}_{}_id{}_{}_{}_{}_split_{}_noise_{}{}_lay{}_hid{}_lr{}_epo{}_bs{}_drop{}_tk{}_cttau{}_neigh{}{}'.format(date.month,date.day,self.config['dataset_name'],self.config['batch_id'],self.config['train_type'],self.config['algo_type'],self.config['module'],self.config['original_split'],self.config['noise_type'],self.config['noise_rate'],self.config['num_layers'],self.config['hidden_size'],self.config['learning_rate'],self.config['max_epochs'],self.config['batch_size'],self.config['dropout'],self.config['ct_tk'],self.config['ct_tau'],self.config['nbr_neighbors'][0],self.config['nbr_neighbors'][1])#,self.config['nbr_neighbors'][2])
         self.logger = initialize_logger(self.config, self.output_name)
-        """
+        
         self.train_loader = NeighborLoader(
             self.data,
             input_nodes=self.split_idx['train'],
@@ -75,7 +76,7 @@ class PipelineS(object):
             shuffle=True,
             num_workers=self.config['num_workers'],
             persistent_workers=True
-        )"""
+        )
         
         self.subgraph_loader = NeighborLoader(
             self.data,
@@ -85,7 +86,7 @@ class PipelineS(object):
             num_workers=4,
             persistent_workers=True,
         )
-        #print('length train_loader: {}, subgraph_loader: {}'.format(len(self.train_loader),len(self.subgraph_loader)))
+        print('length train_loader: {}, subgraph_loader: {}'.format(len(self.train_loader),len(self.subgraph_loader)))
 
     def train_ct(self, train_loader, epoch, model1, optimizer1, model2, optimizer2):
         if not((epoch+1)%50) or ((epoch+1)==1):
@@ -224,48 +225,31 @@ class PipelineS(object):
             
             if self.config['train_type'] in ['baseline','both']:
                 best_acc_bs = []
-                for bs in [512,1024,self.config['nbr_nodes']]:
-                    self.config['batch_size'] = bs
-                    self.train_loader = NeighborLoader(
-                                self.data,
-                                input_nodes=self.split_idx['train'],
-                                num_neighbors=self.config['nbr_neighbors'],
-                                batch_size=self.config['batch_size'],
-                                shuffle=True,
-                                num_workers=self.config['num_workers'],
-                                persistent_workers=True)
-                    for dp in [0.5]:
-                        for hid in [256,512,1024]:
-                            for lr in [0.001]:
-                                self.config['dropout'] = dp
-                                self.config['learning_rate'] = lr
-                                self.config['hidden_size'] = hid
-                                ##
-                                self.model_c = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module'])
-                                print('length train_loader: {}, subgraph_loader: {}'.format(len(self.train_loader),len(self.subgraph_loader)))
-                                self.model_c.network.reset_parameters()
+                for i in range(self.config['num_runs']):
+                    #self.logger.info('   Train baseline')
+                    self.model_c.network.reset_parameters()
 
-                                train_loss_hist = []
-                                train_acc_hist = []
-                                val_acc_hist = []
-                                test_acc_hist = []
-                                for epoch in range(self.config['max_epochs']):
-                                    train_loss, a = self.train(self.train_loader, epoch, self.model_c.network.to(self.device), self.model_c.optimizer)
-                                    train_acc, val_acc, test_acc = self.test_planet(self.subgraph_loader, self.model_c.network.to(self.device))
-                                    
-                                    train_loss_hist.append(train_loss)
-                                    train_acc_hist.append(train_acc)
-                                    val_acc_hist.append(val_acc)
-                                    test_acc_hist.append(test_acc)
+                    train_loss_hist = []
+                    train_acc_hist = []
+                    val_acc_hist = []
+                    test_acc_hist = []
+                    for epoch in range(self.config['max_epochs']):
+                        train_loss, a = self.train(self.train_loader, epoch, self.model_c.network.to(self.device), self.model_c.optimizer)
+                        train_acc, val_acc, test_acc = self.test_planet(self.subgraph_loader, self.model_c.network.to(self.device))
+                        
+                        train_loss_hist.append(train_loss)
+                        train_acc_hist.append(train_acc)
+                        val_acc_hist.append(val_acc)
+                        test_acc_hist.append(test_acc)
 
-                                    if not((epoch+1)%10) and self.config['epoch_logger']:
-                                        self.logger.info('   Train epoch {}/{} --- acc t: {:.3f} v: {:.3f} tst: {:.3f} --- a {:.3f}'.format(epoch+1,self.config['max_epochs'],train_acc,val_acc,test_acc, a))
-                                self.logger.info('   bs {}, dp {}, hid {}, lr {} - best baseline test acc: {:.3f}'.format(bs,dp,hid,lr,max(test_acc_hist)))
-                    #self.logger.info('   RUN {} - best baseline test acc: {:.3f}'.format(i+1,max(test_acc_hist)))
-                    #best_acc_bs.append(max(test_acc_hist))
+                        if not((epoch+1)%10) and self.config['epoch_logger']:
+                            self.logger.info('   Train epoch {}/{} --- acc t: {:.3f} v: {:.3f} tst: {:.3f} --- a {:.3f}'.format(epoch+1,self.config['max_epochs'],train_acc,val_acc,test_acc, a))
+                                
+                    self.logger.info('   RUN {} - best baseline test acc: {:.3f}'.format(i+1,max(test_acc_hist)))
+                    best_acc_bs.append(max(test_acc_hist))
                     
-                #std, mean = torch.std_mean(torch.as_tensor(best_acc_bs))
-                #self.logger.info('   RUN baseline mean {:.3f} +- {:.3f} std'.format(mean,std))
+                std, mean = torch.std_mean(torch.as_tensor(best_acc_bs))
+                self.logger.info('   RUN baseline mean {:.3f} +- {:.3f} std'.format(mean,std))
             
             print('Done training')
             self.logger.info('Done training')
