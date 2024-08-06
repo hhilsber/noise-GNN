@@ -13,14 +13,14 @@ class SimpleGCN(torch.nn.Module):
 
         """
         self.num_layers = num_layers
+        self.dropout = dropout
+
         self.convs = torch.nn.ModuleList()
         self.convs.append(GCNConv(in_size, hidden_size, normalize=False))
         for _ in range(num_layers - 2):
             self.convs.append(
                 GCNConv(hidden_size, hidden_size, normalize=False))
         self.convs.append(GCNConv(hidden_size, out_size, normalize=False))
-
-        self.dropout = dropout
 
     def reset_parameters(self):
         for conv in self.convs:
@@ -32,7 +32,7 @@ class SimpleGCN(torch.nn.Module):
             if i != self.num_layers - 1:
                 x = x.relu()
                 x = F.dropout(x, p=self.dropout, training=self.training)
-        return x #x.log_softmax(dim=-1)
+        return x
     
     def inference(self, x_all, subgraph_loader, device):
         # Compute representations of nodes layer by layer, using *all*

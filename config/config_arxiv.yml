@@ -8,7 +8,7 @@ data_type: 'network'
 data_dir: '../data'
 dataset_name: 'ogbn-arxiv'
 task_type: 'classification'
-what: '4'
+what: '5'
 
 # Seed
 seed: 1232
@@ -21,7 +21,7 @@ num_layers: 3
 nbr_neighbors: [10,5]
 
 # Compare network
-train_type: 'both' # nalgo   baseline   both
+train_type: 'baseline' # nalgo   baseline   both
 compare_loss : 'normal' # normal back
 
 # Regularization
@@ -30,12 +30,10 @@ dropout: 0.2
 # Training
 optimizer: 'adam'
 learning_rate: 0.001
-#weight_decay: 0.0005
 
 num_runs: 5
 max_epochs: 40
 batch_size: 512
-num_workers: 1
 
 # Device
 cuda: True
