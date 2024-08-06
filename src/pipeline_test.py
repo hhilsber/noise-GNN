@@ -188,7 +188,6 @@ class PipelineTE(object):
     def train(self, train_loader, epoch, model, optimizer):
         if not((epoch+1)%5) or ((epoch+1)==1):
             print('   Train epoch {}/{}'.format(epoch+1, self.config['max_epochs']))
-            #print('     loss = F.cross_entropy(out, y)')
         model.train()
 
         total_loss = 0

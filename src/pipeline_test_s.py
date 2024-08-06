@@ -64,6 +64,7 @@ class PipelineTES(object):
         val_idx = self.data.val_mask.nonzero().squeeze()
         test_idx = self.data.test_mask.nonzero().squeeze()
         self.split_idx = {'train': train_idx, 'valid': val_idx, 'test': test_idx}
+        self.config['batch_size'] = self.split_idx['train'].shape[0]
         
         print('train: {}, valid: {}, test: {}'.format(self.split_idx['train'].shape[0],self.split_idx['valid'].shape[0],self.split_idx['test'].shape[0]))
 
@@ -71,24 +72,13 @@ class PipelineTES(object):
         date = dt.datetime.date(dt.datetime.now())
         self.output_name = 'dt{}{}_{}_id{}_{}_{}_{}_split_{}_noise_{}{}_lay{}_hid{}_lr{}_epo{}_bs{}_drop{}_tk{}_cttau{}_neigh{}{}'.format(date.month,date.day,self.config['dataset_name'],self.config['batch_id'],self.config['train_type'],self.config['algo_type'],self.config['module'],self.config['original_split'],self.config['noise_type'],self.config['noise_rate'],self.config['num_layers'],self.config['hidden_size'],self.config['learning_rate'],self.config['max_epochs'],self.config['batch_size'],self.config['dropout'],self.config['ct_tk'],self.config['ct_tau'],self.config['nbr_neighbors'][0],self.config['nbr_neighbors'][1])#,self.config['nbr_neighbors'][2])
         self.logger = initialize_logger(self.config, self.output_name)
-        #np.save('../out_nmat/' + self.output_name + '.npy', noise_mat)
         
-        """
-        self.train_loader = NeighborLoader(
-            self.data,
-            input_nodes=None,
-            num_neighbors=self.config['nbr_neighbors'],
-            batch_size=self.config['nbr_nodes'],
-            shuffle=True,
-            num_workers=self.config['num_workers'],
-            persistent_workers=True
-        )"""
         self.train_loader = NeighborLoader(
             self.data,
             input_nodes=self.split_idx['train'],
             num_neighbors=self.config['nbr_neighbors'],
-            batch_size=self.split_idx['train'].shape[0],
-            shuffle=False,
+            batch_size=self.config['batch_size'],
+            shuffle=True,
             num_workers=self.config['num_workers'],
             persistent_workers=True
         )
@@ -104,11 +94,10 @@ class PipelineTES(object):
         
 
     def train_ct(self, train_loader, epoch, model1, model2, optimizer):
-        if not((epoch+1)%50) or ((epoch+1)==1):
+        if not((epoch+1)%5) or ((epoch+1)==1):
             print('   Train epoch {}/{}'.format(epoch+1, self.config['max_epochs']))
         model1.train()
         model2.train()
-        #train_idx = self.split_idx['train'].to(self.device)
 
         pure_ratio_1_list=[]
         pure_ratio_2_list=[]
@@ -123,18 +112,18 @@ class PipelineTES(object):
 
         for batch in train_loader:
             batch = batch.to(self.device)
+
             # Only consider predictions and labels of seed nodes
             h_pure1, _, z_pure1, _, _, _ = model1(batch.x, batch.edge_index, noise_rate=self.config['spl_noise_rate_pos'], n_id=batch.n_id)
             h_pure2, _, z_pure2, _, _, _ = model2(batch.x, batch.edge_index, noise_rate=self.config['spl_noise_rate_pos'], n_id=batch.n_id)
             
             out1 = z_pure1[:batch.batch_size]
             out2 = z_pure2[:batch.batch_size]
-
             y = batch.y[:batch.batch_size].squeeze()
             yhn = batch.yhn[:batch.batch_size].squeeze()
             
             loss_1, loss_2, pure_ratio_1, pure_ratio_2, ind_1_update, ind_2_update, ind_noisy_1, ind_noisy_2  = self.criterion(out1, out2, yhn, self.rate_schedule[epoch], batch.n_id, self.noise_or_not)
-            print(a)
+            
             if epoch > self.config['ct_tk']:
                 # Rewire
                 pos_edge, neg_edge = topk_rewire(h_pure1, batch.edge_index, self.device, k_percent=self.config['spl_rewire_rate'], directed=False)
@@ -143,15 +132,11 @@ class PipelineTES(object):
                 hedge_pure2, _, _, _, _, _ = model2(batch.x, pos_edge, noise_rate=self.config['spl_noise_rate_pos'], n_id=batch.n_id)
                 # Neg samples
                 new_x = shuffle_pos(batch.x, device=self.device, prob=self.config['spl_noise_rate_neg'])
-                #_, _, _, hneg_noisy1, _, _ = model1(new_x, neg_edge, noise_rate=self.config['spl_noise_rate_neg'], n_id=batch.n_id)
-                #_, _, _, hneg_noisy2, _, _ = model2(new_x, neg_edge, noise_rate=self.config['spl_noise_rate_neg'], n_id=batch.n_id)
-                hneg_noisy1, _, _, _, _, _ = model1(new_x, neg_edge, noise_rate=self.config['spl_noise_rate_neg'], n_id=batch.n_id)
-                hneg_noisy2, _, _, _, _, _ = model2(new_x, neg_edge, noise_rate=self.config['spl_noise_rate_neg'], n_id=batch.n_id)
+                _, _, _, hneg_noisy1, _, _ = model1(new_x, neg_edge, noise_rate=self.config['spl_noise_rate_neg'], n_id=batch.n_id)
+                _, _, _, hneg_noisy2, _, _ = model2(new_x, neg_edge, noise_rate=self.config['spl_noise_rate_neg'], n_id=batch.n_id)
                 # Contrastive
-                reel_index_1 = self.split_idx['train'][ind_noisy_1]
-                reel_index_2 = self.split_idx['train'][ind_noisy_2]
-                logits_pa1, logits_n1 = self.discriminator(h_pure1[reel_index_1], hedge_pure1[reel_index_1], hneg_noisy1[reel_index_1])
-                logits_pa2, logits_n2 = self.discriminator(h_pure2[reel_index_2], hedge_pure2[reel_index_2], hneg_noisy2[reel_index_2])
+                logits_pa1, logits_n1 = self.discriminator(h_pure1[ind_noisy_1], hedge_pure1[ind_noisy_1], hneg_noisy1[ind_noisy_1])
+                logits_pa2, logits_n2 = self.discriminator(h_pure2[ind_noisy_2], hedge_pure2[ind_noisy_2], hneg_noisy2[ind_noisy_2])
                 loss_cont1 = self.cont_criterion(logits_pa1, logits_n1)
                 loss_cont2 = self.cont_criterion(logits_pa2, logits_n2)
 
@@ -172,7 +157,7 @@ class PipelineTES(object):
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-
+            
         train_loss_1 = total_loss_1 / len(train_loader)
         train_loss_2 = total_loss_2 / len(train_loader)
         train_loss_cont_1 = total_loss_cont_1 / len(train_loader)
@@ -185,9 +170,8 @@ class PipelineTES(object):
         return train_loss_1, train_loss_2, train_acc_1, train_acc_2, pure_ratio_1_list, pure_ratio_2_list, train_loss_cont_1, train_loss_cont_2
 
     def train(self, train_loader, epoch, model, optimizer):
-        if not((epoch+1)%50) or ((epoch+1)==1):
+        if not((epoch+1)%5) or ((epoch+1)==1):
             print('   Train epoch {}/{}'.format(epoch+1, self.config['max_epochs']))
-            #print('     loss = F.cross_entropy(out, y)')
         model.train()
 
         total_loss = 0
@@ -196,14 +180,11 @@ class PipelineTES(object):
         for batch in train_loader:
             batch = batch.to(self.device)
             # Only consider predictions and labels of seed nodes
+            out = model(batch.x, batch.edge_index)[:batch.batch_size]
+            y = batch.y[:batch.batch_size].squeeze()
+            yhn = batch.yhn[:batch.batch_size].squeeze()
             
-            out = model(batch.x, batch.edge_index)[self.split_idx['train']]
-            y = batch.y[self.split_idx['train']].squeeze()
-            yhn = batch.yhn[self.split_idx['train']].squeeze()
-          
             loss = F.cross_entropy(out, yhn)
-                
-            
             total_loss += float(loss)
             total_correct += int(out.argmax(dim=-1).eq(y).sum())
 
