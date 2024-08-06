@@ -3,6 +3,7 @@ import torch
 import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
+from torch_geometric.utils import to_undirected
 from torch_geometric.loader import NeighborLoader
 import matplotlib.pyplot as plt
 from ogb.nodeproppred import Evaluator
@@ -29,7 +30,8 @@ class PipelineS(object):
         print('noise type and rate: {} {}'.format(config['noise_type'], config['noise_rate']))
         self.data.yhn, self.noise_mat = flip_label(self.data.y, dataset.num_classes, config['noise_type'], config['noise_rate'])
         self.noise_or_not = (self.data.y.squeeze() == self.data.yhn) #.int() # true if same lbl
-        
+        self.data.edge_index = to_undirected(self.data.edge_index)
+
         config['nbr_features'] = dataset.num_features #self.dataset.x.shape[-1]
         config['nbr_classes'] = dataset.num_classes #dataset.y.max().item() + 1
         config['nbr_nodes'] = dataset.x.shape[0]
@@ -137,7 +139,6 @@ class PipelineS(object):
     def train(self, train_loader, epoch, model, optimizer):
         if not((epoch+1)%50) or ((epoch+1)==1):
             print('   Train epoch {}/{}'.format(epoch+1, self.config['max_epochs']))
-            #print('     loss = F.cross_entropy(out, y)')
         model.train()
 
         total_loss = 0
@@ -223,7 +224,7 @@ class PipelineS(object):
             
             if self.config['train_type'] in ['baseline','both']:
                 best_acc_bs = []
-                for bs in [64,256,512]:
+                for bs in [512,1024,self.config['nbr_nodes']]:
                     self.config['batch_size'] = bs
                     self.train_loader = NeighborLoader(
                                 self.data,
@@ -233,32 +234,33 @@ class PipelineS(object):
                                 shuffle=True,
                                 num_workers=self.config['num_workers'],
                                 persistent_workers=True)
-                    for dp in [0.2,0.5]:
-                        for hid in [128,256,1024]:
-                            self.config['dropout'] = dp
-                            self.config['hidden_size'] = hid
-                            ##
-                            self.model_c = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module'])
-                            print('length train_loader: {}, subgraph_loader: {}'.format(len(self.train_loader),len(self.subgraph_loader)))
-                            self.model_c.network.reset_parameters()
+                    for dp in [0.5]:
+                        for hid in [256,512,1024]:
+                            for lr in [0.001]:
+                                self.config['dropout'] = dp
+                                self.config['learning_rate'] = lr
+                                self.config['hidden_size'] = hid
+                                ##
+                                self.model_c = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module'])
+                                print('length train_loader: {}, subgraph_loader: {}'.format(len(self.train_loader),len(self.subgraph_loader)))
+                                self.model_c.network.reset_parameters()
 
-                            train_loss_hist = []
-                            train_acc_hist = []
-                            val_acc_hist = []
-                            test_acc_hist = []
-                            for epoch in range(self.config['max_epochs']):
-                                train_loss, a = self.train(self.train_loader, epoch, self.model_c.network.to(self.device), self.model_c.optimizer)
-                                train_acc, val_acc, test_acc = self.test_planet(self.subgraph_loader, self.model_c.network.to(self.device))
-                                
-                                train_loss_hist.append(train_loss)
-                                train_acc_hist.append(train_acc)
-                                val_acc_hist.append(val_acc)
-                                test_acc_hist.append(test_acc)
-
-                                if not((epoch+1)%10) and self.config['epoch_logger']:
-                                    self.logger.info('   Train epoch {}/{} --- acc t: {:.3f} v: {:.3f} tst: {:.3f} --- a {:.3f}'.format(epoch+1,self.config['max_epochs'],train_acc,val_acc,test_acc, a))
+                                train_loss_hist = []
+                                train_acc_hist = []
+                                val_acc_hist = []
+                                test_acc_hist = []
+                                for epoch in range(self.config['max_epochs']):
+                                    train_loss, a = self.train(self.train_loader, epoch, self.model_c.network.to(self.device), self.model_c.optimizer)
+                                    train_acc, val_acc, test_acc = self.test_planet(self.subgraph_loader, self.model_c.network.to(self.device))
                                     
-                        self.logger.info('   bs {}, dp {}, hid {} - best baseline test acc: {:.3f}'.format(bs,dp,hid,max(test_acc_hist)))
+                                    train_loss_hist.append(train_loss)
+                                    train_acc_hist.append(train_acc)
+                                    val_acc_hist.append(val_acc)
+                                    test_acc_hist.append(test_acc)
+
+                                    if not((epoch+1)%10) and self.config['epoch_logger']:
+                                        self.logger.info('   Train epoch {}/{} --- acc t: {:.3f} v: {:.3f} tst: {:.3f} --- a {:.3f}'.format(epoch+1,self.config['max_epochs'],train_acc,val_acc,test_acc, a))
+                                self.logger.info('   bs {}, dp {}, hid {}, lr {} - best baseline test acc: {:.3f}'.format(bs,dp,hid,lr,max(test_acc_hist)))
                     #self.logger.info('   RUN {} - best baseline test acc: {:.3f}'.format(i+1,max(test_acc_hist)))
                     #best_acc_bs.append(max(test_acc_hist))
                     

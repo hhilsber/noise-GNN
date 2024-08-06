@@ -79,7 +79,7 @@ class PipelineTES(object):
             input_nodes=None,
             num_neighbors=self.config['nbr_neighbors'],
             batch_size=self.config['nbr_nodes'],
-            shuffle=False,
+            shuffle=True,
             num_workers=self.config['num_workers'],
             persistent_workers=True
         )"""
