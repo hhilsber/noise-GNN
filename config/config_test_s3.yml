@@ -1,5 +1,5 @@
 # Data
-batch_id: 2
+batch_id: 1
 
 data_dir: '../data'
 dataset_name: 'cora' #'cora' #'ogbn-arxiv'
@@ -25,7 +25,7 @@ optimizer: 'adam'
 learning_rate: 0.005
 num_runs: 3
 max_epochs: 50
-batch_size: 512
+batch_size: 256
 
 # Device
 cuda: True
@@ -36,11 +36,11 @@ do_plot: False
 epoch_logger: False
 # Bool data
 load_index: True
-batch_size_full: False
+batch_size_full: True
 
 # Noise
-noise_rate: 0.3
-noise_type: 'sym' # pair   sym
+noise_rate: 0.4
+noise_type: 'next_pair' # pair   sym
 
 # Algo Co-teaching or CNCLU
 algo_type: 'coteaching' # ct codi cn_soft cn_hard

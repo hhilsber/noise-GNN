@@ -8,4 +8,5 @@
 
 source /opt/conda/etc/profile.d/conda.sh      # initialize conda
 conda activate pyl                  # load up the conda environment
-python main.py -config config/config_arxiv3.yml
+python main.py -config config/config_arxiv.yml
+python main.py -config config/config_arxiv2.yml

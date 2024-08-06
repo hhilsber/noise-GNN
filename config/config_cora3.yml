@@ -1,5 +1,5 @@
 # Data
-batch_id: 18
+batch_id: 21
 data_dir: '../data'
 dataset_name: 'cora'
 what: '4'
@@ -34,7 +34,7 @@ do_train: True
 do_plot: False
 epoch_logger: False
 # Bool data
-load_index: False
+load_index: True
 batch_size_full: True
 
 # Noise
@@ -44,4 +44,4 @@ noise_type: 'sym' # pair   sym
 # Algo Co-teaching or CNCLU
 algo_type: 'coteaching' # ct codi cn_soft cn_hard
 ct_tk: 15
-ct_tau: 0.2
+ct_tau: 0.25

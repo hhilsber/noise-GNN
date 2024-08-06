@@ -11,7 +11,7 @@ class NGNN(object):
     """
     d
     """
-    def __init__(self, in_size=100, hidden_size=128, out_size=47, num_layers=2, dropout=0.5, lr=0.001, optimizer='adam', module='sage', use_bn=False, wd=0.0005, nbr_nodes=1):
+    def __init__(self, in_size=100, hidden_size=128, out_size=47, num_layers=2, dropout=0.5, lr=0.001, optimizer='adam', module='sage', nbr_nodes=1, use_bn=False, wd=0.0005):
         #self.config = config
         
         self.criterion = None

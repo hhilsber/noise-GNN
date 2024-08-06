@@ -8,4 +8,6 @@
 
 source /opt/conda/etc/profile.d/conda.sh      # initialize conda
 conda activate pyl                  # load up the conda environment
+python main.py -config config/config_cora.yml
+python main.py -config config/config_cora2.yml
 python main.py -config config/config_cora3.yml
