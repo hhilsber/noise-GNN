@@ -24,7 +24,7 @@ class PipelineTES(object):
     def __init__(self, config):
         # Set metrics:
         self.device = config['device']
-
+        
         # Data prep
         self.data, dataset = load_network(config)
         print('noise type and rate: {} {}'.format(config['noise_type'], config['noise_rate']))
@@ -49,7 +49,7 @@ class PipelineTES(object):
             elif self.config['algo_type'] == 'codi':
                 self.criterion = CoDiLoss(self.device, self.config['co_lambda'])
             self.rate_schedule = np.ones(self.config['max_epochs'])*self.config['noise_rate']*self.config['ct_tau']
-            self.rate_schedule[:self.config['ct_tk']] = np.linspace(0, self.config['noise_rate']**self.config['ct_exp'], self.config['ct_tk'])
+            self.rate_schedule[:self.config['ct_tk']] = np.linspace(0, self.config['noise_rate']*self.config['ct_tau'], self.config['ct_tk'])
             self.optimizer = torch.optim.Adam(list(self.model1.network.parameters()) + list(self.model2.network.parameters()),lr=config['learning_rate'])
 
         if self.config['train_type'] in ['baseline','both']:
@@ -64,13 +64,14 @@ class PipelineTES(object):
         val_idx = self.data.val_mask.nonzero().squeeze()
         test_idx = self.data.test_mask.nonzero().squeeze()
         self.split_idx = {'train': train_idx, 'valid': val_idx, 'test': test_idx}
-        self.config['batch_size'] = self.split_idx['train'].shape[0]
+        if self.config['batch_size_full']:
+            self.config['batch_size'] = self.split_idx['train'].shape[0]
         
         print('train: {}, valid: {}, test: {}'.format(self.split_idx['train'].shape[0],self.split_idx['valid'].shape[0],self.split_idx['test'].shape[0]))
 
         # Logger and data loader
         date = dt.datetime.date(dt.datetime.now())
-        self.output_name = 'dt{}{}_{}_id{}_{}_{}_{}_split_{}_noise_{}{}_lay{}_hid{}_lr{}_epo{}_bs{}_drop{}_tk{}_cttau{}_neigh{}{}'.format(date.month,date.day,self.config['dataset_name'],self.config['batch_id'],self.config['train_type'],self.config['algo_type'],self.config['module'],self.config['original_split'],self.config['noise_type'],self.config['noise_rate'],self.config['num_layers'],self.config['hidden_size'],self.config['learning_rate'],self.config['max_epochs'],self.config['batch_size'],self.config['dropout'],self.config['ct_tk'],self.config['ct_tau'],self.config['nbr_neighbors'][0],self.config['nbr_neighbors'][1])#,self.config['nbr_neighbors'][2])
+        self.output_name = 'dt{}{}_{}_id{}_{}_{}_{}_noise_{}{}_lay{}_hid{}_lr{}_epo{}_bs{}_drop{}_tk{}_cttau{}_neigh{}{}'.format(date.month,date.day,self.config['dataset_name'],self.config['batch_id'],self.config['train_type'],self.config['algo_type'],self.config['module'],self.config['noise_type'],self.config['noise_rate'],self.config['num_layers'],self.config['hidden_size'],self.config['learning_rate'],self.config['max_epochs'],self.config['batch_size'],self.config['dropout'],self.config['ct_tk'],self.config['ct_tau'],self.config['nbr_neighbors'][0],self.config['nbr_neighbors'][1])#,self.config['nbr_neighbors'][2])
         self.logger = initialize_logger(self.config, self.output_name)
         
         self.train_loader = NeighborLoader(
@@ -79,9 +80,10 @@ class PipelineTES(object):
             num_neighbors=self.config['nbr_neighbors'],
             batch_size=self.config['batch_size'],
             shuffle=True,
-            num_workers=self.config['num_workers'],
+            num_workers=1,
             persistent_workers=True
         )
+        
         self.subgraph_loader = NeighborLoader(
             self.data,
             input_nodes=None,

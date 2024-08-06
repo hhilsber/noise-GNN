@@ -18,7 +18,7 @@ train_type: 'baseline' # nalgo   baseline   both
 compare_loss : 'normal' # normal back
 
 # Regularization
-dropout: 0.2
+dropout: 0.5
 
 # Training
 optimizer: 'adam'
@@ -37,8 +37,8 @@ do_plot: False
 epoch_logger: False
 
 # Noise
-noise_rate: 0.4
-noise_type: 'next_pair' # pair   sym
+noise_rate: 0.2
+noise_type: 'sym' # pair   sym
 
 # Algo Co-teaching or CNCLU
 algo_type: 'coteaching' # ct codi cn_soft cn_hard

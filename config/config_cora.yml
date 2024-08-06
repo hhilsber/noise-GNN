@@ -1,5 +1,5 @@
 # Data
-batch_id: 16
+batch_id: 20
 data_dir: '../data'
 dataset_name: 'cora'
 what: '4'
@@ -23,7 +23,7 @@ dropout: 0.5
 optimizer: 'adam'
 learning_rate: 0.001
 num_runs: 3
-max_epochs: 45
+max_epochs: 50
 batch_size: 256
 
 # Device
@@ -34,7 +34,7 @@ do_train: True
 do_plot: False
 epoch_logger: False
 # Bool data
-load_index: False
+load_index: True
 batch_size_full: True
 
 # Noise

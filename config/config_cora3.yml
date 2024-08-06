@@ -1,5 +1,5 @@
 # Data
-batch_id: 16
+batch_id: 18
 data_dir: '../data'
 dataset_name: 'cora'
 what: '4'

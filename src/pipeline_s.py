@@ -30,8 +30,7 @@ class PipelineS(object):
         print('noise type and rate: {} {}'.format(config['noise_type'], config['noise_rate']))
         self.data.yhn, self.noise_mat = flip_label(self.data.y, dataset.num_classes, config['noise_type'], config['noise_rate'])
         self.noise_or_not = (self.data.y.squeeze() == self.data.yhn) #.int() # true if same lbl
-        if config['undirected']:
-            self.data.edge_index = to_undirected(self.data.edge_index)
+        
 
         config['nbr_features'] = dataset.num_features #self.dataset.x.shape[-1]
         config['nbr_classes'] = dataset.num_classes #dataset.y.max().item() + 1
@@ -51,8 +50,8 @@ class PipelineS(object):
             elif self.config['algo_type'] == 'codi':
                 self.criterion = CoDiLoss(self.device, self.config['co_lambda'])
             self.rate_schedule = np.ones(self.config['max_epochs'])*self.config['noise_rate']*self.config['ct_tau']
-            self.rate_schedule[:self.config['ct_tk']] = np.linspace(0, self.config['noise_rate'], self.config['ct_tk'])
-            print(self.rate_schedule)
+            self.rate_schedule[:self.config['ct_tk']] = np.linspace(0, self.config['noise_rate']*self.config['ct_tau'], self.config['ct_tk'])
+            
         if self.config['train_type'] in ['baseline','both']:
             self.model_c = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module'])
         
@@ -67,7 +66,7 @@ class PipelineS(object):
 
         # Logger and data loader
         date = dt.datetime.date(dt.datetime.now())
-        self.output_name = 'dt{}{}_{}_id{}_{}_{}_{}_undirect_{}_noise_{}{}_lay{}_hid{}_lr{}_epo{}_bs{}_drop{}_tk{}_cttau{}_neigh{}{}'.format(date.month,date.day,self.config['dataset_name'],self.config['batch_id'],self.config['train_type'],self.config['algo_type'],self.config['module'],self.config['undirected'],self.config['noise_type'],self.config['noise_rate'],self.config['num_layers'],self.config['hidden_size'],self.config['learning_rate'],self.config['max_epochs'],self.config['batch_size'],self.config['dropout'],self.config['ct_tk'],self.config['ct_tau'],self.config['nbr_neighbors'][0],self.config['nbr_neighbors'][1])#,self.config['nbr_neighbors'][2])
+        self.output_name = 'dt{}{}_{}_id{}_{}_{}_{}_noise_{}{}_lay{}_hid{}_lr{}_epo{}_bs{}_drop{}_tk{}_cttau{}_neigh{}{}'.format(date.month,date.day,self.config['dataset_name'],self.config['batch_id'],self.config['train_type'],self.config['algo_type'],self.config['module'],self.config['noise_type'],self.config['noise_rate'],self.config['num_layers'],self.config['hidden_size'],self.config['learning_rate'],self.config['max_epochs'],self.config['batch_size'],self.config['dropout'],self.config['ct_tk'],self.config['ct_tau'],self.config['nbr_neighbors'][0],self.config['nbr_neighbors'][1])#,self.config['nbr_neighbors'][2])
         self.logger = initialize_logger(self.config, self.output_name)
         
         self.train_loader = NeighborLoader(
