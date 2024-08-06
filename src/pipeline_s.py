@@ -30,7 +30,8 @@ class PipelineS(object):
         print('noise type and rate: {} {}'.format(config['noise_type'], config['noise_rate']))
         self.data.yhn, self.noise_mat = flip_label(self.data.y, dataset.num_classes, config['noise_type'], config['noise_rate'])
         self.noise_or_not = (self.data.y.squeeze() == self.data.yhn) #.int() # true if same lbl
-        self.data.edge_index = to_undirected(self.data.edge_index)
+        if config['undirected']:
+            self.data.edge_index = to_undirected(self.data.edge_index)
 
         config['nbr_features'] = dataset.num_features #self.dataset.x.shape[-1]
         config['nbr_classes'] = dataset.num_classes #dataset.y.max().item() + 1
@@ -50,8 +51,8 @@ class PipelineS(object):
             elif self.config['algo_type'] == 'codi':
                 self.criterion = CoDiLoss(self.device, self.config['co_lambda'])
             self.rate_schedule = np.ones(self.config['max_epochs'])*self.config['noise_rate']*self.config['ct_tau']
-            self.rate_schedule[:self.config['ct_tk']] = np.linspace(0, self.config['noise_rate']**self.config['ct_exp'], self.config['ct_tk'])
-
+            self.rate_schedule[:self.config['ct_tk']] = np.linspace(0, self.config['noise_rate'], self.config['ct_tk'])
+            print(self.rate_schedule)
         if self.config['train_type'] in ['baseline','both']:
             self.model_c = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module'])
         
@@ -59,13 +60,14 @@ class PipelineS(object):
         val_idx = self.data.val_mask.nonzero().squeeze()
         test_idx = self.data.test_mask.nonzero().squeeze()
         self.split_idx = {'train': train_idx, 'valid': val_idx, 'test': test_idx}
-        self.config['batch_size'] = self.split_idx['train'].shape[0]
+        if self.config['batch_size_full']:
+            self.config['batch_size'] = self.split_idx['train'].shape[0]
 
         print('train: {}, valid: {}, test: {}'.format(self.split_idx['train'].shape[0],self.split_idx['valid'].shape[0],self.split_idx['test'].shape[0]))
 
         # Logger and data loader
         date = dt.datetime.date(dt.datetime.now())
-        self.output_name = 'dt{}{}_{}_id{}_{}_{}_{}_split_{}_noise_{}{}_lay{}_hid{}_lr{}_epo{}_bs{}_drop{}_tk{}_cttau{}_neigh{}{}'.format(date.month,date.day,self.config['dataset_name'],self.config['batch_id'],self.config['train_type'],self.config['algo_type'],self.config['module'],self.config['original_split'],self.config['noise_type'],self.config['noise_rate'],self.config['num_layers'],self.config['hidden_size'],self.config['learning_rate'],self.config['max_epochs'],self.config['batch_size'],self.config['dropout'],self.config['ct_tk'],self.config['ct_tau'],self.config['nbr_neighbors'][0],self.config['nbr_neighbors'][1])#,self.config['nbr_neighbors'][2])
+        self.output_name = 'dt{}{}_{}_id{}_{}_{}_{}_undirect_{}_noise_{}{}_lay{}_hid{}_lr{}_epo{}_bs{}_drop{}_tk{}_cttau{}_neigh{}{}'.format(date.month,date.day,self.config['dataset_name'],self.config['batch_id'],self.config['train_type'],self.config['algo_type'],self.config['module'],self.config['undirected'],self.config['noise_type'],self.config['noise_rate'],self.config['num_layers'],self.config['hidden_size'],self.config['learning_rate'],self.config['max_epochs'],self.config['batch_size'],self.config['dropout'],self.config['ct_tk'],self.config['ct_tau'],self.config['nbr_neighbors'][0],self.config['nbr_neighbors'][1])#,self.config['nbr_neighbors'][2])
         self.logger = initialize_logger(self.config, self.output_name)
         
         self.train_loader = NeighborLoader(
@@ -74,7 +76,7 @@ class PipelineS(object):
             num_neighbors=self.config['nbr_neighbors'],
             batch_size=self.config['batch_size'],
             shuffle=True,
-            num_workers=self.config['num_workers'],
+            num_workers=1,
             persistent_workers=True
         )
         
@@ -204,7 +206,7 @@ class PipelineS(object):
 
                     best_test = 0.3
                     for epoch in range(self.config['max_epochs']):
-                        train_loss_1, train_loss_2, a1, a2, pure_ratio_1_list, pure_ratio_2_list = self.train_ct(self.train_loader, epoch, self.model1.network.to(self.device), self.model1.optimizer, self.model2.network.to(self.device), self.model2.optimizer)
+                        train_loss_1, train_loss_2, _, _, pure_ratio_1_list, pure_ratio_2_list = self.train_ct(self.train_loader, epoch, self.model1.network.to(self.device), self.model1.optimizer, self.model2.network.to(self.device), self.model2.optimizer)
                         train_acc_1, val_acc_1, test_acc_1 = self.test_planet(self.subgraph_loader, self.model1.network.to(self.device))
                         train_acc_2, val_acc_2, test_acc_2 = self.test_planet(self.subgraph_loader, self.model2.network.to(self.device))
 
@@ -214,8 +216,8 @@ class PipelineS(object):
                         val_acc_1_hist.append(val_acc_1), val_acc_2_hist.append(val_acc_2)
                         test_acc_1_hist.append(test_acc_1), test_acc_2_hist.append(test_acc_2)
                         
-                        if not((epoch+1)%10) and self.config['epoch_logger']:
-                            self.logger.info('   Train epoch {}/{} --- acc t1: {:.3f} t2: {:.3f} v1: {:.3f} v2: {:.3f} tst1: {:.3f} tst2: {:.3f}  ---  a1 {:.3f} a2 {:.3f}'.format(epoch+1,self.config['max_epochs'],train_acc_1,train_acc_2,val_acc_1,val_acc_2,test_acc_1,test_acc_2,a1,a2))
+                        if not((epoch+1)%5) and self.config['epoch_logger']:
+                            self.logger.info('   Train epoch {}/{} --- acc t1: {:.3f} t2: {:.3f} v1: {:.3f} v2: {:.3f} tst1: {:.3f} tst2: {:.3f}'.format(epoch+1,self.config['max_epochs'],train_acc_1,train_acc_2,val_acc_1,val_acc_2,test_acc_1,test_acc_2))
                     
                     self.logger.info('   RUN {} - best nalgo test acc1: {:.3f}   acc2: {:.3f}'.format(i+1,max(test_acc_1_hist),max(test_acc_2_hist)))
                     best_acc_ct.append(max(max(test_acc_1_hist),max(test_acc_2_hist)))
@@ -234,7 +236,7 @@ class PipelineS(object):
                     val_acc_hist = []
                     test_acc_hist = []
                     for epoch in range(self.config['max_epochs']):
-                        train_loss, a = self.train(self.train_loader, epoch, self.model_c.network.to(self.device), self.model_c.optimizer)
+                        train_loss, _ = self.train(self.train_loader, epoch, self.model_c.network.to(self.device), self.model_c.optimizer)
                         train_acc, val_acc, test_acc = self.test_planet(self.subgraph_loader, self.model_c.network.to(self.device))
                         
                         train_loss_hist.append(train_loss)
@@ -243,7 +245,7 @@ class PipelineS(object):
                         test_acc_hist.append(test_acc)
 
                         if not((epoch+1)%10) and self.config['epoch_logger']:
-                            self.logger.info('   Train epoch {}/{} --- acc t: {:.3f} v: {:.3f} tst: {:.3f} --- a {:.3f}'.format(epoch+1,self.config['max_epochs'],train_acc,val_acc,test_acc, a))
+                            self.logger.info('   Train epoch {}/{} --- acc t: {:.3f} v: {:.3f} tst: {:.3f}'.format(epoch+1,self.config['max_epochs'],train_acc,val_acc,test_acc))
                                 
                     self.logger.info('   RUN {} - best baseline test acc: {:.3f}'.format(i+1,max(test_acc_hist)))
                     best_acc_bs.append(max(test_acc_hist))

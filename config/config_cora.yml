@@ -1,11 +1,10 @@
 # Data
-batch_id: 5
-aaa_spec: "UNdirected graph"
-aaa_spec2: "one batch, size train split"
-
+batch_id: 13
 data_dir: '../data'
 dataset_name: 'cora'
 what: '4'
+
+aaa_spec: 'new rate_schedule'
 
 # Seed
 seed: 1232
@@ -14,11 +13,10 @@ seed: 1232
 module: 'sage'
 hidden_size: 512
 num_layers: 3
-#nbr_neighbors: [10,5,1]
 nbr_neighbors: [10,5]
 
 # Compare network
-train_type: 'baseline' # nalgo   baseline   both
+train_type: 'nalgo' # nalgo   baseline   both
 
 # Regularization
 dropout: 0.5
@@ -26,21 +24,20 @@ dropout: 0.5
 # Training
 optimizer: 'adam'
 learning_rate: 0.001
-#weight_decay: 0.0005
-
-num_runs: 5
+num_runs: 3
 max_epochs: 50
-batch_size: 512
-num_workers: 1
+batch_size: 256
 
 # Device
 cuda: True
 
-# Bool
-original_split: True
+# Bool train
 do_train: True
 do_plot: False
 epoch_logger: False
+# Bool data
+undirected: True
+batch_size_full: True
 
 # Noise
 noise_rate: 0.3
@@ -48,6 +45,5 @@ noise_type: 'sym' # pair   sym
 
 # Algo Co-teaching or CNCLU
 algo_type: 'coteaching' # ct codi cn_soft cn_hard
-ct_tk: 50
-ct_exp: 1
-ct_tau: 1.0
+ct_tk: 15
+ct_tau: 0.2

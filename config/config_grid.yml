@@ -1,20 +1,22 @@
 # Data
-batch_id: 10
+batch_id: 13
 data_dir: '../data'
-dataset_name: 'pubmed'
+dataset_name: 'cora'
 what: '4'
+
+aaa_spec: 'new rate_schedule'
 
 # Seed
 seed: 1232
 
 # Graph model
 module: 'sage'
-hidden_size: 256
+hidden_size: 1
 num_layers: 3
-nbr_neighbors: [10,5]
+nbr_neighbors: [1,1]
 
 # Compare network
-train_type: 'both' # nalgo   baseline   both
+train_type: 'nalgo' # nalgo   baseline   both
 
 # Regularization
 dropout: 0.5
@@ -22,29 +24,26 @@ dropout: 0.5
 # Training
 optimizer: 'adam'
 learning_rate: 0.001
-
-num_runs: 1
-max_epochs: 150
-batch_size: 256
-num_workers: 1
+num_runs: 3
+max_epochs: 50
+batch_size: 1
 
 # Device
 cuda: True
 
 # Bool train
 do_train: True
-do_plot: True
-epoch_logger: True
+do_plot: False
+epoch_logger: False
 # Bool data
 undirected: False
 batch_size_full: True
 
 # Noise
 noise_rate: 0.3
-noise_type: 'next_pair' # pair   sym
+noise_type: 'sym' # pair   sym
 
 # Algo Co-teaching or CNCLU
 algo_type: 'coteaching' # ct codi cn_soft cn_hard
-ct_tk: 50
-ct_exp: 1
-ct_tau: 0.2
+ct_tk: 1
+ct_tau: 1.0

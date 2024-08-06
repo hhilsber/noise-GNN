@@ -13,6 +13,7 @@ from src.pipeline_contrast import PipelineCT
 from src.pipeline_test import PipelineTE
 from src.pipeline_h import PipelineH
 from src.pipeline_s import PipelineS
+from src.pipeline_sgrid import PipelineSG
 from src.pipeline_test_s import PipelineTES
 
 ##################################### Main #####################################
