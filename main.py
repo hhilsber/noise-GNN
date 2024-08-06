@@ -29,7 +29,7 @@ def main(config):
             if config['dataset_name'] in ['ogbn-arxiv']:
                 model = PipelineCO(config)
             else:
-                model = PipelineSG(config)
+                model = PipelineS(config)
     elif config['algo_type'] == 'ctp':
         model = PipelineCTP(config)
     elif config['algo_type'] == 'contrastive':

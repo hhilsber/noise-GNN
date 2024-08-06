@@ -7,6 +7,7 @@ import numpy as np
 from ogb.nodeproppred import PygNodePropPredDataset
 from torch_geometric.datasets import Planetoid, CitationFull
 import torch_geometric.transforms as T
+import datetime as dt
 
 def index_to_mask(index, size):
     # https://github.com/eraseai/erase/blob/master/scripts/utils.py
@@ -15,30 +16,41 @@ def index_to_mask(index, size):
     mask[index] = 1
     return mask
 
-def random_coauthor_amazon_splits(data, num_classes, lcc_mask=None):
+def random_coauthor_amazon_splits(data, num_classes, load_index=False, lcc_mask=None):
     # https://github.com/eraseai/erase/blob/master/scripts/utils.py
     # Set random coauthor/co-purchase splits:
     # * 20 * num_classes labels for training
     # * 30 * num_classes labels for validation
     # rest labels for testing
-    indices = []
-    if lcc_mask is not None:
-        for i in range(num_classes):
-            index = (data.y[lcc_mask] == i).nonzero().view(-1)
-            index = index[torch.randperm(index.size(0))]
-            indices.append(index)
+    if not load_index:
+        indices = []
+        if lcc_mask is not None:
+            for i in range(num_classes):
+                index = (data.y[lcc_mask] == i).nonzero().view(-1)
+                index = index[torch.randperm(index.size(0))]
+                indices.append(index)
+        else:
+            for i in range(num_classes):
+                index = (data.y == i).nonzero().view(-1)
+                index = index[torch.randperm(index.size(0))]
+                indices.append(index)
+
+        train_index = torch.cat([i[:20] for i in indices], dim=0)
+        val_index = torch.cat([i[20:50] for i in indices], dim=0)
+
+        rest_index = torch.cat([i[50:] for i in indices], dim=0)
+        rest_index = rest_index[torch.randperm(rest_index.size(0))]
+
+        now = dt.datetime.now()
+        name = '../out_index/dt{}{}_{}_id{}_{}_{}_{}_undirect_{}_noise_{}{}_lay{}_hid{}_lr{}_epo{}_bs{}_drop{}_tk{}_cttau{}_neigh{}{}'.format(now.month,now.day,config['dataset_name'],config['batch_id'],config['train_type'],config['algo_type'],config['module'],config['undirected'],config['noise_type'],config['noise_rate'],config['num_layers'],config['hidden_size'],config['learning_rate'],config['max_epochs'],config['batch_size'],config['dropout'],config['ct_tk'],config['ct_tau'],config['nbr_neighbors'][0],config['nbr_neighbors'][1])
+        # Save
+        torch.save(train_index, name + '_train' + str(train_index.shape[0]) + '.pt')
+        torch.save(val_index, name + '_val' + str(val_index.shape[0]) + '.pt')
+        torch.save(rest_index, name + '_rest' + str(rest_index.shape[0]) + '.pt')
     else:
-        for i in range(num_classes):
-            index = (data.y == i).nonzero().view(-1)
-            index = index[torch.randperm(index.size(0))]
-            indices.append(index)
-
-    train_index = torch.cat([i[:20] for i in indices], dim=0)
-    val_index = torch.cat([i[20:50] for i in indices], dim=0)
-
-    rest_index = torch.cat([i[50:] for i in indices], dim=0)
-    rest_index = rest_index[torch.randperm(rest_index.size(0))]
-
+        #torch.load('tensors.pt')
+        torch.load('tensors.pt')
+    
     data.train_mask = index_to_mask(train_index, size=data.num_nodes)
     data.val_mask = index_to_mask(val_index, size=data.num_nodes)
     data.test_mask = index_to_mask(rest_index, size=data.num_nodes)
@@ -72,7 +84,7 @@ def load_network(config):
         dataset = CitationFull(root = root, name = dataset_name)
         data = dataset[0]
         data.num_classes = dataset.num_classes
-        data = random_coauthor_amazon_splits(data, dataset.num_classes, lcc_mask=None)
+        data = random_coauthor_amazon_splits(data, dataset.num_classes, load_index=config['load_index'], lcc_mask=None)
     else:
         print('wrong dataset name')
     
