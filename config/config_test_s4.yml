@@ -1,5 +1,5 @@
 # Data
-batch_id: 2
+batch_id: 5
 
 data_dir: '../data'
 dataset_name: 'cora' #'cora' #'ogbn-arxiv'
@@ -11,7 +11,7 @@ seed: 1232
 # Graph model
 module: 'sagePL'
 hidden_size: 512
-num_layers: 2
+num_layers: 3
 nbr_neighbors: [10,5]
 
 # Compare network
@@ -39,13 +39,13 @@ load_index: True
 batch_size_full: False
 
 # Noise
-noise_rate: 0.45
+noise_rate: 0.4
 noise_type: 'next_pair' # pair   sym
 
 # Algo Co-teaching or CNCLU
 algo_type: 'coteaching' # ct codi cn_soft cn_hard
 ct_tk: 15
-ct_tau: 0.1
+ct_tau: 0.15
 
 spl_cont_beta: 0.05
 spl_noise_rate_neg: 0.9

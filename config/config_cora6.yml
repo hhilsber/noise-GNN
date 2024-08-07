@@ -1,22 +1,21 @@
 # Data
-batch_id: 5
-
+batch_id: 2
 data_dir: '../data'
-dataset_name: 'cora' #'cora' #'ogbn-arxiv'
-what: '_test2'
+dataset_name: 'cora'
+what: '6'
 
 # Seed
 seed: 1232
 
 # Graph model
-module: 'sagePL'
+module: 'sage'
 hidden_size: 512
 num_layers: 2
 nbr_neighbors: [10,5]
 
 # Compare network
-train_type: 'both' # nalgo   baseline   both
-
+train_type: 'baseline' # nalgo   baseline   both
+compare_loss : 'back' # normal back
 # Regularization
 dropout: 0.5
 
@@ -36,18 +35,13 @@ do_plot: False
 epoch_logger: False
 # Bool data
 load_index: True
-batch_size_full: True
+batch_size_full: False
 
 # Noise
-noise_rate: 0.4
+noise_rate: 0.3
 noise_type: 'next_pair' # pair   sym
 
 # Algo Co-teaching or CNCLU
 algo_type: 'coteaching' # ct codi cn_soft cn_hard
 ct_tk: 15
-ct_tau: 0.15
-
-spl_cont_beta: 0.05
-spl_noise_rate_neg: 0.9
-spl_noise_rate_pos: 0.05
-spl_rewire_rate: 0.2
+ct_tau: 0.1

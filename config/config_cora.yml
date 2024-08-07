@@ -1,20 +1,21 @@
 # Data
-batch_id: 27
+batch_id: 2
 data_dir: '../data'
 dataset_name: 'cora'
-what: '4'
+what: '6'
 
 # Seed
 seed: 1232
 
 # Graph model
 module: 'sage'
-hidden_size: 256
-num_layers: 3
+hidden_size: 512
+num_layers: 2
 nbr_neighbors: [10,5]
 
 # Compare network
-train_type: 'both' # nalgo   baseline   both
+train_type: 'baseline' # nalgo   baseline   both
+compare_loss : 'back' # normal back
 
 # Regularization
 dropout: 0.5
@@ -38,7 +39,7 @@ load_index: True
 batch_size_full: False
 
 # Noise
-noise_rate: 0.3
+noise_rate: 0.2
 noise_type: 'sym' # pair   sym
 
 # Algo Co-teaching or CNCLU

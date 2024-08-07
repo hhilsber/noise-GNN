@@ -1,8 +1,8 @@
 # Data
-batch_id: 27
+batch_id: 2
 data_dir: '../data'
 dataset_name: 'cora'
-what: '4'
+what: '6'
 
 # Seed
 seed: 1232
@@ -14,7 +14,8 @@ num_layers: 2
 nbr_neighbors: [10,5]
 
 # Compare network
-train_type: 'both' # nalgo   baseline   both
+train_type: 'baseline' # nalgo   baseline   both
+compare_loss : 'back' # normal back
 
 # Regularization
 dropout: 0.5

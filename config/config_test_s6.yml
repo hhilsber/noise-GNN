@@ -1,5 +1,5 @@
 # Data
-batch_id: 3
+batch_id: 4
 
 data_dir: '../data'
 dataset_name: 'cora' #'cora' #'ogbn-arxiv'
@@ -39,15 +39,15 @@ load_index: True
 batch_size_full: False
 
 # Noise
-noise_rate: 0.45
-noise_type: 'next_pair' # pair   sym
+noise_rate: 0.5
+noise_type: 'sym' # pair   sym
 
 # Algo Co-teaching or CNCLU
 algo_type: 'coteaching' # ct codi cn_soft cn_hard
 ct_tk: 15
-ct_tau: 0.1
+ct_tau: 0.2
 
-spl_cont_beta: 0.1
+spl_cont_beta: 0.05
 spl_noise_rate_neg: 0.9
 spl_noise_rate_pos: 0.05
 spl_rewire_rate: 0.2

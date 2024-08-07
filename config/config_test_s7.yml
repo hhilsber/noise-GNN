@@ -1,5 +1,5 @@
 # Data
-batch_id: 2
+batch_id: 6
 
 data_dir: '../data'
 dataset_name: 'cora' #'cora' #'ogbn-arxiv'
