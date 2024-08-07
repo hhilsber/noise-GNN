@@ -1,5 +1,5 @@
 # Data
-batch_id: 3
+batch_id: 4
 data_dir: '../data'
 dataset_name: 'ogbn-arxiv'
 what: '5'
@@ -15,7 +15,7 @@ nbr_neighbors: [10,5]
 
 # Compare network
 train_type: 'baseline' # nalgo   baseline   both
-compare_loss : 'normal' # normal back
+compare_loss : 'back' # normal back
 
 # Regularization
 dropout: 0.5

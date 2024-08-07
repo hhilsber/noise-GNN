@@ -139,6 +139,8 @@ class PipelineTES(object):
                 # Contrastive
                 logits_pa1, logits_n1 = self.discriminator(h_pure1[ind_noisy_1], hedge_pure1[ind_noisy_1], hneg_noisy1[ind_noisy_1])
                 logits_pa2, logits_n2 = self.discriminator(h_pure2[ind_noisy_2], hedge_pure2[ind_noisy_2], hneg_noisy2[ind_noisy_2])
+                #logits_pa1, logits_n1 = self.discriminator(h_pure1[:batch.batch_size], hedge_pure1[:batch.batch_size], hneg_noisy1[:batch.batch_size])
+                #logits_pa2, logits_n2 = self.discriminator(h_pure2[:batch.batch_size], hedge_pure2[:batch.batch_size], hneg_noisy2[:batch.batch_size])
                 loss_cont1 = self.cont_criterion(logits_pa1, logits_n1)
                 loss_cont2 = self.cont_criterion(logits_pa2, logits_n2)
 

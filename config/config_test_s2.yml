@@ -39,7 +39,7 @@ load_index: True
 batch_size_full: False
 
 # Noise
-noise_rate: 0.3
+noise_rate: 0.4
 noise_type: 'sym' # pair   sym
 
 # Algo Co-teaching or CNCLU

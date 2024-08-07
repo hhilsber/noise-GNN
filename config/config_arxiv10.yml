@@ -37,7 +37,7 @@ do_plot: False
 epoch_logger: False
 
 # Noise
-noise_rate: 0.3
+noise_rate: 0.4
 noise_type: 'next_pair' # pair   sym
 
 # Algo Co-teaching or CNCLU

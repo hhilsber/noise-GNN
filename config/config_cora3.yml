@@ -1,5 +1,5 @@
 # Data
-batch_id: 26
+batch_id: 27
 data_dir: '../data'
 dataset_name: 'cora'
 what: '4'
@@ -9,15 +9,15 @@ seed: 1232
 
 # Graph model
 module: 'sage'
-hidden_size: 512
-num_layers: 3
+hidden_size: 256
+num_layers: 2
 nbr_neighbors: [10,5]
 
 # Compare network
 train_type: 'both' # nalgo   baseline   both
 
 # Regularization
-dropout: 0.3
+dropout: 0.5
 
 # Training
 optimizer: 'adam'
