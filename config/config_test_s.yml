@@ -11,19 +11,19 @@ seed: 1232
 # Graph model
 module: 'sagePL'
 hidden_size: 512
-num_layers: 3
+num_layers: 2
 nbr_neighbors: [10,5]
 
 # Compare network
 train_type: 'both' # nalgo   baseline   both
 
 # Regularization
-dropout: 0.2
+dropout: 0.5
 
 # Training
 optimizer: 'adam'
-learning_rate: 0.005
-num_runs: 3
+learning_rate: 0.001
+num_runs: 5
 max_epochs: 50
 batch_size: 512
 

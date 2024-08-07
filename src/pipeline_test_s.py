@@ -31,6 +31,13 @@ class PipelineTES(object):
         self.data.yhn, self.noise_mat = flip_label(self.data.y, dataset.num_classes, config['noise_type'], config['noise_rate'])
         self.noise_or_not = (self.data.y.squeeze() == self.data.yhn) #.int() # true if same lbl
         
+        train_idx = self.data.train_mask.nonzero().squeeze()
+        val_idx = self.data.val_mask.nonzero().squeeze()
+        test_idx = self.data.test_mask.nonzero().squeeze()
+        self.split_idx = {'train': train_idx, 'valid': val_idx, 'test': test_idx}
+        if config['batch_size_full']:
+            config['batch_size'] = self.split_idx['train'].shape[0]
+            
         config['nbr_features'] = dataset.num_features #self.dataset.x.shape[-1]
         config['nbr_classes'] = dataset.num_classes #dataset.y.max().item() + 1
         config['nbr_nodes'] = dataset.x.shape[0]
@@ -42,8 +49,8 @@ class PipelineTES(object):
         if self.config['train_type'] in ['nalgo','both']:
             #self.model1 = NGNN(config)
             #self.model2 = NGNN(config)
-            self.model1 = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module'],self.config['nbr_nodes'])
-            self.model2 = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module'],self.config['nbr_nodes'])
+            self.model1 = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module'],nbr_nodes=self.config['nbr_nodes']) #self.split_idx['train'].shape[0]
+            self.model2 = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module'],nbr_nodes=self.config['nbr_nodes'])
             if self.config['algo_type'] == 'coteaching':
                 self.criterion = CTLoss(self.device)
             elif self.config['algo_type'] == 'codi':
@@ -59,13 +66,6 @@ class PipelineTES(object):
         # Contrastive
         self.discriminator = Discriminator_innerprod()
         self.cont_criterion = BCEExeprtLoss(self.config['batch_size'])
-
-        train_idx = self.data.train_mask.nonzero().squeeze()
-        val_idx = self.data.val_mask.nonzero().squeeze()
-        test_idx = self.data.test_mask.nonzero().squeeze()
-        self.split_idx = {'train': train_idx, 'valid': val_idx, 'test': test_idx}
-        if self.config['batch_size_full']:
-            self.config['batch_size'] = self.split_idx['train'].shape[0]
         
         print('train: {}, valid: {}, test: {}'.format(self.split_idx['train'].shape[0],self.split_idx['valid'].shape[0],self.split_idx['test'].shape[0]))
 
@@ -88,7 +88,7 @@ class PipelineTES(object):
             self.data,
             input_nodes=None,
             num_neighbors=self.config['nbr_neighbors'],
-            batch_size=4096,
+            batch_size=2048,
             num_workers=4,
             persistent_workers=True,
         )
