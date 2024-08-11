@@ -1,5 +1,5 @@
 # Data
-batch_id: 5
+batch_id: 1
 
 data_dir: '../data'
 dataset_name: 'cora' #'cora' #'ogbn-arxiv'
@@ -35,11 +35,11 @@ do_train: True
 do_plot: False
 epoch_logger: False
 # Bool data
-load_index: True
+load_index: False
 batch_size_full: False
 
 # Noise
-noise_rate: 0.45
+noise_rate: 0.0
 noise_type: 'next_pair' # pair   sym
 
 # Algo Co-teaching or CNCLU
