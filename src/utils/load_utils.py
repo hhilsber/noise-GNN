@@ -50,9 +50,12 @@ def random_coauthor_amazon_splits(data, num_classes, config, lcc_mask=None):
     else:
         # Load
         print('load index')
-        train_index = torch.load('../out_index/dt86_cora_id18_nalgo_coteaching_sage_noise_sym0.3_lay3_hid512_lr0.001_epo50_bs256_drop0.5_tk15_cttau0.2_neigh1510_train1395.pt')
-        val_index = torch.load('../out_index/dt86_cora_id18_nalgo_coteaching_sage_noise_sym0.3_lay3_hid512_lr0.001_epo50_bs256_drop0.5_tk15_cttau0.2_neigh1510_val2049.pt')
-        rest_index = torch.load('../out_index/dt86_cora_id18_nalgo_coteaching_sage_noise_sym0.3_lay3_hid512_lr0.001_epo50_bs256_drop0.5_tk15_cttau0.2_neigh1510_rest16349.pt')
+        #train_index = torch.load('../out_index/dt86_cora_id18_nalgo_coteaching_sage_noise_sym0.3_lay3_hid512_lr0.001_epo50_bs256_drop0.5_tk15_cttau0.2_neigh1510_train1395.pt')
+        #val_index = torch.load('../out_index/dt86_cora_id18_nalgo_coteaching_sage_noise_sym0.3_lay3_hid512_lr0.001_epo50_bs256_drop0.5_tk15_cttau0.2_neigh1510_val2049.pt')
+        #rest_index = torch.load('../out_index/dt86_cora_id18_nalgo_coteaching_sage_noise_sym0.3_lay3_hid512_lr0.001_epo50_bs256_drop0.5_tk15_cttau0.2_neigh1510_rest16349.pt')
+        train_index = torch.load('../out_index/dt812_cora_id1_baseline_coteaching_sage_noise_sym0.1_lay2_hid512_lr0.001_epo50_bs512_drop0.5_tk15_cttau0.15_neigh105_train1395.pt')
+        val_index = torch.load('../out_index/dt812_cora_id1_baseline_coteaching_sage_noise_sym0.1_lay2_hid512_lr0.001_epo50_bs512_drop0.5_tk15_cttau0.15_neigh105_val2049.pt')
+        rest_index = torch.load('../out_index/dt812_cora_id1_baseline_coteaching_sage_noise_sym0.1_lay2_hid512_lr0.001_epo50_bs512_drop0.5_tk15_cttau0.15_neigh105_rest16349.pt')
         
     data.train_mask = index_to_mask(train_index, size=data.num_nodes)
     data.val_mask = index_to_mask(val_index, size=data.num_nodes)
