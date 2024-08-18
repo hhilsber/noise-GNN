@@ -26,3 +26,26 @@ pip install torch_geometric
 Finally, it works. Wish it will help you too! Good luck!
 
 Wuhan University, Gou Zhonghua's Lab.
+
+-------------------------------------------------------------------------
+torch                     2.2.1+cu118
+python                    3.12.2 
+
+conda create --name pyl python=3.12
+conda install pytorch==2.2.1 torchvision==0.17.1 torchaudio==2.2.1 pytorch-cuda=11.8 -c pytorch -c nvidia
+
+pip install c:/users/hendr/Downloads/torch_scatter-2.1.2+pt22cu118-cp312-cp312-win_amd64.whl
+pip install torch-scatter -f https://data.pyg.org/whl/torch-2.2.1+${cu118}.html
+
+pip install c:/users/hendr/Downloads/torch_sparse-0.6.18+pt22cu118-cp312-cp312-win_amd64.whl
+pip install torch-sparse -f https://data.pyg.org/whl/torch-2.2.1+${cu118}.html
+
+pip install c:/users/hendr/Downloads/torch_cluster-1.6.3+pt22cu118-cp312-cp312-win_amd64.whl
+pip install torch-cluster -f https://data.pyg.org/whl/torch-2.2.1+${cu118}.html
+
+pip install c:/users/hendr/Downloads/torch_spline_conv-1.2.2+pt22cu118-cp312-cp312-win_amd64.whl
+pip install torch-spline-conv -f https://data.pyg.org/whl/torch-2.2.1+${cu118}.html
+
+pip install torch_geometric
+pip install matplotlib
+pip install ogb

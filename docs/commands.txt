@@ -1,4 +1,4 @@
-python main.py -config config/config_ctp.yml
+python main.py -config config/config_test_s.yml
 
 
 ls /mnt/data/datasets/pyg/2.0

@@ -27,8 +27,8 @@ class PipelineTE(object):
         # Data prep
         self.data, dataset = load_network(config)
         print('noise type and rate: {} {}'.format(config['noise_type'], config['noise_rate']))
-        self.data.yhn, self.noise_mat = flip_label(self.data.y, dataset.num_classes, config['noise_type'], config['noise_rate'])
-        self.noise_or_not = (self.data.y.squeeze() == self.data.yhn) #.int() # true if same lbl
+        #self.data.yhn, self.noise_mat = flip_label(self.data.y, dataset.num_classes, config['noise_type'], config['noise_rate'])
+        #self.noise_or_not = (self.data.y.squeeze() == self.data.yhn) #.int() # true if same lbl
         self.split_idx = dataset.get_idx_split()
         print('train: {}, valid: {}, test: {}'.format(self.split_idx['train'].shape[0],self.split_idx['valid'].shape[0],self.split_idx['test'].shape[0]))
 
@@ -66,33 +66,7 @@ class PipelineTE(object):
         self.logger = initialize_logger(self.config, self.output_name)
         #np.save('../out_nmat/' + self.output_name + '.npy', noise_mat)
         
-        self.train_loader = NeighborLoader(
-            self.data,
-            input_nodes=self.split_idx['train'],
-            num_neighbors=self.config['nbr_neighbors'],
-            batch_size=self.config['batch_size'],
-            shuffle=True,
-            num_workers=self.config['num_workers'],
-            persistent_workers=True
-        )
-        """
-        self.valid_loader = NeighborLoader(
-            self.data,
-            input_nodes=self.split_idx['valid'],
-            num_neighbors=self.config['nbr_neighbors'],
-            batch_size=self.config['batch_size'],
-            num_workers=self.config['num_workers'],
-            persistent_workers=True
-        )
         
-        self.test_loader = NeighborLoader(
-            self.data,
-            input_nodes=self.split_idx['test'],
-            num_neighbors=self.config['nbr_neighbors'],
-            batch_size=self.config['batch_size'],
-            num_workers=self.config['num_workers'],
-            persistent_workers=True
-        )"""
 
         self.subgraph_loader = NeighborLoader(
             self.data,
@@ -248,6 +222,18 @@ class PipelineTE(object):
             if self.config['train_type'] in ['nalgo','both']:
                 best_acc_ct = []
                 for i in range(self.config['num_runs']):
+                    self.data.yhn, self.noise_mat = flip_label(self.data.y, self.config['nbr_classes'], self.config['noise_type'], self.config['noise_rate'])
+                    self.noise_or_not = (self.data.y.squeeze() == self.data.yhn) #.int() # true if same lbl
+
+                    self.train_loader = NeighborLoader(
+                        self.data,
+                        input_nodes=self.split_idx['train'],
+                        num_neighbors=self.config['nbr_neighbors'],
+                        batch_size=self.config['batch_size'],
+                        shuffle=True,
+                        num_workers=self.config['num_workers'],
+                        persistent_workers=True
+                    )
                     #self.logger.info('   Train nalgo')
                     self.model1.network.reset_parameters()
                     self.model2.network.reset_parameters()
@@ -291,6 +277,19 @@ class PipelineTE(object):
             if self.config['train_type'] in ['baseline','both']:
                 best_acc_bs = []
                 for i in range(self.config['num_runs']):
+                    self.data.yhn, self.noise_mat = flip_label(self.data.y, self.config['nbr_classes'], self.config['noise_type'], self.config['noise_rate'])
+                    self.noise_or_not = (self.data.y.squeeze() == self.data.yhn) #.int() # true if same lbl
+
+                    self.train_loader = NeighborLoader(
+                        self.data,
+                        input_nodes=self.split_idx['train'],
+                        num_neighbors=self.config['nbr_neighbors'],
+                        batch_size=self.config['batch_size'],
+                        shuffle=True,
+                        num_workers=self.config['num_workers'],
+                        persistent_workers=True
+                    )
+                    
                     #self.logger.info('   Train baseline')
                     self.model_c.network.reset_parameters()
 
