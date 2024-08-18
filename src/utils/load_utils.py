@@ -60,6 +60,23 @@ def random_coauthor_amazon_splits(data, num_classes, config, lcc_mask=None):
 
     return data
 
+def ogb_products_splits(data, split_idx, num_classes, config):
+    if not config['load_index']:
+        nbr_test_samples = int(split_idx['test'].shape[0] / config['test_frac'])
+        new_test_split = split_idx['test'][torch.randperm(split_idx['test'].shape[0])]
+        new_test_split = new_test_split[:nbr_test_samples]
+
+        now = dt.datetime.now()
+        name = '../out_index/dt{}{}_{}_id{}_{}_{}_{}_noise_{}{}_lay{}_hid{}_lr{}_epo{}_bs{}_drop{}_tk{}_cttau{}_neigh{}{}'.format(now.month,now.day,config['dataset_name'],config['batch_id'],config['train_type'],config['algo_type'],config['module'],config['noise_type'],config['noise_rate'],config['num_layers'],config['hidden_size'],config['learning_rate'],config['max_epochs'],config['batch_size'],config['dropout'],config['ct_tk'],config['ct_tau'],config['nbr_neighbors'][0],config['nbr_neighbors'][1])
+        # Save
+        torch.save(new_test_split, name + '_test' + str(new_test_split.shape[0]) + '.pt')
+    else:
+        # Load
+        print('load index')
+        new_test_split = torch.load('../out_index/a.pt')
+    data.new_test_split = new_test_split
+    return data
+
 def load_network(config):
     """
     txt
@@ -73,6 +90,7 @@ def load_network(config):
     if dataset_name in ['ogbn-products']:
         dataset = PygNodePropPredDataset(dataset_name, root)
         data = dataset[0]
+        data = ogb_products_splits(data, dataset.get_idx_split(), dataset.num_classes, config)
     elif dataset_name in ['ogbn-arxiv']:
         #dataset = PygNodePropPredDataset(dataset_name, root, transform=T.ToSparseTensor())
         #dataset = PygNodePropPredDataset(dataset_name, root, T.Compose([T.ToUndirected(),T.ToSparseTensor()]))

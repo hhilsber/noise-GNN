@@ -20,13 +20,13 @@ from src.pipeline_test_s import PipelineTES
 def main(config):
     if config['algo_type'] in ['codi', 'coteaching']:
         if config['what'] == '_test2':
-            if config['dataset_name'] in ['ogbn-arxiv']:
+            if config['dataset_name'] in ['ogbn-arxiv','ogbn-products']:
                 model = PipelineTE(config)
             else:
                 print('pipeline TES')
                 model = PipelineTES(config)
         else:
-            if config['dataset_name'] in ['ogbn-arxiv']:
+            if config['dataset_name'] in ['ogbn-arxiv','ogbn-products']:
                 model = PipelineCO(config)
             else:
                 model = PipelineS(config)

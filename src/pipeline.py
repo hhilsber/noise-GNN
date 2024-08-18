@@ -53,11 +53,14 @@ class PipelineCO(object):
             self.model_c = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module'])
         
         self.evaluator = Evaluator(name=config['dataset_name'])
-        self.split_idx = dataset.get_idx_split()
-        
+        if not config['whole_test_set']:
+            original_split = dataset.get_idx_split()
+            self.split_idx = {'train': original_split['train'], 'valid': original_split['valid'], 'test': self.data.new_test_split}
+        else:
+            self.split_idx = dataset.get_idx_split()
         
         print('train: {}, valid: {}, test: {}'.format(self.split_idx['train'].shape[0],self.split_idx['valid'].shape[0],self.split_idx['test'].shape[0]))
-
+        print(a)
         # Logger and data loader
         date = dt.datetime.date(dt.datetime.now())
         self.output_name = 'dt{}{}_{}_id{}_{}_{}_{}_noise_{}{}_lay{}_hid{}_lr{}_epo{}_bs{}_drop{}_tk{}_cttau{}_neigh{}{}'.format(date.month,date.day,self.config['dataset_name'],self.config['batch_id'],self.config['train_type'],self.config['algo_type'],self.config['module'],self.config['noise_type'],self.config['noise_rate'],self.config['num_layers'],self.config['hidden_size'],self.config['learning_rate'],self.config['max_epochs'],self.config['batch_size'],self.config['dropout'],self.config['ct_tk'],self.config['ct_tau'],self.config['nbr_neighbors'][0],self.config['nbr_neighbors'][1])#,self.config['nbr_neighbors'][2])

@@ -1,24 +1,21 @@
 # Data
 batch_id: 1
-aaa_spec: "no weight decay"
 
-data_type: 'network'
 data_dir: '../data'
 dataset_name: 'ogbn-products'
-task_type: 'classification'
-what: '2'
+what: '6'
 
 # Seed
 seed: 1232
 
 # Graph model
-module: 'gcn'
-hidden_size: 128
-num_layers: 2
-nbr_neighbors: [15,10,5]
+module: 'sage'
+hidden_size: 256
+num_layers: 3
+nbr_neighbors: [10,5]
 
 # Compare network
-train_type: 'both' # nalgo   baseline   both
+train_type: 'baseline' # nalgo   baseline   both
 compare_loss : 'normal' # normal back
 
 # Regularization
@@ -27,22 +24,25 @@ dropout: 0.5
 # Training
 optimizer: 'adam'
 learning_rate: 0.001
-#weight_decay: 0.0005
 
-max_epochs: 30
+num_runs: 5
+max_epochs: 50
 batch_size: 512
-num_workers: 1
+test_frac: 20
 
 # Device
 cuda: True
 
 # Bool
-original_split: True
 do_train: True
-do_plot: True
+do_plot: False
+epoch_logger: False
+
+load_index: False
+whole_test_set: False
 
 # Noise
-noise_rate: 0.1
+noise_rate: 0.45
 noise_type: 'next_pair' # pair   sym
 
 # Algo Co-teaching or CNCLU

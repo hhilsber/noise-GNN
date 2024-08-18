@@ -2,7 +2,7 @@
 batch_id: 1
 data_dir: '../data'
 dataset_name: 'ogbn-arxiv'
-what: '5'
+what: '6'
 
 # Seed
 seed: 1232
@@ -15,7 +15,7 @@ nbr_neighbors: [10,5]
 
 # Compare network
 train_type: 'baseline' # nalgo   baseline   both
-compare_loss : 'back' # normal back
+compare_loss : 'normal' # normal back
 
 # Regularization
 dropout: 0.5
