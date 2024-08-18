@@ -55,27 +55,28 @@ class PipelineCO(object):
         if (not config['whole_test_set']) and (config['dataset_name'] in ['ogbn-products']):
             print('not whole test set, whole_test_set = {}'.format(config['whole_test_set']))
             original_split = dataset.get_idx_split()
-            self.split_idx = {'train': original_split['train'], 'valid': original_split['valid'], 'test': self.data.new_test_split}
+            self.split_idx = {'train': self.data.new_train_idx, 'valid': self.data.new_valid_idx, 'test': self.data.new_test_idx}
         else:
             self.split_idx = dataset.get_idx_split()
+        input_nodes = torch.cat((self.split_idx['train'],self.split_idx['valid'],self.split_idx['test']),dim=0)
+        print('input_nodes: {}'.format(input_nodes.shape))
         print('train: {}, valid: {}, test: {}'.format(self.split_idx['train'].shape[0],self.split_idx['valid'].shape[0],self.split_idx['test'].shape[0]))
-        
+ 
         # Logger and data loader
         date = dt.datetime.date(dt.datetime.now())
-        self.output_name = 'dt{}{}_{}_id{}_{}_{}_{}_noise_{}{}_lay{}_hid{}_lr{}_epo{}_bs{}_drop{}_tk{}_cttau{}_neigh{}{}'.format(date.month,date.day,self.config['dataset_name'],self.config['batch_id'],self.config['train_type'],self.config['algo_type'],self.config['module'],self.config['noise_type'],self.config['noise_rate'],self.config['num_layers'],self.config['hidden_size'],self.config['learning_rate'],self.config['max_epochs'],self.config['batch_size'],self.config['dropout'],self.config['ct_tk'],self.config['ct_tau'],self.config['nbr_neighbors'][0],self.config['nbr_neighbors'][1])#,self.config['nbr_neighbors'][2])
+        self.output_name = 'dt{}{}_{}_id{}_{}_{}_{}_noise_{}{}_lay{}_hid{}_lr{}_epo{}_bs{}_drop{}_tk{}_cttau{}_neigh{}{}{}'.format(date.month,date.day,self.config['dataset_name'],self.config['batch_id'],self.config['train_type'],self.config['algo_type'],self.config['module'],self.config['noise_type'],self.config['noise_rate'],self.config['num_layers'],self.config['hidden_size'],self.config['learning_rate'],self.config['max_epochs'],self.config['batch_size'],self.config['dropout'],self.config['ct_tk'],self.config['ct_tau'],self.config['nbr_neighbors'][0],self.config['nbr_neighbors'][1],self.config['nbr_neighbors'][2])
         self.logger = initialize_logger(self.config, self.output_name)
         #np.save('../out_nmat/' + self.output_name + '.npy', noise_mat)
         
-        
         self.subgraph_loader = NeighborLoader(
             self.data,
-            input_nodes=None,
+            input_nodes=input_nodes,
             num_neighbors=self.config['nbr_neighbors'],
-            batch_size=4096,
+            batch_size=4092,
             num_workers=4,
             persistent_workers=True,
         )
-        print('length train_loader: {}, subgraph_loader: {}'.format(len(self.train_loader),len(self.subgraph_loader)))
+        #print('length train_loader: {}, subgraph_loader: {}'.format(len(self.train_loader),len(self.subgraph_loader)))
 
     def train_ct(self, train_loader, epoch, model1, optimizer1, model2, optimizer2):
         if not((epoch+1)%10) or ((epoch+1)==1):
@@ -99,7 +100,7 @@ class PipelineCO(object):
             out2 = model2(batch.x, batch.edge_index)[:batch.batch_size]
             y = batch.y[:batch.batch_size].squeeze()
             yhn = batch.yhn[:batch.batch_size].squeeze()
-            
+            #print("{}, {}, {}".format(out1.shape,out2.shape,yhn.shape))
             loss_1, loss_2, pure_ratio_1, pure_ratio_2, _, _, _, _  = self.criterion(out1, out2, yhn, self.rate_schedule[epoch], batch.n_id, self.noise_or_not)
             
             total_loss_1 += float(loss_1)
@@ -161,7 +162,7 @@ class PipelineCO(object):
         model.eval()
 
         with torch.no_grad():
-            out = model.inference(self.data.x, subgraph_loader, self.device)
+            out = model.inference(self.data.x, subgraph_loader, self.device, self.config)
             
             y_true = self.data.y.cpu()
             y_pred = out.argmax(dim=-1, keepdim=True)

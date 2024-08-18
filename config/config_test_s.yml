@@ -1,5 +1,5 @@
 # Data
-batch_id: 1
+batch_id: 2
 
 data_dir: '../data'
 dataset_name: 'cora' #'cora' #'ogbn-arxiv'
@@ -9,13 +9,13 @@ what: '_test2'
 seed: 1232
 
 # Graph model
-module: 'gcn'
+module: 'sagePL'
 hidden_size: 512
 num_layers: 2
 nbr_neighbors: [10,5]
 
 # Compare network
-train_type: 'baseline' # nalgo   baseline   both
+train_type: 'both' # nalgo   baseline   both
 
 # Regularization
 dropout: 0.5
@@ -23,7 +23,7 @@ dropout: 0.5
 # Training
 optimizer: 'adam'
 learning_rate: 0.001
-num_runs: 5
+num_runs: 10
 max_epochs: 50
 batch_size: 512
 
@@ -48,7 +48,7 @@ algo_type: 'coteaching' # ct codi cn_soft cn_hard
 ct_tk: 15
 ct_tau: 0.1
 
-spl_cont_beta: 0.1
+spl_cont_beta: 0.05
 spl_noise_rate_neg: 0.9
 spl_noise_rate_pos: 0.05
 spl_rewire_rate: 0.2

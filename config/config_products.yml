@@ -12,7 +12,7 @@ seed: 1232
 module: 'sage'
 hidden_size: 256
 num_layers: 3
-nbr_neighbors: [10,5]
+nbr_neighbors: [15,10,5]
 
 # Compare network
 train_type: 'both' # nalgo   baseline   both
@@ -28,7 +28,10 @@ learning_rate: 0.001
 num_runs: 5
 max_epochs: 50
 batch_size: 512
-test_frac: 20
+
+train_frac: 2
+tvalid_frac: 2
+test_frac: 40
 
 # Device
 cuda: True
@@ -38,7 +41,7 @@ do_train: True
 do_plot: False
 epoch_logger: True
 
-load_index: True
+load_index: False
 whole_test_set: False
 
 # Noise

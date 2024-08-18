@@ -23,7 +23,7 @@ dropout: 0.5
 # Training
 optimizer: 'adam'
 learning_rate: 0.001
-num_runs: 5
+num_runs: 10
 max_epochs: 50
 batch_size: 512
 
@@ -42,10 +42,11 @@ batch_size_full: False
 noise_rate: 0.3
 noise_type: 'rand_pair' # pair   sym
 
+
 # Algo Co-teaching or CNCLU
 algo_type: 'coteaching' # ct codi cn_soft cn_hard
 ct_tk: 15
-ct_tau: 0.1
+ct_tau: 0.2
 
 spl_cont_beta: 0.05
 spl_noise_rate_neg: 0.9
