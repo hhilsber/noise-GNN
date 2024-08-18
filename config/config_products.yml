@@ -36,7 +36,7 @@ cuda: True
 # Bool
 do_train: True
 do_plot: False
-epoch_logger: False
+epoch_logger: True
 
 load_index: True
 whole_test_set: False

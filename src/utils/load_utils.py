@@ -76,7 +76,7 @@ def ogb_products_splits(data, split_idx, num_classes, config):
     else:
         # Load
         print('load index')
-        new_test_split = torch.load('../out_index/a.pt')
+        new_test_split = torch.load('../out_index/dt818_ogbn-products_id1_baseline_coteaching_sage_noise_next_pair0.45_lay3_hid256_lr0.001_epo50_bs512_drop0.5_tk15_cttau1.2_neigh105_test110654.pt')
     data.new_test_split = new_test_split
     return data
 
