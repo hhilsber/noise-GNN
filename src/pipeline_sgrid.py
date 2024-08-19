@@ -28,10 +28,49 @@ class PipelineSG(object):
         # Config
         self.config = config
 
+        
+        self.data, dataset = load_network(self.config)
+        print('noise type and rate: {} {}'.format(self.config['noise_type'], self.config['noise_rate']))
+        self.data.yhn, self.noise_mat = flip_label(self.data.y, dataset.num_classes, self.config['noise_type'], self.config['noise_rate'])
+        self.noise_or_not = (self.data.y.squeeze() == self.data.yhn) #.int() # true if same lbl
+
+        self.config['nbr_features'] = dataset.num_features #self.dataset.x.shape[-1]
+        self.config['nbr_classes'] = dataset.num_classes #dataset.y.max().item() + 1
+        self.config['nbr_nodes'] = dataset.x.shape[0]
+        
+        train_idx = self.data.train_mask.nonzero().squeeze()
+        val_idx = self.data.val_mask.nonzero().squeeze()
+        test_idx = self.data.test_mask.nonzero().squeeze()
+        self.split_idx = {'train': train_idx, 'valid': val_idx, 'test': test_idx}
+        if self.config['batch_size_full']:
+            self.config['batch_size'] = self.split_idx['train'].shape[0]
+        print('train: {}, valid: {}, test: {}'.format(self.split_idx['train'].shape[0],self.split_idx['valid'].shape[0],self.split_idx['test'].shape[0]))
+        print('batch size: {}'.format(self.config['batch_size']))
+
         # Logger and data loader
         date = dt.datetime.date(dt.datetime.now())
-        self.output_name = 'dt{}{}_{}_id{}_{}_{}_{}_undirect_{}_noise_{}{}_lay{}_hid{}_lr{}_epo{}_bs{}_drop{}_tk{}_cttau{}_neigh{}{}___grid'.format(date.month,date.day,self.config['dataset_name'],self.config['batch_id'],self.config['train_type'],self.config['algo_type'],self.config['module'],self.config['undirected'],self.config['noise_type'],self.config['noise_rate'],self.config['num_layers'],self.config['hidden_size'],self.config['learning_rate'],self.config['max_epochs'],self.config['batch_size'],self.config['dropout'],self.config['ct_tk'],self.config['ct_tau'],self.config['nbr_neighbors'][0],self.config['nbr_neighbors'][1])#,self.config['nbr_neighbors'][2])
+        self.config['algo_type'] = 'coteaching'
+        self.output_name = 'dt{}{}_{}_id{}_{}_{}_{}_noise_{}{}_lay{}_hid{}_lr{}_epo{}_bs{}_drop{}_tk{}_cttau{}_neigh{}{}___grid'.format(date.month,date.day,self.config['dataset_name'],self.config['batch_id'],self.config['train_type'],self.config['algo_type'],self.config['module'],self.config['noise_type'],self.config['noise_rate'],self.config['num_layers'],self.config['hidden_size'],self.config['learning_rate'],self.config['max_epochs'],self.config['batch_size'],self.config['dropout'],self.config['ct_tk'],self.config['ct_tau'],self.config['nbr_neighbors'][0],self.config['nbr_neighbors'][1])#,self.config['nbr_neighbors'][2])
         self.logger = initialize_logger(self.config, self.output_name)
+
+        self.train_loader = NeighborLoader(
+            self.data,
+            input_nodes=self.split_idx['train'],
+            num_neighbors=self.config['nbr_neighbors'],
+            batch_size=self.config['batch_size'],
+            shuffle=True,
+            num_workers=1,
+            persistent_workers=True
+        )
+        self.subgraph_loader = NeighborLoader(
+            self.data,
+            input_nodes=None,
+            num_neighbors=self.config['nbr_neighbors'],
+            batch_size=4096,
+            num_workers=4,
+            persistent_workers=True,
+        )
+        #print('length train_loader: {}, subgraph_loader: {}'.format(len(self.train_loader),len(self.subgraph_loader)))
         
 
     def train_ct(self, train_loader, epoch, model1, optimizer1, model2, optimizer2):
@@ -103,65 +142,21 @@ class PipelineSG(object):
         self.logger.info('{} RUNS grid search'.format(self.config['num_runs']))
         results_df = pd.DataFrame(columns=['undirect', 'nb', 'hid', 'tk', 'tau', 'mean', 'std'])
 
-        for undirect in [False]:
-            for nb in [[15,10,5], [10,5], [15,10]]:
-                for hid in [512, 1024]:
-                    for tk in [15]:
+        
+        for nb in [self.config['nbr_neighbors']]:
+            for lay in [2,3]:
+                for hid in [256, 512, 1024]:
+                    for tk in [15,25,50]:
                         for tau in [0.1,0.15,0.2,0.25,0.3]:
                             best_acc_ct = []
                             for i in range(self.config['num_runs']):
-                                #self.logger.info('   Train nalgo')
-                                # Data prep
-                                self.data, dataset = load_network(self.config)
-                                print('noise type and rate: {} {}'.format(self.config['noise_type'], self.config['noise_rate']))
-                                self.data.yhn, self.noise_mat = flip_label(self.data.y, dataset.num_classes, self.config['noise_type'], self.config['noise_rate'])
-                                self.noise_or_not = (self.data.y.squeeze() == self.data.yhn) #.int() # true if same lbl
-                                #self.initial_edge_index = self.data.edge_index
-                                #if undirect:
-                                #    self.data.edge_index = to_undirected(self.initial_edge_index)
-                                #else:
-                                #    self.data.edge_index = self.initial_edge_index
-
-                                self.config['nbr_features'] = dataset.num_features #self.dataset.x.shape[-1]
-                                self.config['nbr_classes'] = dataset.num_classes #dataset.y.max().item() + 1
-                                self.config['nbr_nodes'] = dataset.x.shape[0]
-                                
-
                                 # Initialize the model
-                                self.model1 = NGNN(self.config['nbr_features'],hid,self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module'])
-                                self.model2 = NGNN(self.config['nbr_features'],hid,self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module'])
+                                self.model1 = NGNN(self.config['nbr_features'],hid,self.config['nbr_classes'],lay,self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module'])
+                                self.model2 = NGNN(self.config['nbr_features'],hid,self.config['nbr_classes'],lay,self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module'])
                                 self.criterion = CTLoss(self.device)
                                 self.rate_schedule = np.ones(self.config['max_epochs'])*self.config['noise_rate']*tau
                                 self.rate_schedule[:tk] = np.linspace(0, self.config['noise_rate']*tau, tk)
                                 
-                                train_idx = self.data.train_mask.nonzero().squeeze()
-                                val_idx = self.data.val_mask.nonzero().squeeze()
-                                test_idx = self.data.test_mask.nonzero().squeeze()
-                                self.split_idx = {'train': train_idx, 'valid': val_idx, 'test': test_idx}
-                                if self.config['batch_size_full']:
-                                    self.config['batch_size'] = self.split_idx['train'].shape[0]
-                                print('train: {}, valid: {}, test: {}'.format(self.split_idx['train'].shape[0],self.split_idx['valid'].shape[0],self.split_idx['test'].shape[0]))
-                                print('batch size: {}'.format(self.config['batch_size']))
-
-                                self.train_loader = NeighborLoader(
-                                    self.data,
-                                    input_nodes=self.split_idx['train'],
-                                    num_neighbors=nb,
-                                    batch_size=self.config['batch_size'],
-                                    shuffle=True,
-                                    num_workers=1,
-                                    persistent_workers=True
-                                )
-                                self.subgraph_loader = NeighborLoader(
-                                    self.data,
-                                    input_nodes=None,
-                                    num_neighbors=nb,
-                                    batch_size=4096,
-                                    num_workers=4,
-                                    persistent_workers=True,
-                                )
-                                #print('length train_loader: {}, subgraph_loader: {}'.format(len(self.train_loader),len(self.subgraph_loader)))
-
                                 self.model1.network.reset_parameters()
                                 self.model2.network.reset_parameters()
 
@@ -190,14 +185,14 @@ class PipelineSG(object):
                                 #self.logger.info('   RUN {} - best nalgo test acc1: {:.3f}   acc2: {:.3f}'.format(i+1,max(test_acc_1_hist),max(test_acc_2_hist)))
                                 best_acc_ct.append(max(max(test_acc_1_hist),max(test_acc_2_hist)))
                             std, mean = torch.std_mean(torch.as_tensor(best_acc_ct))
-                            self.logger.info('   undirect {}, nb {}, hid {}, tk {}, tau {} --- mean {:.3f} +- {:.3f} std'.format(undirect, nb, hid, tk, tau, mean,std))
+                            self.logger.info('   nb {}, lay {}, hid {}, tk {}, tau {} --- mean {:.3f} +- {:.3f} std'.format(nb, lay, hid, tk, tau, mean,std))
                             
-                            new_row = pd.DataFrame({'undirect': [undirect], 'nb': [nb], 'hid': [hid], 'tk': [tk], 'tau': [tau], 'mean': [mean], 'std': [std]})
+                            new_row = pd.DataFrame({'nb': [nb], 'lay': [lay],  'hid': [hid], 'tk': [tk], 'tau': [tau], 'mean': [mean], 'std': [std]})
                             results_df = pd.concat([results_df, new_row], ignore_index=True)
         top_results = results_df.sort_values(by='mean', ascending=False).head(7)
         self.logger.info(' %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  RESULTS  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% ')
         for i, row in top_results.iterrows():
-            self.logger.info('mean {:.3f} +- {:.3f} std --- values undirect {}, nb {}, hid {}, tk {}, tau {}'.format(row['mean'], row['std'], row['undirect'], row['nb'], row['hid'], row['tk'], row['tau']))
+            self.logger.info('mean {:.3f} +- {:.3f} std --- values nb {}, lay {}, hid {}, tk {}, tau {}'.format(row['mean'], row['std'], row['nb'], row['lay'], row['hid'], row['tk'], row['tau']))
 
         print('Done training')
         self.logger.info('Done training')

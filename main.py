@@ -34,6 +34,8 @@ def main(config):
         model = PipelineCTP(config)
     elif config['algo_type'] == 'contrastive':
         model = PipelineCT(config)
+    elif config['algo_type'] == 'grid':
+        model = PipelineSG(config)
     else:
         print('wrong algo type')
     model.loop()

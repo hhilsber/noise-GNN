@@ -1,8 +1,8 @@
 # Data
-batch_id: 15
+batch_id: 10
 data_dir: '../data'
-dataset_name: 'cora'
-what: '4'
+dataset_name: 'computers'
+what: '6'
 
 
 # Seed
@@ -11,7 +11,7 @@ seed: 1232
 # Graph model
 module: 'sage'
 hidden_size: 1
-num_layers: 3
+num_layers: 2
 nbr_neighbors: [1,1]
 
 # Compare network
@@ -23,8 +23,8 @@ dropout: 0.5
 # Training
 optimizer: 'adam'
 learning_rate: 0.001
-num_runs: 4
-max_epochs: 50
+num_runs: 5
+max_epochs: 200
 batch_size: 1
 
 # Device
@@ -35,7 +35,7 @@ do_train: True
 do_plot: False
 epoch_logger: False
 # Bool data
-undirected: False
+load_index: True
 batch_size_full: True
 
 # Noise
@@ -43,6 +43,6 @@ noise_rate: 0.3
 noise_type: 'sym' # pair   sym
 
 # Algo Co-teaching or CNCLU
-algo_type: 'coteaching' # ct codi cn_soft cn_hard
+algo_type: 'grid' # ct codi cn_soft cn_hard
 ct_tk: 1
 ct_tau: 1.0
