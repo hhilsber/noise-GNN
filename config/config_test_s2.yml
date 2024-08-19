@@ -1,8 +1,8 @@
 # Data
-batch_id: 2
+batch_id: 3
 
 data_dir: '../data'
-dataset_name: 'cora' #'cora' #'ogbn-arxiv'
+dataset_name: 'computers' #'cora' #'ogbn-arxiv'
 what: '_test2'
 
 # Seed
@@ -23,8 +23,8 @@ dropout: 0.5
 # Training
 optimizer: 'adam'
 learning_rate: 0.001
-num_runs: 10
-max_epochs: 50
+num_runs: 5
+max_epochs: 200
 batch_size: 512
 
 # Device
@@ -36,17 +36,18 @@ do_plot: False
 epoch_logger: False
 # Bool data
 load_index: True
-batch_size_full: False
+batch_size_full: True
+whole_test_set: True
 
 # Noise
 noise_rate: 0.3
-noise_type: 'rand_pair' # pair   sym
+noise_type: 'next_pair' # pair   sym
 
 
 # Algo Co-teaching or CNCLU
 algo_type: 'coteaching' # ct codi cn_soft cn_hard
 ct_tk: 15
-ct_tau: 0.2
+ct_tau: 0.15
 
 spl_cont_beta: 0.05
 spl_noise_rate_neg: 0.9

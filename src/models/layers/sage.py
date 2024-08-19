@@ -39,23 +39,24 @@ class SAGE(torch.nn.Module):
                 x = F.dropout(x, p=self.dropout, training=self.training)
         return x
     
-    def inference(self, x_all, subgraph_loader, device, config):
+    def inference(self, x_all, subgraph_loader, device):
         # Compute representations of nodes layer by layer, using *all*
         # available edges. This leads to faster computation in contrast to
         # immediately computing the final representations of each batch.
-        if config['whole_test_set']:
-            for i in range(self.num_layers):
-                xs = []
-                for batch in subgraph_loader:
-                    x = x_all[batch.n_id].to(device)
-                    edge_index = batch.edge_index.to(device)
-                    x = self.convs[i](x, edge_index)
-                    x = x[:batch.batch_size]
-                    if i != self.num_layers - 1:
-                        x = x.relu()
-                    xs.append(x.cpu())
+        
+        for i in range(self.num_layers):
+            xs = []
+            for batch in subgraph_loader:
+                x = x_all[batch.n_id].to(device)
+                edge_index = batch.edge_index.to(device)
+                x = self.convs[i](x, edge_index)
+                x = x[:batch.batch_size]
+                if i != self.num_layers - 1:
+                    x = x.relu()
+                xs.append(x.cpu())
 
-                x_all = torch.cat(xs, dim=0)
+            x_all = torch.cat(xs, dim=0)
+        """
         else:
             for i in range(self.num_layers):
                 xs = []
@@ -73,6 +74,6 @@ class SAGE(torch.nn.Module):
                 idx = torch.cat(idx, dim=0)
                 #print(xs.shape,idx.shape)
                 x_all = torch.zeros((x_all.shape[0],xs.shape[1]))
-                x_all[idx] = xs
+                x_all[idx] = xs"""
 
         return x_all
