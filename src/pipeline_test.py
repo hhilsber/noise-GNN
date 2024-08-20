@@ -62,7 +62,7 @@ class PipelineTE(object):
         
         # Logger and data loader
         date = dt.datetime.date(dt.datetime.now())
-        self.output_name = 'dt{}{}_{}_id{}_{}_{}_{}_split_{}_noise_{}{}_lay{}_hid{}_lr{}_epo{}_bs{}_drop{}_tk{}_cttau{}_neigh{}{}'.format(date.month,date.day,self.config['dataset_name'],self.config['batch_id'],self.config['train_type'],self.config['algo_type'],self.config['module'],self.config['original_split'],self.config['noise_type'],self.config['noise_rate'],self.config['num_layers'],self.config['hidden_size'],self.config['learning_rate'],self.config['max_epochs'],self.config['batch_size'],self.config['dropout'],self.config['ct_tk'],self.config['ct_tau'],self.config['nbr_neighbors'][0],self.config['nbr_neighbors'][1])#,self.config['nbr_neighbors'][2])
+        self.output_name = 'dt{}{}_{}_id{}_{}_{}_{}_noise_{}{}_lay{}_hid{}_lr{}_epo{}_bs{}_drop{}_tk{}_cttau{}_neigh{}{}'.format(date.month,date.day,self.config['dataset_name'],self.config['batch_id'],self.config['train_type'],self.config['algo_type'],self.config['module'],self.config['noise_type'],self.config['noise_rate'],self.config['num_layers'],self.config['hidden_size'],self.config['learning_rate'],self.config['max_epochs'],self.config['batch_size'],self.config['dropout'],self.config['ct_tk'],self.config['ct_tau'],self.config['nbr_neighbors'][0],self.config['nbr_neighbors'][1])#,self.config['nbr_neighbors'][2])
         self.logger = initialize_logger(self.config, self.output_name)
         #np.save('../out_nmat/' + self.output_name + '.npy', noise_mat)
         
@@ -231,7 +231,7 @@ class PipelineTE(object):
                         num_neighbors=self.config['nbr_neighbors'],
                         batch_size=self.config['batch_size'],
                         shuffle=True,
-                        num_workers=self.config['num_workers'],
+                        num_workers=1,
                         persistent_workers=True
                     )
                     #self.logger.info('   Train nalgo')

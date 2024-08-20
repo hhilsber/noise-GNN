@@ -144,10 +144,10 @@ class PipelineSG(object):
 
         
         for nb in [self.config['nbr_neighbors']]:
-            for lay in [2,3]:
-                for hid in [256, 512, 1024]:
-                    for tk in [15,25,50]:
-                        for tau in [0.1,0.15,0.2,0.25,0.3]:
+            for lay in [2]:
+                for hid in [512, 1024]:
+                    for tk in [25]:
+                        for tau in [0.1,0.2,0.3,0.4,0.5,0.6,0.7]:
                             best_acc_ct = []
                             for i in range(self.config['num_runs']):
                                 # Initialize the model

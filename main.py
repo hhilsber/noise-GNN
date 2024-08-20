@@ -19,7 +19,7 @@ from src.pipeline_test_s import PipelineTES
 ##################################### Main #####################################
 def main(config):
     if config['algo_type'] in ['codi', 'coteaching']:
-        if config['what'] == '_test2':
+        if config['what'] in ['_test2','_test3']:
             if config['dataset_name'] in ['ogbn-arxiv','ogbn-products']:
                 model = PipelineTE(config)
             else:

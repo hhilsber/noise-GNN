@@ -1,20 +1,20 @@
 # Data
-batch_id: 3
+batch_id: 1
 data_dir: '../data'
 dataset_name: 'ogbn-arxiv'
-what: '5'
+what: '_test2'
 
 # Seed
 seed: 1232
 
 # Graph model
-module: 'sage'
+module: 'sagePL'
 hidden_size: 256
 num_layers: 3
 nbr_neighbors: [10,5]
 
 # Compare network
-train_type: 'baseline' # nalgo   baseline   both
+train_type: 'both' # nalgo   baseline   both
 compare_loss : 'normal' # normal back
 
 # Regularization
@@ -37,11 +37,16 @@ do_plot: False
 epoch_logger: False
 
 # Noise
-noise_rate: 0.5
-noise_type: 'sym' # pair   sym
+noise_rate: 0.45
+noise_type: 'rand_pair' # pair   sym
 
 # Algo Co-teaching or CNCLU
 algo_type: 'coteaching' # ct codi cn_soft cn_hard
 ct_tk: 15
 ct_exp: 1
 ct_tau: 1.2
+
+spl_cont_beta: 0.1
+spl_noise_rate_neg: 0.9
+spl_noise_rate_pos: 0.05
+spl_rewire_rate: 0.2
