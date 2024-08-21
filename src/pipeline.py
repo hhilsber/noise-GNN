@@ -52,6 +52,7 @@ class PipelineCO(object):
             self.model_c = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module'])
         
         self.evaluator = Evaluator(name=config['dataset_name'])
+        config['whole_test_set'] = True
         if (not config['whole_test_set']) and (config['dataset_name'] in ['ogbn-products']):
             print('not whole test set, whole_test_set = {}'.format(config['whole_test_set']))
             original_split = dataset.get_idx_split()
@@ -64,9 +65,22 @@ class PipelineCO(object):
  
         # Logger and data loader
         date = dt.datetime.date(dt.datetime.now())
-        self.output_name = 'dt{}{}_{}_id{}_{}_{}_{}_noise_{}{}_lay{}_hid{}_lr{}_epo{}_bs{}_drop{}_tk{}_cttau{}_neigh{}{}{}'.format(date.month,date.day,self.config['dataset_name'],self.config['batch_id'],self.config['train_type'],self.config['algo_type'],self.config['module'],self.config['noise_type'],self.config['noise_rate'],self.config['num_layers'],self.config['hidden_size'],self.config['learning_rate'],self.config['max_epochs'],self.config['batch_size'],self.config['dropout'],self.config['ct_tk'],self.config['ct_tau'],self.config['nbr_neighbors'][0],self.config['nbr_neighbors'][1],self.config['nbr_neighbors'][2])
+        self.output_name = 'dt{}{}_{}_id{}_{}_{}_{}_noise_{}{}_lay{}_hid{}_lr{}_epo{}_bs{}_drop{}_tk{}_cttau{}_neigh{}{}'.format(date.month,date.day,self.config['dataset_name'],self.config['batch_id'],self.config['train_type'],self.config['algo_type'],self.config['module'],self.config['noise_type'],self.config['noise_rate'],self.config['num_layers'],self.config['hidden_size'],self.config['learning_rate'],self.config['max_epochs'],self.config['batch_size'],self.config['dropout'],self.config['ct_tk'],self.config['ct_tau'],self.config['nbr_neighbors'][0],self.config['nbr_neighbors'][1])
         self.logger = initialize_logger(self.config, self.output_name)
         #np.save('../out_nmat/' + self.output_name + '.npy', noise_mat)
+        
+        self.data.yhn, self.noise_mat = flip_label(self.data.y, self.config['nbr_classes'], self.config['noise_type'], self.config['noise_rate'])
+        self.noise_or_not = (self.data.y.squeeze() == self.data.yhn) #.int() # true if same lbl
+
+        self.train_loader = NeighborLoader(
+            self.data,
+            input_nodes=self.split_idx['train'],
+            num_neighbors=self.config['nbr_neighbors'],
+            batch_size=self.config['batch_size'],
+            shuffle=True,
+            num_workers=1,
+            persistent_workers=True
+        )
         
         self.subgraph_loader = NeighborLoader(
             self.data,
@@ -162,7 +176,7 @@ class PipelineCO(object):
         model.eval()
 
         with torch.no_grad():
-            out = model.inference(self.data.x, subgraph_loader, self.device, self.config)
+            out = model.inference(self.data.x, subgraph_loader, self.device)
             
             y_true = self.data.y.cpu()
             y_pred = out.argmax(dim=-1, keepdim=True)
@@ -259,18 +273,7 @@ class PipelineCO(object):
             if self.config['train_type'] in ['baseline','both']:
                 best_acc_bs = []
                 for i in range(self.config['num_runs']):
-                    self.data.yhn, self.noise_mat = flip_label(self.data.y, self.config['nbr_classes'], self.config['noise_type'], self.config['noise_rate'])
-                    self.noise_or_not = (self.data.y.squeeze() == self.data.yhn) #.int() # true if same lbl
-
-                    self.train_loader = NeighborLoader(
-                        self.data,
-                        input_nodes=self.split_idx['train'],
-                        num_neighbors=self.config['nbr_neighbors'],
-                        batch_size=self.config['batch_size'],
-                        shuffle=True,
-                        num_workers=1,
-                        persistent_workers=True
-                    )
+                    
                     
                     #self.logger.info('   Train baseline')
                     self.model_c.network.reset_parameters()

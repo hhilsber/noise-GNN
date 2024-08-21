@@ -1,5 +1,5 @@
 # Data
-batch_id: 5
+batch_id: 8
 
 data_dir: '../data'
 dataset_name: 'computers' #'cora' #'ogbn-arxiv'
@@ -10,6 +10,7 @@ seed: 1232
 
 # Graph model
 module: 'sagePL'
+module_compare: 'sage'
 hidden_size: 512
 num_layers: 2
 nbr_neighbors: [10,5]
@@ -41,8 +42,7 @@ whole_test_set: True
 
 # Noise
 noise_rate: 0.4
-noise_type: 'sym' # pair   sym
-
+noise_type: 'rand_pair' # pair   sym
 
 # Algo Co-teaching or CNCLU
 algo_type: 'coteaching' # ct codi cn_soft cn_hard

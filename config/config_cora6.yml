@@ -8,14 +8,15 @@ what: '6'
 seed: 1232
 
 # Graph model
-module: 'sage'
+module: 'gcn'
 hidden_size: 512
 num_layers: 2
 nbr_neighbors: [10,5]
 
 # Compare network
 train_type: 'baseline' # nalgo   baseline   both
-compare_loss : 'back' # normal back
+compare_loss : 'normal' # normal back
+
 # Regularization
 dropout: 0.5
 
@@ -39,7 +40,7 @@ batch_size_full: False
 
 # Noise
 noise_rate: 0.3
-noise_type: 'next_pair' # pair   sym
+noise_type: 'rand_pair' # pair   sym
 
 # Algo Co-teaching or CNCLU
 algo_type: 'coteaching' # ct codi cn_soft cn_hard

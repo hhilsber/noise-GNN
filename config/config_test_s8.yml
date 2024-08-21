@@ -1,21 +1,22 @@
 # Data
-batch_id: 1
+batch_id: 8
 
 data_dir: '../data'
-dataset_name: 'cora' #'cora' #'ogbn-arxiv'
-what: '_test2'
+dataset_name: 'computers' #'cora' #'ogbn-arxiv'
+what: '_test3'
 
 # Seed
 seed: 1232
 
 # Graph model
-module: 'sagePL'
+module: 'gcn'
+module_compare: 'gcn'
 hidden_size: 512
 num_layers: 2
 nbr_neighbors: [10,5]
 
 # Compare network
-train_type: 'both' # nalgo   baseline   both
+train_type: 'baseline' # nalgo   baseline   both
 
 # Regularization
 dropout: 0.5
@@ -24,7 +25,7 @@ dropout: 0.5
 optimizer: 'adam'
 learning_rate: 0.001
 num_runs: 5
-max_epochs: 50
+max_epochs: 150
 batch_size: 512
 
 # Device
@@ -36,17 +37,17 @@ do_plot: False
 epoch_logger: False
 # Bool data
 load_index: True
-batch_size_full: False
+batch_size_full: True
 whole_test_set: True
 
 # Noise
-noise_rate: 0.5
-noise_type: 'sym' # pair   sym
+noise_rate: 0.45
+noise_type: 'next_pair' # pair   sym
 
 # Algo Co-teaching or CNCLU
 algo_type: 'coteaching' # ct codi cn_soft cn_hard
-ct_tk: 15
-ct_tau: 0.15
+ct_tk: 25
+ct_tau: 0.1
 
 spl_cont_beta: 0.05
 spl_noise_rate_neg: 0.7

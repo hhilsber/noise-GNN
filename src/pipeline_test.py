@@ -54,7 +54,8 @@ class PipelineTE(object):
             self.optimizer = torch.optim.Adam(list(self.model1.network.parameters()) + list(self.model2.network.parameters()),lr=config['learning_rate'])
 
         if self.config['train_type'] in ['baseline','both']:
-            self.model_c = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],"sage")
+            print("gcn as model c !!!!!!!!!!!!")
+            self.model_c = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],"gcn")
         self.evaluator = Evaluator(name=config['dataset_name'])
         # Contrastive
         self.discriminator = Discriminator_innerprod()
@@ -66,7 +67,18 @@ class PipelineTE(object):
         self.logger = initialize_logger(self.config, self.output_name)
         #np.save('../out_nmat/' + self.output_name + '.npy', noise_mat)
         
-        
+        self.data.yhn, self.noise_mat = flip_label(self.data.y, self.config['nbr_classes'], self.config['noise_type'], self.config['noise_rate'])
+        self.noise_or_not = (self.data.y.squeeze() == self.data.yhn) #.int() # true if same lbl
+
+        self.train_loader = NeighborLoader(
+            self.data,
+            input_nodes=self.split_idx['train'],
+            num_neighbors=self.config['nbr_neighbors'],
+            batch_size=self.config['batch_size'],
+            shuffle=True,
+            num_workers=1,
+            persistent_workers=True
+        )
 
         self.subgraph_loader = NeighborLoader(
             self.data,
@@ -174,8 +186,10 @@ class PipelineTE(object):
             y = batch.y[:batch.batch_size].squeeze()
             yhn = batch.yhn[:batch.batch_size].squeeze()
             
-            loss = F.cross_entropy(out, yhn)
-            
+            if self.config['compare_loss'] == 'normal':
+                loss = F.cross_entropy(out, yhn)
+            else:
+                loss = backward_correction(out, yhn, self.noise_mat, self.config['nbr_classes'], self.device)
             
             total_loss += float(loss)
             total_correct += int(out.argmax(dim=-1).eq(y).sum())
@@ -277,18 +291,7 @@ class PipelineTE(object):
             if self.config['train_type'] in ['baseline','both']:
                 best_acc_bs = []
                 for i in range(self.config['num_runs']):
-                    self.data.yhn, self.noise_mat = flip_label(self.data.y, self.config['nbr_classes'], self.config['noise_type'], self.config['noise_rate'])
-                    self.noise_or_not = (self.data.y.squeeze() == self.data.yhn) #.int() # true if same lbl
-
-                    self.train_loader = NeighborLoader(
-                        self.data,
-                        input_nodes=self.split_idx['train'],
-                        num_neighbors=self.config['nbr_neighbors'],
-                        batch_size=self.config['batch_size'],
-                        shuffle=True,
-                        num_workers=1,
-                        persistent_workers=True
-                    )
+                    
                     
                     #self.logger.info('   Train baseline')
                     self.model_c.network.reset_parameters()

@@ -8,7 +8,7 @@ what: '6'
 seed: 1232
 
 # Graph model
-module: 'gcn'
+module: 'sage'
 hidden_size: 512
 num_layers: 2
 nbr_neighbors: [10,5]
@@ -39,8 +39,8 @@ load_index: True
 batch_size_full: False
 
 # Noise
-noise_rate: 0.0
-noise_type: 'sym' # pair   sym
+noise_rate: 0.3
+noise_type: 'rand_pair' # pair   sym
 
 # Algo Co-teaching or CNCLU
 algo_type: 'coteaching' # ct codi cn_soft cn_hard

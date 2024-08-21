@@ -2,10 +2,11 @@
 #SBATCH --job-name=tj7              # Job name
 #SBATCH --mem=24g                         # Job memory request
 #SBATCH --gres=gpu:1                     # Number of requested GPU(s) 
-#SBATCH --time=36:00:00                   # Time limit days-hrs:min:sec
+#SBATCH --time=48:00:00                   # Time limit days-hrs:min:sec
 #SBATCH --error=../out_batch/slurm7.err                # Error file name
 #SBATCH --output=../out_batch/slurm7.out               # Output file name
 
 source /opt/conda/etc/profile.d/conda.sh      # initialize conda
 conda activate pyl                  # load up the conda environment
-python main.py -config config/config_amazon.yml
+python main.py -config config/config_test_s5.yml
+python main.py -config config/config_test_s6.yml

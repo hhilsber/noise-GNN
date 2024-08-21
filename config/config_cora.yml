@@ -1,5 +1,5 @@
 # Data
-batch_id: 1
+batch_id: 4
 data_dir: '../data'
 dataset_name: 'cora'
 what: '6'
@@ -39,8 +39,8 @@ load_index: True
 batch_size_full: False
 
 # Noise
-noise_rate: 0.0
-noise_type: 'sym' # pair   sym
+noise_rate: 0.2
+noise_type: 'rand_pair' # pair   sym
 
 # Algo Co-teaching or CNCLU
 algo_type: 'coteaching' # ct codi cn_soft cn_hard

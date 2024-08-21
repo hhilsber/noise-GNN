@@ -1,5 +1,5 @@
 # Data
-batch_id: 3
+batch_id: 4
 data_dir: '../data'
 dataset_name: 'cora'
 what: '6'
@@ -15,7 +15,8 @@ nbr_neighbors: [10,5]
 
 # Compare network
 train_type: 'baseline' # nalgo   baseline   both
-compare_loss : 'back' # normal back
+compare_loss : 'normal' # normal back
+
 # Regularization
 dropout: 0.5
 
@@ -38,8 +39,8 @@ load_index: True
 batch_size_full: False
 
 # Noise
-noise_rate: 0.4
-noise_type: 'next_pair' # pair   sym
+noise_rate: 0.45
+noise_type: 'rand_pair' # pair   sym
 
 # Algo Co-teaching or CNCLU
 algo_type: 'coteaching' # ct codi cn_soft cn_hard
