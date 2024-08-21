@@ -23,7 +23,7 @@ dropout: 0.5
 # Training
 optimizer: 'adam'
 learning_rate: 0.001
-num_runs: 1
+num_runs: 5
 max_epochs: 201
 batch_size: 512
 
@@ -33,7 +33,7 @@ cuda: True
 # Bool train
 do_train: True
 do_plot: True
-epoch_logger: True
+epoch_logger: False
 # Bool data
 load_index: True
 batch_size_full: True 
@@ -46,4 +46,4 @@ noise_type: 'sym' # pair   sym
 # Algo Co-teaching or CNCLU
 algo_type: 'coteaching' # ct codi cn_soft cn_hard
 ct_tk: 25
-ct_tau: 0.3
+ct_tau: 0.7

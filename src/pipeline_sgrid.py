@@ -143,16 +143,16 @@ class PipelineSG(object):
         results_df = pd.DataFrame(columns=['undirect', 'nb', 'hid', 'tk', 'tau', 'mean', 'std'])
 
         
-        for nb in [self.config['nbr_neighbors']]:
+        for drop in [0.2,0.35,0.5]:
             for lay in [2]:
-                for hid in [512, 1024]:
+                for hid in [512]:
                     for tk in [25]:
-                        for tau in [0.1,0.2,0.3,0.4,0.5,0.6,0.7]:
+                        for tau in [0.1,0.3,0.5,0.6,0.7,0.8,1.0]:
                             best_acc_ct = []
                             for i in range(self.config['num_runs']):
                                 # Initialize the model
-                                self.model1 = NGNN(self.config['nbr_features'],hid,self.config['nbr_classes'],lay,self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module'])
-                                self.model2 = NGNN(self.config['nbr_features'],hid,self.config['nbr_classes'],lay,self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module'])
+                                self.model1 = NGNN(self.config['nbr_features'],hid,self.config['nbr_classes'],lay,drop,self.config['learning_rate'],self.config['optimizer'],self.config['module'])
+                                self.model2 = NGNN(self.config['nbr_features'],hid,self.config['nbr_classes'],lay,drop,self.config['learning_rate'],self.config['optimizer'],self.config['module'])
                                 self.criterion = CTLoss(self.device)
                                 self.rate_schedule = np.ones(self.config['max_epochs'])*self.config['noise_rate']*tau
                                 self.rate_schedule[:tk] = np.linspace(0, self.config['noise_rate']*tau, tk)
@@ -185,14 +185,14 @@ class PipelineSG(object):
                                 #self.logger.info('   RUN {} - best nalgo test acc1: {:.3f}   acc2: {:.3f}'.format(i+1,max(test_acc_1_hist),max(test_acc_2_hist)))
                                 best_acc_ct.append(max(max(test_acc_1_hist),max(test_acc_2_hist)))
                             std, mean = torch.std_mean(torch.as_tensor(best_acc_ct))
-                            self.logger.info('   nb {}, lay {}, hid {}, tk {}, tau {} --- mean {:.3f} +- {:.3f} std'.format(nb, lay, hid, tk, tau, mean,std))
+                            self.logger.info('   drop {}, lay {}, hid {}, tk {}, tau {} --- mean {:.3f} +- {:.3f} std'.format(drop, lay, hid, tk, tau, mean,std))
                             
-                            new_row = pd.DataFrame({'nb': [nb], 'lay': [lay],  'hid': [hid], 'tk': [tk], 'tau': [tau], 'mean': [mean], 'std': [std]})
+                            new_row = pd.DataFrame({'drop': [drop], 'lay': [lay],  'hid': [hid], 'tk': [tk], 'tau': [tau], 'mean': [mean], 'std': [std]})
                             results_df = pd.concat([results_df, new_row], ignore_index=True)
         top_results = results_df.sort_values(by='mean', ascending=False).head(7)
         self.logger.info(' %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  RESULTS  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% ')
         for i, row in top_results.iterrows():
-            self.logger.info('mean {:.3f} +- {:.3f} std --- values nb {}, lay {}, hid {}, tk {}, tau {}'.format(row['mean'], row['std'], row['nb'], row['lay'], row['hid'], row['tk'], row['tau']))
+            self.logger.info('mean {:.3f} +- {:.3f} std --- values drop {}, lay {}, hid {}, tk {}, tau {}'.format(row['mean'], row['std'], row['drop'], row['lay'], row['hid'], row['tk'], row['tau']))
 
         print('Done training')
         self.logger.info('Done training')

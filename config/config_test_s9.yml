@@ -37,6 +37,7 @@ epoch_logger: False
 # Bool data
 load_index: True
 batch_size_full: False
+whole_test_set: True
 
 # Noise
 noise_rate: 0.5
@@ -48,6 +49,6 @@ ct_tk: 15
 ct_tau: 0.1
 
 spl_cont_beta: 0.05
-spl_noise_rate_neg: 0.9
+spl_noise_rate_neg: 0.7
 spl_noise_rate_pos: 0.05
-spl_rewire_rate: 0.2
+spl_rewire_rate: 0.1

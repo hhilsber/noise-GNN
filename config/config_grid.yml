@@ -18,7 +18,7 @@ nbr_neighbors: [10,5]
 train_type: 'nalgo' # nalgo   baseline   both
 
 # Regularization
-dropout: 0.5
+dropout: 1.0
 
 # Training
 optimizer: 'adam'

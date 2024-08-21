@@ -286,7 +286,7 @@ class PipelineTE(object):
                         num_neighbors=self.config['nbr_neighbors'],
                         batch_size=self.config['batch_size'],
                         shuffle=True,
-                        num_workers=self.config['num_workers'],
+                        num_workers=1,
                         persistent_workers=True
                     )
                     

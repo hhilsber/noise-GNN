@@ -14,8 +14,8 @@ num_layers: 2
 nbr_neighbors: [10,5]
 
 # Compare network
-train_type: 'both' # nalgo   baseline   both
-compare_loss : 'normal' # normal back
+train_type: 'baseline' # nalgo   baseline   both
+compare_loss : 'back' # normal back
 
 # Regularization
 dropout: 0.5
@@ -39,8 +39,8 @@ load_index: True
 batch_size_full: False
 
 # Noise
-noise_rate: 0.3
-noise_type: 'rand_pair' # pair   sym
+noise_rate: 0.0
+noise_type: 'sym' # pair   sym
 
 # Algo Co-teaching or CNCLU
 algo_type: 'coteaching' # ct codi cn_soft cn_hard
