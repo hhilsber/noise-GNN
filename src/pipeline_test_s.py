@@ -188,7 +188,10 @@ class PipelineTES(object):
             y = batch.y[:batch.batch_size].squeeze()
             yhn = batch.yhn[:batch.batch_size].squeeze()
             
-            loss = F.cross_entropy(out, yhn)
+            if self.config['compare_loss'] == 'normal':
+                loss = F.cross_entropy(out, yhn)
+            else:
+                loss = backward_correction(out, yhn, self.noise_mat, self.config['nbr_classes'], self.device)
             total_loss += float(loss)
             total_correct += int(out.argmax(dim=-1).eq(y).sum())
 

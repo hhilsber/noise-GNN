@@ -54,8 +54,7 @@ class PipelineTE(object):
             self.optimizer = torch.optim.Adam(list(self.model1.network.parameters()) + list(self.model2.network.parameters()),lr=config['learning_rate'])
 
         if self.config['train_type'] in ['baseline','both']:
-            print("gcn as model c !!!!!!!!!!!!")
-            self.model_c = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],"gcn")
+            self.model_c = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module_compare'])
         self.evaluator = Evaluator(name=config['dataset_name'])
         # Contrastive
         self.discriminator = Discriminator_innerprod()
