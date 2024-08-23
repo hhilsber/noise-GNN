@@ -15,6 +15,7 @@ from src.pipeline_h import PipelineH
 from src.pipeline_s import PipelineS
 from src.pipeline_sgrid import PipelineSG
 from src.pipeline_test_s import PipelineTES
+from src.pipeline_analysis import PipelineA
 
 ##################################### Main #####################################
 def main(config):
@@ -36,6 +37,8 @@ def main(config):
         model = PipelineCT(config)
     elif config['algo_type'] == 'grid':
         model = PipelineSG(config)
+    elif config['algo_type'] == 'analysis':
+        model = PipelineA(config)
     else:
         print('wrong algo type')
     model.loop()

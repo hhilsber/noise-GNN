@@ -2,7 +2,7 @@
 batch_id: 1
 data_dir: '../data'
 dataset_name: 'ogbn-arxiv'
-what: 'aaa'
+what: '1'
 
 # Seed
 seed: 1232
@@ -14,7 +14,7 @@ num_layers: 3
 nbr_neighbors: [10,5]
 
 # Compare network
-train_type: 'baseline' # nalgo   baseline   both
+train_type: 'nalgo' # nalgo   baseline   both
 
 # Regularization
 dropout: 0.2
@@ -24,7 +24,7 @@ optimizer: 'adam'
 learning_rate: 0.001
 
 num_runs: 1
-max_epochs: 5
+max_epochs: 3
 batch_size: 512
 
 # Device
@@ -41,9 +41,9 @@ noise_type: 'next_pair' # pair   sym
 
 # Algo Co-teaching or CNCLU
 algo_type: 'analysis' # ct codi cn_soft cn_hard
-ct_tk: 2
+ct_tk: 1
 ct_exp: 1
-ct_tau: 1.2
+ct_tau: 1.1
 
 spl_cont_beta: 0.1
 spl_noise_rate_neg: 0.9

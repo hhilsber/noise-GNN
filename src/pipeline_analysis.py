@@ -16,7 +16,7 @@ from .utils.noise import flip_label
 from .models.model import NGNN
 from .utils.losses import *
 
-class PipelineTE(object):
+class PipelineA(object):
     """
     Processing pipeline
     """
@@ -40,21 +40,14 @@ class PipelineTE(object):
         self.config = config
 
         # Initialize the model
-        if self.config['train_type'] in ['nalgo','both']:
-            #self.model1 = NGNN(config)
-            #self.model2 = NGNN(config)
-            self.model1 = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module'],nbr_nodes=self.config['nbr_nodes'])
-            self.model2 = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module'],nbr_nodes=self.config['nbr_nodes'])
-            if self.config['algo_type'] == 'coteaching':
-                self.criterion = CTLoss(self.device)
-            elif self.config['algo_type'] == 'codi':
-                self.criterion = CoDiLoss(self.device, self.config['co_lambda'])
-            self.rate_schedule = np.ones(self.config['max_epochs'])*self.config['noise_rate']*self.config['ct_tau']
-            self.rate_schedule[:self.config['ct_tk']] = np.linspace(0, self.config['noise_rate']**self.config['ct_exp'], self.config['ct_tk'])
-            self.optimizer = torch.optim.Adam(list(self.model1.network.parameters()) + list(self.model2.network.parameters()),lr=config['learning_rate'])
+        self.model1 = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module'],nbr_nodes=self.config['nbr_nodes'])
+        self.model2 = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module'],nbr_nodes=self.config['nbr_nodes'])
+        
+        self.criterion = CTLoss(self.device)
+        self.rate_schedule = np.ones(self.config['max_epochs'])*self.config['noise_rate']*self.config['ct_tau']
+        self.rate_schedule[:self.config['ct_tk']] = np.linspace(0, self.config['noise_rate']**self.config['ct_exp'], self.config['ct_tk'])
+        self.optimizer = torch.optim.Adam(list(self.model1.network.parameters()) + list(self.model2.network.parameters()),lr=config['learning_rate'])
 
-        if self.config['train_type'] in ['baseline','both']:
-            self.model_c = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module_compare'])
         self.evaluator = Evaluator(name=config['dataset_name'])
         # Contrastive
         self.discriminator = Discriminator_innerprod()
@@ -115,7 +108,7 @@ class PipelineTE(object):
             
             out1 = z_pure1[:batch.batch_size]
             out2 = z_pure2[:batch.batch_size]
-            y = batch.y[:batch.batch_size].squeeze()
+            y = batch.y[:batch.batch_size]
             yhn = batch.yhn[:batch.batch_size].squeeze()
             
             loss_1, loss_2, pure_ratio_1, pure_ratio_2, ind_update_1, ind_update_2, ind_noisy_1, ind_noisy_2  = self.criterion(out1, out2, yhn, self.rate_schedule[epoch], batch.n_id, self.noise_or_not)
@@ -146,6 +139,8 @@ class PipelineTE(object):
             y_true = y.cpu()
             y_pred1 = out1.argmax(dim=-1, keepdim=True)
             y_pred2 = out2.argmax(dim=-1, keepdim=True)
+            #print(y_true[ind_update_1].shape)
+            #print(y_pred1[ind_update_1].shape)
 
             train_acc_clean1 = self.evaluator.eval({
                 'y_true': y_true[ind_update_1],
@@ -156,17 +151,19 @@ class PipelineTE(object):
                 'y_pred': y_pred1[ind_update_2],
             })['acc']
             train_acc_clean = (train_acc_clean1 + train_acc_clean2) * 0.5
-
-            train_acc_noisy1 = self.evaluator.eval({
-                'y_true': y_true[ind_noisy_1],
-                'y_pred': y_pred1[ind_noisy_1],
-            })['acc']
-            train_acc_noisy2 = self.evaluator.eval({
-                'y_true': y_true[ind_noisy_2],
-                'y_pred': y_pred1[ind_noisy_2],
-            })['acc']
-            train_acc_noisy = (train_acc_noisy1 + train_acc_noisy2) * 0.5
-
+            
+            if len(ind_noisy_2) != 0:
+                train_acc_noisy1 = self.evaluator.eval({
+                    'y_true': y_true[ind_noisy_1],
+                    'y_pred': y_pred1[ind_noisy_1],
+                })['acc']
+                train_acc_noisy2 = self.evaluator.eval({
+                    'y_true': y_true[ind_noisy_2],
+                    'y_pred': y_pred1[ind_noisy_2],
+                })['acc']
+                train_acc_noisy = (train_acc_noisy1 + train_acc_noisy2) * 0.5
+            else:
+                train_acc_noisy = 0
             total_loss_1 += float(loss_1)
             total_loss_2 += float(loss_2)
             total_loss_cont_1 += float(loss_cont1)
@@ -296,10 +293,10 @@ class PipelineTE(object):
             line2, = axs[0].plot(train_acc_2_hist, 'darkgreen', label="train_acc_2_hist")
             line3, = axs[0].plot(val_acc_1_hist, 'purple', label="val_acc_1_hist")
             line4, = axs[0].plot(val_acc_2_hist, 'darkseagreen', label="val_acc_2_hist")
-            line5, = axs[1].plot(test_acc_1_hist, 'deepskyblue', label="test_acc_1_hist")
-            line6, = axs[1].plot(test_acc_2_hist, 'chartreuse', label="test_acc_2_hist")
-            line5, = axs[1].plot(acc_clean, 'pink', label="acc_clean")
-            line6, = axs[1].plot(acc_noisy, 'red', label="acc_clean")
+            line5, = axs[0].plot(test_acc_1_hist, 'deepskyblue', label="test_acc_1_hist")
+            line6, = axs[0].plot(test_acc_2_hist, 'chartreuse', label="test_acc_2_hist")
+            line7, = axs[1].plot(acc_clean_hist, 'pink', label="acc_clean")
+            line8, = axs[1].plot(acc_noisy_hist, 'red', label="acc_noisy")
             axs[2].plot(pure_ratio_1_hist, 'blue', label="pure_ratio_1_hist")
             axs[2].plot(pure_ratio_2_hist, 'darkgreen', label="pure_ratio_2_hist")
             axs[2].legend()
@@ -309,12 +306,9 @@ class PipelineTE(object):
             axs[3].plot(train_loss_cont_1_hist, 'aqua', label="train_loss_cont_1_hist")
             axs[3].plot(train_loss_cont_2_hist, 'lawngreen', label="train_loss_cont_2_hist")
             
-            axs[0].legend(handles=[line1, line2, line3, line4], loc='upper left', bbox_to_anchor=(1.05, 1))
-            axs[1].legend(handles=[line5, line6], loc='upper left', bbox_to_anchor=(1.05, 1))
+            axs[0].legend(handles=[line1, line2, line3, line4,line5, line6], loc='upper left', bbox_to_anchor=(1.05, 1))
+            axs[1].legend(handles=[line7, line8], loc='upper left', bbox_to_anchor=(1.05, 1))
        
-            axs[0].legend(handles=[line1, line2, line3, line4, line7, line8], loc='upper left', bbox_to_anchor=(1.05, 1))
-            axs[1].legend(handles=[line5, line6, line9], loc='upper left', bbox_to_anchor=(1.05, 1))
-            
             axs[0].set_title('Plot 1')
             axs[1].set_title('Plot 2')
             axs[2].set_title('Plot 3')
@@ -323,80 +317,5 @@ class PipelineTE(object):
 
             plt.tight_layout()
             #plt.show()
-            plot_name = '../out_plots/out_analysis/' + self.output_name + '.png'
+            plot_name = '../out_analysis/' + self.output_name + '.png'
             plt.savefig(plot_name)
-
-"""
-def evaluate(self, valid_loader, model):
-        model.eval()
-
-        total_correct = 0
-        
-        for batch in valid_loader:
-            batch = batch.to(self.device)
-            # Only consider predictions and labels of seed nodes
-            out = model(batch.x, batch.edge_index)[:batch.batch_size]
-            y = batch.y[:batch.batch_size].squeeze()
-
-            total_correct += int(out.argmax(dim=-1).eq(y).sum())
-        val_acc = total_correct / self.split_idx['valid'].size(0)
-        return val_acc
-    
-    def test(self, test_loader, model):
-        model.eval()
-
-        total_correct = 0
-        for batch in test_loader:
-            batch = batch.to(self.device)
-            # Only consider predictions and labels of seed nodes
-            out = model(batch.x, batch.edge_index)[:batch.batch_size]
-            y = batch.y[:batch.batch_size].squeeze()
-
-            total_correct += int(out.argmax(dim=-1).eq(y).sum())
-        test_acc = total_correct / self.split_idx['test'].size(0) #self.test_size #
-        return test_acc
-
-def evaluate_ct(self, valid_loader, model1, model2):
-        model1.eval()
-        model2.eval()
-
-        total_correct_1 = 0
-        total_correct_2 = 0
-        
-        for batch in valid_loader:
-            batch = batch.to(self.device)
-            # Only consider predictions and labels of seed nodes
-            _, _, z_pure1, _, _, _ = model1(batch.x, batch.edge_index, n_id=batch.n_id)
-            _, _, z_pure2, _, _, _ = model2(batch.x, batch.edge_index, n_id=batch.n_id)
-            out1 = z_pure1[:batch.batch_size]
-            out2 = z_pure2[:batch.batch_size]
-            y = batch.y[:batch.batch_size].squeeze()
-
-            total_correct_1 += int(out1.argmax(dim=-1).eq(y).sum())
-            total_correct_2 += int(out2.argmax(dim=-1).eq(y).sum())
-        val_acc_1 = total_correct_1 / self.split_idx['valid'].size(0)
-        val_acc_2 = total_correct_2 / self.split_idx['valid'].size(0)
-        return val_acc_1, val_acc_2
-    
-    def test_ct(self, test_loader, model1, model2):
-        model1.eval()
-        model2.eval()
-
-        total_correct_1 = 0
-        total_correct_2 = 0
-
-        for batch in test_loader:
-            batch = batch.to(self.device)
-            # Only consider predictions and labels of seed nodes
-            _, _, z_pure1, _, _, _ = model1(batch.x, batch.edge_index, n_id=batch.n_id)
-            _, _, z_pure2, _, _, _ = model2(batch.x, batch.edge_index, n_id=batch.n_id)
-            out1 = z_pure1[:batch.batch_size]
-            out2 = z_pure2[:batch.batch_size]
-            y = batch.y[:batch.batch_size].squeeze()
-
-            total_correct_1 += int(out1.argmax(dim=-1).eq(y).sum())
-            total_correct_2 += int(out2.argmax(dim=-1).eq(y).sum())
-        test_acc_1 = total_correct_1 / self.split_idx['test'].size(0) #self.test_size
-        test_acc_2 = total_correct_2 / self.split_idx['test'].size(0)
-        return test_acc_1, test_acc_2
-    """
