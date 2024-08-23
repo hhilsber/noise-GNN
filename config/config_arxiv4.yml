@@ -1,5 +1,5 @@
 # Data
-batch_id: 2
+batch_id: 1
 data_dir: '../data'
 dataset_name: 'ogbn-arxiv'
 what: '_test2'
@@ -8,7 +8,8 @@ what: '_test2'
 seed: 1232
 
 # Graph model
-module: 'gcn'
+module: 'sage'
+module_compare: 'sage'
 hidden_size: 256
 num_layers: 3
 nbr_neighbors: [10,5]
