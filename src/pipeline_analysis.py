@@ -10,6 +10,7 @@ import datetime as dt
 
 from .utils.load_utils import load_network
 from .utils.data_utils import Jensen_Shannon, Discriminator_innerprod, BCEExeprtLoss
+from sklearn.metrics import accuracy_score
 from .utils.augmentation import *
 from .utils.utils import initialize_logger
 from .utils.noise import flip_label
@@ -26,10 +27,14 @@ class PipelineA(object):
 
         # Data prep
         self.data, dataset = load_network(config)
+        train_idx = self.data.train_mask.nonzero().squeeze()
+        val_idx = self.data.val_mask.nonzero().squeeze()
+        test_idx = self.data.test_mask.nonzero().squeeze()
+        self.split_idx = {'train': train_idx, 'valid': val_idx, 'test': test_idx}
+        if config['batch_size_full']:
+            config['batch_size'] = self.split_idx['train'].shape[0]
+           
         print('noise type and rate: {} {}'.format(config['noise_type'], config['noise_rate']))
-        #self.data.yhn, self.noise_mat = flip_label(self.data.y, dataset.num_classes, config['noise_type'], config['noise_rate'])
-        #self.noise_or_not = (self.data.y.squeeze() == self.data.yhn) #.int() # true if same lbl
-        self.split_idx = dataset.get_idx_split()
         print('train: {}, valid: {}, test: {}'.format(self.split_idx['train'].shape[0],self.split_idx['valid'].shape[0],self.split_idx['test'].shape[0]))
 
         config['nbr_features'] = dataset.num_features #dataset.x.shape[-1]
@@ -139,9 +144,8 @@ class PipelineA(object):
             y_true = y.cpu()
             y_pred1 = out1.argmax(dim=-1, keepdim=True)
             y_pred2 = out2.argmax(dim=-1, keepdim=True)
-            #print(y_true[ind_update_1].shape)
-            #print(y_pred1[ind_update_1].shape)
 
+            
             train_acc_clean1 = self.evaluator.eval({
                 'y_true': y_true[ind_update_1],
                 'y_pred': y_pred1[ind_update_1],

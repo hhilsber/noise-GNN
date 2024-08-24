@@ -1,7 +1,7 @@
 # Data
 batch_id: 1
 data_dir: '../data'
-dataset_name: 'ogbn-arxiv'
+dataset_name: 'computers'
 what: '1'
 
 # Seed
@@ -9,41 +9,43 @@ seed: 1232
 
 # Graph model
 module: 'sagePL'
-hidden_size: 256
-num_layers: 3
+hidden_size: 512
+num_layers: 2
 nbr_neighbors: [10,5]
 
 # Compare network
 train_type: 'nalgo' # nalgo   baseline   both
 
 # Regularization
-dropout: 0.2
+dropout: 0.5
 
 # Training
 optimizer: 'adam'
 learning_rate: 0.001
 
 num_runs: 1
-max_epochs: 3
-batch_size: 512
+max_epochs: 50
+batch_size: 1
 
 # Device
 cuda: True
 
-# Bool
+# Bool train
 do_train: True
 do_plot: True
-epoch_logger: True
+epoch_logger: False
+# Bool data
+load_index: True
+batch_size_full: True
 
 # Noise
-noise_rate: 0.45
+noise_rate: 0.3
 noise_type: 'next_pair' # pair   sym
 
 # Algo Co-teaching or CNCLU
 algo_type: 'analysis' # ct codi cn_soft cn_hard
-ct_tk: 1
-ct_exp: 1
-ct_tau: 1.1
+ct_tk: 25
+ct_tau: 0.1
 
 spl_cont_beta: 0.1
 spl_noise_rate_neg: 0.9
