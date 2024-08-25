@@ -68,7 +68,7 @@ class PipelineTE(object):
         
         self.data.yhn, self.noise_mat = flip_label(self.data.y, self.config['nbr_classes'], self.config['noise_type'], self.config['noise_rate'])
         self.noise_or_not = (self.data.y.squeeze() == self.data.yhn) #.int() # true if same lbl
-
+        print(self.noise_mat[:10,:10])
         self.train_loader = NeighborLoader(
             self.data,
             input_nodes=self.split_idx['train'],

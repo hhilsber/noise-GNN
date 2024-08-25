@@ -1,5 +1,5 @@
 # Data
-batch_id: 1
+batch_id: 2
 data_dir: '../data'
 dataset_name: 'computers'
 what: '1'
@@ -33,7 +33,7 @@ cuda: True
 # Bool train
 do_train: True
 do_plot: True
-epoch_logger: False
+epoch_logger: True
 # Bool data
 load_index: True
 batch_size_full: True
@@ -47,7 +47,7 @@ algo_type: 'analysis' # ct codi cn_soft cn_hard
 ct_tk: 25
 ct_tau: 0.1
 
-spl_cont_beta: 0.1
+spl_cont_beta: 0.05
 spl_noise_rate_neg: 0.9
 spl_noise_rate_pos: 0.05
 spl_rewire_rate: 0.2

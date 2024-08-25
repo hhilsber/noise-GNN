@@ -2,13 +2,13 @@
 batch_id: 1
 data_dir: '../data'
 dataset_name: 'ogbn-arxiv'
-what: '_test2'
+what: '_test3'
 
 # Seed
 seed: 1232
 
 # Graph model
-module: 'sage'
+module: 'sagePL'
 module_compare: 'sage'
 hidden_size: 256
 num_layers: 3
@@ -38,8 +38,8 @@ do_plot: False
 epoch_logger: False
 
 # Noise
-noise_rate: 0.3
-noise_type: 'rand_pair' # pair   sym
+noise_rate: 0.0
+noise_type: 'next_pair' # pair   sym
 
 # Algo Co-teaching or CNCLU
 algo_type: 'coteaching' # ct codi cn_soft cn_hard

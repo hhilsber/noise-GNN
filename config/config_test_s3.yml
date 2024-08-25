@@ -1,5 +1,5 @@
 # Data
-batch_id: 10
+batch_id: 1
 
 data_dir: '../data'
 dataset_name: 'computers' #'cora' #'ogbn-arxiv'
@@ -17,7 +17,7 @@ nbr_neighbors: [10,5]
 
 # Compare network
 train_type: 'baseline' # nalgo   baseline   both
-compare_loss : 'back' # normal back
+compare_loss : 'normal' # normal back
 
 # Regularization
 dropout: 0.5
@@ -42,8 +42,8 @@ batch_size_full: True
 whole_test_set: True
 
 # Noise
-noise_rate: 0.4
-noise_type: 'sym' # pair   sym
+noise_rate: 0.0
+noise_type: 'next_pair' # pair   sym
 
 # Algo Co-teaching or CNCLU
 algo_type: 'coteaching' # ct codi cn_soft cn_hard
