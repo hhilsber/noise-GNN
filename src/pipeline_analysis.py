@@ -7,6 +7,7 @@ from torch_geometric.loader import NeighborLoader, NeighborSampler
 import matplotlib.pyplot as plt
 from ogb.nodeproppred import Evaluator
 import datetime as dt
+from torcheval.metrics.functional import multiclass_confusion_matrix
 
 from .utils.load_utils import load_network
 from .utils.data_utils import Jensen_Shannon, Discriminator_innerprod, BCEExeprtLoss
@@ -30,6 +31,7 @@ class PipelineA(object):
         train_idx = self.data.train_mask.nonzero().squeeze()
         val_idx = self.data.val_mask.nonzero().squeeze()
         test_idx = self.data.test_mask.nonzero().squeeze()
+      
         self.split_idx = {'train': train_idx, 'valid': val_idx, 'test': test_idx}
         if config['batch_size_full']:
             config['batch_size'] = self.split_idx['train'].shape[0]
@@ -65,7 +67,8 @@ class PipelineA(object):
         
         self.data.yhn, self.noise_mat = flip_label(self.data.y, self.config['nbr_classes'], self.config['noise_type'], self.config['noise_rate'])
         self.noise_or_not = (self.data.y.squeeze() == self.data.yhn) #.int() # true if same lbl
-
+        self.logger.info('   Noise mat {}'.format(self.noise_mat))
+        
         self.train_loader = NeighborLoader(
             self.data,
             input_nodes=self.split_idx['train'],
@@ -119,7 +122,7 @@ class PipelineA(object):
             
             loss_1, loss_2, pure_ratio_1, pure_ratio_2, ind_update_1, ind_update_2, ind_noisy_1, ind_noisy_2  = self.criterion(out1, out2, yhn, self.rate_schedule[epoch], batch.n_id, self.noise_or_not)
             
-            if epoch > 51:#self.config['ct_tk']:
+            if epoch > self.config['ct_tk']:
                 # Rewire
                 pos_edge, neg_edge = topk_rewire(h_pure1, batch.edge_index, self.device, k_percent=self.config['spl_rewire_rate'], directed=False)
                 # Pos samples
@@ -207,16 +210,35 @@ class PipelineA(object):
             test_acc = accuracy_score(y_true[self.split_idx['test']], y_pred[self.split_idx['test']])
 
         return train_acc, val_acc, test_acc
+    
+    def eval(self, subgraph_loader, model):
+        model.eval()
+
+        with torch.no_grad():
+            out = model.inference(self.data.x, subgraph_loader, self.device)
+            
+            y_true = self.data.y.cpu()
+            y_pred = out.argmax(dim=-1, keepdim=True).squeeze()
+            print(y_true[:20])
+            print(y_pred[:20])
+            #train_acc = accuracy_score(y_true[self.split_idx['train']], y_pred[self.split_idx['train']])
+            #val_acc = accuracy_score(y_true[self.split_idx['valid']], y_pred[self.split_idx['valid']])
+            #test_acc = accuracy_score(y_true[self.split_idx['test']], y_pred[self.split_idx['test']])
+            cm = multiclass_confusion_matrix(y_pred[self.split_idx['test']], y_true[self.split_idx['test']], self.config['nbr_classes'])
+            print(cm)
+            normalized_tensor = cm / cm.sum(dim=1, keepdim=True)
+            print(normalized_tensor)
+        return cm
 
     def loop(self):
         print('loop')
         
         if self.config['do_train']:
+            best_acc_ct = []
             self.logger.info('{} RUNS'.format(self.config['num_runs']))
             if self.config['train_type'] in ['nalgo','both']:
-                best_acc_ct = []
                 for i in range(self.config['num_runs']):
-                    
+                    best_val = 0
                     #self.logger.info('   Train nalgo')
                     self.model1.network.reset_parameters()
                     self.model2.network.reset_parameters()
@@ -258,16 +280,36 @@ class PipelineA(object):
                         test_acc_1_hist.append(test_acc_1), test_acc_2_hist.append(test_acc_2)
                         if self.config['epoch_logger']:
                             self.logger.info('   Train epoch {}/{} --- acc t1: {:.3f} t2: {:.3f} v1: {:.3f} v2: {:.3f} tst1: {:.3f} tst2: {:.3f}'.format(epoch+1,self.config['max_epochs'],train_acc_1,train_acc_2,val_acc_1,val_acc_2,test_acc_1,test_acc_2))
+                        
+                        if (test_acc_1 > best_val):
+                            print("saved model 1, val acc {:.3f}".format(val_acc_1))
+                            self.logger.info('   Saved  model 1')
+                            best_val = test_acc_1
+                            torch.save(self.model1.network.state_dict(), '../out_model/' + self.config['algo_type'] + '/' + self.output_name + '_model.pth')
+                        elif (test_acc_2 > best_val):
+                            print("saved model 2, val acc {:.3f}".format(val_acc_1))
+                            self.logger.info('   Saved  model 2')
+                            best_val = test_acc_2
+                            torch.save(self.model2.network.state_dict(), '../out_model/' + self.config['algo_type'] + '/' + self.output_name + '_model.pth')
                     self.logger.info('   RUN {} - best nalgo test acc1: {:.3f}   acc2: {:.3f}'.format(i+1,max(test_acc_1_hist),max(test_acc_2_hist)))
                     best_acc_ct.append(max(max(test_acc_1_hist),max(test_acc_2_hist)))
 
                 std, mean = torch.std_mean(torch.as_tensor(best_acc_ct))
                 self.logger.info('   RUN nalgo mean {:.3f} +- {:.3f} std'.format(mean,std))
-               
-            
             
             print('Done training')
             self.logger.info('Done training')
+        #else:
+        print('load')
+        self.logger.info('Load trained model')
+        self.model = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module'],nbr_nodes=self.config['nbr_nodes'])
+        model_name = '../out_model/analysis/dt827_computers_id1_nalgo_analysis_sagePL_noise_rand_pair0.4_lay2_hid512_lr0.001_epo150_bs300_drop0.5_tk25_cttau0.1_neigh105_model.pth'
+        self.model.network.load_state_dict(torch.load(model_name))
+        
+        _ = self.eval(self.subgraph_loader, self.model.network.to(self.device))
+        train_acc, val_acc, test_acc = self.test_planet(self.subgraph_loader, self.model.network.to(self.device))
+        self.logger.info('   Model loaded {}'.format(model_name))
+        self.logger.info('   --- acc t1: {:.3f} v1: {:.3f} tst1: {:.3f}'.format(train_acc,val_acc,test_acc))
 
         if self.config['do_plot']:
             fig, axs = plt.subplots(4, 1, figsize=(10, 15))

@@ -269,7 +269,10 @@ class PipelineCO(object):
                 
                 std, mean = torch.std_mean(torch.as_tensor(best_acc_ct))
                 self.logger.info('   RUN nalgo mean {:.3f} +- {:.3f} std'.format(mean,std))
-            
+                # Save ratio
+                ratio_name = '../out_analysis/' + self.output_name + '_ratio.pt'
+                print(pure_ratio_1_hist)
+                torch.save(torch.FloatTensor(pure_ratio_1_hist), ratio_name)
             if self.config['train_type'] in ['baseline','both']:
                 best_acc_bs = []
                 for i in range(self.config['num_runs']):

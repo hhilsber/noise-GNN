@@ -1,8 +1,8 @@
 # Data
-batch_id: 2
+batch_id: 10
 data_dir: '../data'
 dataset_name: 'ogbn-arxiv'
-what: '_test2'
+what: '6'
 
 # Seed
 seed: 1232
@@ -14,17 +14,17 @@ num_layers: 3
 nbr_neighbors: [10,5]
 
 # Compare network
-train_type: 'baseline' # nalgo   baseline   both
-compare_loss : 'back' # normal back
+train_type: 'nalgo' # nalgo   baseline   both
+compare_loss : 'normal' # normal back
 
 # Regularization
-dropout: 0.2
+dropout: 0.5
 
 # Training
 optimizer: 'adam'
 learning_rate: 0.001
 
-num_runs: 5
+num_runs: 1
 max_epochs: 50
 batch_size: 512
 
@@ -33,20 +33,15 @@ cuda: True
 
 # Bool
 do_train: True
-do_plot: False
-epoch_logger: False
+do_plot: True
+epoch_logger: True
 
 # Noise
-noise_rate: 0.45
-noise_type: 'rand_pair' # pair   sym
+noise_rate: 0.4
+noise_type: 'next_pair' # pair   sym
 
 # Algo Co-teaching or CNCLU
 algo_type: 'coteaching' # ct codi cn_soft cn_hard
 ct_tk: 15
 ct_exp: 1
 ct_tau: 1.2
-
-spl_cont_beta: 0.1
-spl_noise_rate_neg: 0.9
-spl_noise_rate_pos: 0.05
-spl_rewire_rate: 0.2

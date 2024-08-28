@@ -1,5 +1,5 @@
 # Data
-batch_id: 2
+batch_id: 1
 data_dir: '../data'
 dataset_name: 'computers'
 what: '1'
@@ -24,7 +24,7 @@ optimizer: 'adam'
 learning_rate: 0.001
 
 num_runs: 1
-max_epochs: 50
+max_epochs: 150
 batch_size: 1
 
 # Device
@@ -32,15 +32,15 @@ cuda: True
 
 # Bool train
 do_train: True
-do_plot: True
+do_plot: False
 epoch_logger: True
 # Bool data
 load_index: True
 batch_size_full: True
 
 # Noise
-noise_rate: 0.3
-noise_type: 'next_pair' # pair   sym
+noise_rate: 0.4
+noise_type: 'rand_pair' # pair   sym
 
 # Algo Co-teaching or CNCLU
 algo_type: 'analysis' # ct codi cn_soft cn_hard

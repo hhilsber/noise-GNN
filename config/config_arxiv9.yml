@@ -1,21 +1,21 @@
 # Data
-batch_id: 4
+batch_id: 10
 data_dir: '../data'
 dataset_name: 'ogbn-arxiv'
-what: '5'
+what: '6'
 
 # Seed
 seed: 1232
 
 # Graph model
-module: 'gcn'
+module: 'sage'
 hidden_size: 256
 num_layers: 3
 nbr_neighbors: [10,5]
 
 # Compare network
-train_type: 'baseline' # nalgo   baseline   both
-compare_loss : 'back' # normal back
+train_type: 'nalgo' # nalgo   baseline   both
+compare_loss : 'normal' # normal back
 
 # Regularization
 dropout: 0.5
@@ -24,7 +24,7 @@ dropout: 0.5
 optimizer: 'adam'
 learning_rate: 0.001
 
-num_runs: 5
+num_runs: 1
 max_epochs: 50
 batch_size: 512
 
@@ -33,12 +33,12 @@ cuda: True
 
 # Bool
 do_train: True
-do_plot: False
-epoch_logger: False
+do_plot: True
+epoch_logger: True
 
 # Noise
-noise_rate: 0.4
-noise_type: 'sym' # pair   sym
+noise_rate: 0.45
+noise_type: 'next_pair' # pair   sym
 
 # Algo Co-teaching or CNCLU
 algo_type: 'coteaching' # ct codi cn_soft cn_hard
