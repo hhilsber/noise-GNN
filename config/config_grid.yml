@@ -1,5 +1,5 @@
 # Data
-batch_id: 10
+batch_id: 1
 data_dir: '../data'
 dataset_name: 'computers'
 what: '6'
@@ -9,16 +9,16 @@ what: '6'
 seed: 1232
 
 # Graph model
-module: 'sage'
-hidden_size: 1
-num_layers: 1
+module: 'sagePL'
+hidden_size: 512
+num_layers: 2
 nbr_neighbors: [10,5]
 
 # Compare network
 train_type: 'nalgo' # nalgo   baseline   both
 
 # Regularization
-dropout: 1.0
+dropout: 0.5
 
 # Training
 optimizer: 'adam'
@@ -44,5 +44,10 @@ noise_type: 'next_pair' # pair   sym
 
 # Algo Co-teaching or CNCLU
 algo_type: 'grid' # ct codi cn_soft cn_hard
-ct_tk: 1
-ct_tau: 1.0
+ct_tk: 25
+ct_tau: 0.1
+
+spl_cont_beta: 0.05
+spl_noise_rate_neg: 0.7
+spl_noise_rate_pos: 0.05
+spl_rewire_rate: 0.1
