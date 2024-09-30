@@ -12,11 +12,13 @@ import datetime as dt
 import pandas as pd
 
 from .utils.load_utils import load_network
-from .utils.data_utils import topk_accuracy
+from .utils.data_utils import *
 from .utils.utils import initialize_logger
 from .utils.noise import flip_label
 from .models.model import NGNN
 from .utils.losses import *
+from .utils.augmentation import *
+
 
 class PipelineSG(object):
     """
@@ -46,6 +48,10 @@ class PipelineSG(object):
             self.config['batch_size'] = self.split_idx['train'].shape[0]
         print('train: {}, valid: {}, test: {}'.format(self.split_idx['train'].shape[0],self.split_idx['valid'].shape[0],self.split_idx['test'].shape[0]))
         print('batch size: {}'.format(self.config['batch_size']))
+
+        # Contrastive
+        self.discriminator = Discriminator_innerprod()
+        self.cont_criterion = BCEExeprtLoss(self.config['batch_size'])
 
         # Logger and data loader
         date = dt.datetime.date(dt.datetime.now())
@@ -176,8 +182,8 @@ class PipelineSG(object):
         for drop in [0.5]:
             for lay in [2]:
                 for hid in [512]:
-                    for tk in [25]:
-                        for beta in [0.05,0.1,0.2]:
+                    for beta in [0.05,0.1,0.15,0.2]:
+                        for tau in [0.1,0.15,0.2]:
                             best_acc_ct = []
                             for i in range(self.config['num_runs']):
                                 # Initialize the model
@@ -185,10 +191,13 @@ class PipelineSG(object):
                                 lay = self.config['num_layers']
                                 drop = self.config['dropout']
                                 tk = self.config['ct_tk']
-                                tau = self.config['ct_tau']
+                                #tau = self.config['ct_tau']
                                 self.config['spl_cont_beta'] = beta
-                                self.model1 = NGNN(self.config['nbr_features'],hid,self.config['nbr_classes'],lay,drop,self.config['learning_rate'],self.config['optimizer'],self.config['module'])
-                                self.model2 = NGNN(self.config['nbr_features'],hid,self.config['nbr_classes'],lay,drop,self.config['learning_rate'],self.config['optimizer'],self.config['module'])
+                                #self.model1 = NGNN(self.config['nbr_features'],hid,self.config['nbr_classes'],lay,drop,self.config['learning_rate'],self.config['optimizer'],self.config['module'])
+                                #self.model2 = NGNN(self.config['nbr_features'],hid,self.config['nbr_classes'],lay,drop,self.config['learning_rate'],self.config['optimizer'],self.config['module'])
+                                self.model1 = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module'],nbr_nodes=self.config['nbr_nodes']) #self.split_idx['train'].shape[0]
+                                self.model2 = NGNN(self.config['nbr_features'],self.config['hidden_size'],self.config['nbr_classes'],self.config['num_layers'],self.config['dropout'],self.config['learning_rate'],self.config['optimizer'],self.config['module'],nbr_nodes=self.config['nbr_nodes'])
+                                self.optimizer = torch.optim.Adam(list(self.model1.network.parameters()) + list(self.model2.network.parameters()),lr=self.config['learning_rate'])
                                 self.criterion = CTLoss(self.device)
                                 self.rate_schedule = np.ones(self.config['max_epochs'])*self.config['noise_rate']*tau
                                 self.rate_schedule[:tk] = np.linspace(0, self.config['noise_rate']*tau, tk)
@@ -208,7 +217,7 @@ class PipelineSG(object):
                                 test_acc_2_hist = []
 
                                 for epoch in range(self.config['max_epochs']):
-                                    train_loss_1, train_loss_2, train_acc_1, train_acc_2, pure_ratio_1_list, pure_ratio_2_list, train_loss_cont_1, train_loss_cont_2 = self.train_ct(self.train_loader, epoch, self.model1.network.to(self.device), self.model1.optimizer, self.model2.network.to(self.device), self.model2.optimizer)
+                                    train_loss_1, train_loss_2, train_acc_1, train_acc_2, pure_ratio_1_list, pure_ratio_2_list, train_loss_cont_1, train_loss_cont_2 = self.train_ct(self.train_loader, epoch, self.model1.network.to(self.device), self.model2.network.to(self.device), self.optimizer)
                                     train_acc_1, val_acc_1, test_acc_1 = self.test_planet(self.subgraph_loader, self.model1.network.to(self.device))
                                     train_acc_2, val_acc_2, test_acc_2 = self.test_planet(self.subgraph_loader, self.model2.network.to(self.device))
 
@@ -221,14 +230,14 @@ class PipelineSG(object):
                                 #self.logger.info('   RUN {} - best nalgo test acc1: {:.3f}   acc2: {:.3f}'.format(i+1,max(test_acc_1_hist),max(test_acc_2_hist)))
                                 best_acc_ct.append(max(max(test_acc_1_hist),max(test_acc_2_hist)))
                             std, mean = torch.std_mean(torch.as_tensor(best_acc_ct))
-                            self.logger.info('   drop {}, lay {}, hid {}, tk {}, beta {} --- mean {:.3f} +- {:.3f} std'.format(drop, lay, hid, tk, beta, mean,std))
+                            self.logger.info('   drop {}, lay {}, hid {}, beta {}, tau {} --- mean {:.3f} +- {:.3f} std'.format(drop, lay, hid, beta, tau, mean,std))
                             
-                            new_row = pd.DataFrame({'drop': [drop], 'lay': [lay],  'hid': [hid], 'tk': [tk], 'beta': [beta], 'mean': [mean], 'std': [std]})
+                            new_row = pd.DataFrame({'drop': [drop], 'lay': [lay],  'hid': [hid], 'beta': [beta], 'tau': [tau], 'mean': [mean], 'std': [std]})
                             results_df = pd.concat([results_df, new_row], ignore_index=True)
-        top_results = results_df.sort_values(by='mean', ascending=False).head(3)
+        top_results = results_df.sort_values(by='mean', ascending=False).head(12)
         self.logger.info(' %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  RESULTS  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% ')
         for i, row in top_results.iterrows():
-            self.logger.info('mean {:.3f} +- {:.3f} std --- values drop {}, lay {}, hid {}, tk {}, beta {}'.format(row['mean'], row['std'], row['drop'], row['lay'], row['hid'], row['tk'], row['beta']))
+            self.logger.info('mean {:.3f} +- {:.3f} std --- values drop {}, lay {}, hid {}, beta {}, tau {}'.format(row['mean'], row['std'], row['drop'], row['lay'], row['hid'], row['beta'], row['tau']))
 
         print('Done training')
         self.logger.info('Done training')
